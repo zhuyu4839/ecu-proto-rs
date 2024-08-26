@@ -1,0 +1,147 @@
+use crate::error::Error;
+use crate::service::{AdministrativeParameter, Configuration, Placeholder, RequestData, SignatureEncryptionCalculation};
+use crate::utils;
+
+#[derive(Debug, Clone)]
+pub struct SecuredTransData {
+    pub apar: AdministrativeParameter,
+    pub signature: SignatureEncryptionCalculation,
+    // pub signature_len: u16,
+    pub anti_replay_cnt: u16,
+    pub service: u8,
+    pub service_data: Vec<u8>,
+    pub signature_data: Vec<u8>,
+}
+
+impl SecuredTransData {
+    pub fn new(
+        mut apar: AdministrativeParameter,
+        signature: SignatureEncryptionCalculation,
+        anti_replay_cnt: u16,
+        service: u8,
+        service_data: Vec<u8>,
+        signature_data: Vec<u8>,
+    ) -> Result<Self, Error> {
+        if signature_data.len() > u16::MAX as usize {
+            return Err(Error::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
+        }
+
+        if !apar.is_request() {
+            apar.request_set(true);
+        }
+
+        Ok(Self {
+            apar,
+            signature,
+            // signature_len: signature_data.len() as u16,
+            anti_replay_cnt,
+            service,
+            service_data,
+            signature_data,
+        })
+    }
+}
+
+impl<'a> TryFrom<&'a [u8]> for SecuredTransData {
+    type Error = Error;
+    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
+        let data_len = data.len();
+        utils::data_length_check(data_len, 8, false)?;
+
+        let mut offset = 0;
+        let apar = AdministrativeParameter::from(u16::from_be_bytes([data[offset], data[offset + 1]]));
+        offset += 2;
+        if !apar.is_request() {
+            return Err(Error::InvalidData(utils::hex_slice_to_string(data)));
+        }
+        let signature = SignatureEncryptionCalculation::try_from(data[offset])?;
+        offset += 1;
+
+        let signature_len = u16::from_be_bytes([data[offset], data[offset + 1]]);
+        offset += 2;
+        let anti_replay_cnt = u16::from_be_bytes([data[offset], data[offset + 1]]);
+        offset += 2;
+
+        let service = data[offset];
+        offset += 1;
+
+        if data_len < offset + signature_len as usize {
+            return Err(Error::InvalidData(utils::hex_slice_to_string(data)));
+        }
+
+        let curr_offset = data_len - offset - signature_len as usize;
+        let service_data = data[offset..offset + curr_offset].to_vec();
+        offset += curr_offset;
+
+        let signature_data = data[offset..].to_vec();
+
+        Self::new(
+            apar,
+            signature,
+            anti_replay_cnt,
+            service,
+            service_data,
+            signature_data,
+        )
+    }
+}
+
+impl Into<Vec<u8>> for SecuredTransData {
+    fn into(mut self) -> Vec<u8> {
+        let mut result: Vec<_> = self.apar.into();
+        result.push(self.signature.into());
+        let signature_len = self.signature_data.len() as u16;
+        result.extend(signature_len.to_be_bytes());
+        result.extend(self.anti_replay_cnt.to_be_bytes());
+        result.push(self.service);
+        result.append(&mut self.service_data);
+        result.append(&mut self.signature_data);
+
+        result
+    }
+}
+
+impl RequestData for SecuredTransData {
+    type SubFunc = Placeholder;
+    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        Self::try_from(data)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use hex_literal::hex;
+    use crate::service::{AdministrativeParameter, SignatureEncryptionCalculation};
+    use super::SecuredTransData;
+
+    #[test]
+    fn new() -> anyhow::Result<()> {
+        let source = hex!("84006100000601242EF123AA55DBD10EDC55AA").as_slice();
+
+        let mut apar = AdministrativeParameter::new();
+        apar.signed_set(true)
+            .signature_on_response_set(true);
+
+        let request = SecuredTransData::new(
+            apar,
+            SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00),
+            0x0124,
+            0x2E,
+            hex!("F123AA55").to_vec(),
+            hex!("DBD10EDC55AA").to_vec(),
+        )?;
+        let result: Vec<_> = request.into();
+        assert_eq!(result, source[1..].to_vec());
+
+        let request = SecuredTransData::try_from(&source[1..])?;
+        assert_eq!(request.apar.is_signed(), true);
+        assert_eq!(request.apar.is_signature_on_response(), true);
+        assert_eq!(request.signature, SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00));
+        assert_eq!(request.anti_replay_cnt, 0x0124);
+        assert_eq!(request.service, 0x2E);
+        assert_eq!(request.service_data, hex!("F123AA55"));
+        assert_eq!(request.signature_data, hex!("DBD10EDC55AA"));
+
+        Ok(())
+    }
+}
