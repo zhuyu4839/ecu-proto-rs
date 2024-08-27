@@ -11,13 +11,11 @@ lazy_static = { workspace = true }
 half = { workspace = true }
 bitflags = { workspace = true }
 bitfield-struct = { workspace = true }
-#can-type-rs = { workspace = true }
 isotp-rs = { workspace = true }
 hex-literal = { workspace = true }
 
 zlgcan_common = { path = "../../zlgcan-driver-rs/zlgcan-common" }
 zlgcan_driver = { path = "../../zlgcan-driver-rs/zlgcan-driver" }
-#tokio = { version = "1", features = ["full", ] }
 
 [dependencies.tokio]
 version = "1"

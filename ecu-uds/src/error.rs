@@ -13,8 +13,8 @@ pub enum Error {
     #[error("UDS - received message doesn't correspond to expected length(expect: {expect}, actual: {actual})")]
     InvalidDataLength { expect: usize, actual: usize },
 
-    #[error("UDS - the data identifier: {0:?} codec is not configured")]
-    DidCodecNotSupported(DataIdentifier),
+    #[error("UDS - the length of data identifier: {0:?} is not configured")]
+    DidNotSupported(DataIdentifier),
 
     #[error("UDS - invalid dynamically defined data identifier: {0:x}")]
     InvalidDynamicallyDefinedDID(u16),

@@ -117,6 +117,19 @@ pub trait RequestData {
     fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error>
     where
         Self: Sized;
+    fn to_vec(self, cfg: &Configuration) -> Vec<u8>;
+}
+
+impl RequestData for Vec<u8> {
+    type SubFunc = Placeholder;
+    #[inline]
+    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        Ok(data.to_vec())
+    }
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self
+    }
 }
 
 pub trait ResponseData {
@@ -124,5 +137,18 @@ pub trait ResponseData {
     fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error>
     where
         Self: Sized;
+    fn to_vec(self, cfg: &Configuration) -> Vec<u8>;
+}
+
+impl ResponseData for Vec<u8> {
+    type SubFunc = Placeholder;
+    #[inline]
+    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        Ok(data.to_vec())
+    }
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self
+    }
 }
 

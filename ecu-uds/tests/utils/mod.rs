@@ -12,6 +12,8 @@ use ecu_uds::docan::client::SyncClient;
 use ecu_uds::error::Error;
 use ecu_uds::service::{AddressAndLengthFormatIdentifier, RoutineCtrlType, TesterPresentType};
 
+pub(crate) const CHANNEL: u8 = 0;
+
 pub(crate) fn init_client() -> Result<(ZCanSync, SyncClient<ZCanSync, ZCanDriver, u8, CanMessage>), Error> {
     let dev_type = ZCanDeviceType::ZCAN_USBCANFD_200U;
     let mut device = ZCanDriver::new(dev_type as u32, 0, None)
@@ -35,16 +37,15 @@ pub(crate) fn init_client() -> Result<(ZCanSync, SyncClient<ZCanSync, ZCanDriver
 
     let mut device = ZCanSync::from(device);
 
-    let channel = 0;
     let mut client = SyncClient::new(device.clone());
-    client.init_channel(channel, Address {
-        tx_id: 0x7E4,
-        rx_id: 0x7EC,
+    client.init_channel(CHANNEL, Address {
+        tx_id: 0x7E0,
+        rx_id: 0x7E8,
         fid: 0x7DF,
-    }, Some(100))?;
+    }, None)?;
 
     // let algo = Arc::new(Box::new(uds_security_algo));
-    client.update_security_algo(channel, uds_security_algo)?;
+    client.update_security_algo(CHANNEL, uds_security_algo)?;
 
     device.sync_start(100);
 

@@ -1,4 +1,5 @@
 use std::fmt::{Display, LowerHex, Write};
+use isotp_rs::ByteOrder;
 use crate::error::Error;
 use crate::constant::POSITIVE_OFFSET;
 use crate::service::Service;
@@ -216,13 +217,12 @@ pub(crate) fn data_length_check(actual: usize, expect: usize, equal: bool) -> Re
 pub(crate) fn u128_to_vec(
     value: u128,
     len: usize,
-    reverse: bool,
+    bo: ByteOrder,
 ) -> Vec<u8> {
-    let mut result = if reverse {
-        value.to_le_bytes().to_vec()
-    }
-    else {
-        value.to_be_bytes().to_vec()
+    let mut result = match bo {
+        ByteOrder::Big => value.to_be_bytes().to_vec(),
+        ByteOrder::Little => value.to_le_bytes().to_vec(),
+        ByteOrder::Native => value.to_ne_bytes().to_vec(),
     };
 
     result.resize(len, Default::default());
@@ -234,17 +234,22 @@ pub(crate) fn u128_to_vec(
 #[inline]
 pub(crate) fn slice_to_u128(
     slice: &[u8],
-    reverse: bool,
+    bo: ByteOrder,
 ) -> u128 {
     let mut data = slice.to_vec();
-    if reverse {
-        data.reverse();
-        data.resize(std::mem::size_of::<u128>(), Default::default());
-        u128::from_le_bytes(data.try_into().unwrap())
-    }
-    else {
-        data.resize(std::mem::size_of::<u128>(), Default::default());
-        u128::from_be_bytes(data.try_into().unwrap())
+    match bo {
+        ByteOrder::Big => {
+            data.resize(std::mem::size_of::<u128>(), Default::default());
+            u128::from_be_bytes(data.try_into().unwrap())
+        },
+        ByteOrder::Little => {
+            data.reverse();
+            data.resize(std::mem::size_of::<u128>(), Default::default());
+            u128::from_le_bytes(data.try_into().unwrap())
+        },
+        ByteOrder::Native => {
+            u128::from_ne_bytes(data.try_into().unwrap())
+        },
     }
 }
 
@@ -279,13 +284,14 @@ pub fn fix_length(length: u8) -> Option<u8> {
 #[cfg(test)]
 mod tests {
     use hex_literal::hex;
+    use isotp_rs::ByteOrder;
 
     #[test]
     fn test_u128_to_vec() -> anyhow::Result<()> {
-        let result = super::u128_to_vec(0x00_12_34_78, 3, true);
+        let result = super::u128_to_vec(0x00_12_34_78, 3, ByteOrder::Little);
         assert_eq!(result, hex!("12 34 78").to_vec());
 
-        let result = super::u128_to_vec(0x12_34_00_78, 4, true);
+        let result = super::u128_to_vec(0x12_34_00_78, 4, ByteOrder::Little);
         assert_eq!(result, hex!("12 34 00 78").to_vec());
 
         Ok(())
@@ -293,7 +299,7 @@ mod tests {
 
     #[test]
     fn test_vec_to_u128() ->anyhow:: Result<()> {
-        let result = super::slice_to_u128(hex!("12 34 56 78").as_slice(), true);
+        let result = super::slice_to_u128(hex!("12 34 56 78").as_slice(), ByteOrder::Little);
         assert_eq!(result, 0x12_34_56_78);
         Ok(())
     }

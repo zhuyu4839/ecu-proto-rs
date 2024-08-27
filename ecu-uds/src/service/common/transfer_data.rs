@@ -34,14 +34,24 @@ impl Into<Vec<u8>> for TransferData {
 
 impl RequestData for TransferData {
     type SubFunc = Placeholder;
+    #[inline]
     fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
         Self::try_from(data)
+    }
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self.into()
     }
 }
 
 impl ResponseData for TransferData {
     type SubFunc = Placeholder;
+    #[inline]
     fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
         Self::try_from(data)
+    }
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self.into()
     }
 }

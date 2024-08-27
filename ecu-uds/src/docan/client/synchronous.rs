@@ -9,9 +9,7 @@ use isotp_rs::error::Error as IsoTpError;
 use crate::docan::client::context::{Context, IsoTpListener};
 use crate::error::Error;
 use crate::{P2Context, utils, SecurityAlgo};
-use crate::service::{AddressAndLengthFormatIdentifier, ECUResetType, Placeholder, response::{self, Response}, request::{self, Request}, Service, SessionType, DataIdentifier, SecurityAccessData, DIDData, CommunicationCtrlType, CommunicationType, TesterPresentType, AuthenticationTask, AdministrativeParameter, SignatureEncryptionCalculation, DataFormatIdentifier, MemoryLocation, RoutineCtrlType, RoutineId, TransferData, SecurityAccessLevel, ModeOfOperation, IOCtrlParameter, DTCReportType, DTCSettingType, LinkCtrlType, DefinitionType, TimingParameterAccessType, TimingParameter};
-use crate::service::request::TransmissionMode;
-use crate::service::response::Code;
+use crate::service::{response::{self, Response, Code}, request::{self, Request}, *};
 
 #[derive(Clone)]
 pub struct SyncClient<D, Device, C, F>
@@ -161,7 +159,7 @@ where
             let service = Service::SecurityAccess;
             let sub_func = request::SubFunction::new(SecurityAccessLevel::new(level)?, None);
             let data = SecurityAccessData(params);
-            let request = Request::new(service, Some(sub_func), data);
+            let request = Request::new(service, Some(sub_func), RequestData::to_vec(data, &ctx.config));
 
             let response = Self::send_and_response::<SecurityAccessLevel>(ctx, false, request)?;
 
@@ -182,7 +180,7 @@ where
                 let service = Service::SecurityAccess;
                 let sub_func = request::SubFunction::new(SecurityAccessLevel::new(level)?, None);
                 let data = SecurityAccessData(params);
-                let request = Request::new(service, Some(sub_func.clone()), data);
+                let request = Request::new(service, Some(sub_func.clone()), RequestData::to_vec(data, &ctx.config));
 
                 let response = Self::send_and_response::<SecurityAccessLevel>(ctx, false, request)?;
                 Self::sub_func_check(&response, level, service)?;
@@ -191,7 +189,7 @@ where
 
                 let sub_func = request::SubFunction::new(SecurityAccessLevel::new(level + 1)?, None);
                 let data = SecurityAccessData(algo(level, seed, salt));
-                let request = Request::new(service, Some(sub_func), data);
+                let request = Request::new(service, Some(sub_func), RequestData::to_vec(data, &ctx.config));
                 let response = Self::send_and_response::<SecurityAccessLevel>(ctx, false, request)?;
 
                 Self::sub_func_check(&response, level + 1, service)
@@ -213,8 +211,8 @@ where
         self.context_util(channel, |ctx| {
             let service = Service::CommunicationCtrl;
             let sub_func = request::SubFunction::new(ctrl_type, Some(suppress_positive));
-            let data = request::CommCtrlData::new(ctrl_type, comm_type, node_id)?;
-            let request = Request::new(service, Some(sub_func), data);
+            let data = request::CommunicationCtrl::new(ctrl_type, comm_type, node_id)?;
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
 
             let response = Self::suppress_positive_sr(ctx, functional, request, suppress_positive)?;
 
@@ -230,12 +228,12 @@ where
     pub fn authentication(&mut self,
                           channel: C,
                           auth_task: AuthenticationTask,
-                          data: request::AuthData,
-    ) -> Result<response::AuthData, Error> {
+                          data: request::Authentication,
+    ) -> Result<response::Authentication, Error> {
         self.context_util(channel, |ctx| {
             let service = Service::Authentication;
             let sub_func = request::SubFunction::new(auth_task, None);
-            let request = Request::new(service, Some(sub_func), data);
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
             Self::sub_func_check(&response, auth_task.into(), service)?;
@@ -276,7 +274,7 @@ where
             let service = Service::AccessTimingParam;
             let sub_func = request::SubFunction::new(access_type, Some(suppress_positive));
             let data = TimingParameter(parameter);
-            let request = Request::new(service, Some(sub_func), data);
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
 
             let response = Self::suppress_positive_sr(ctx, false, request, suppress_positive)?;
 
@@ -298,12 +296,12 @@ where
                                  service: u8,
                                  service_data: Vec<u8>,
                                  signature_data: Vec<u8>,
-    ) -> Result<response::SecuredTransData, Error> {
+    ) -> Result<response::SecuredDataTrans, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::SecuredTransData::new(
+            let data = request::SecuredDataTrans::new(
                 apar, signature, anti_replay_cnt, service, service_data, signature_data
             )?;
-            let request: Request<Placeholder> = Request::new(Service::SecuredDataTrans, None, data);
+            let request: Request<Placeholder> = Request::new(Service::SecuredDataTrans, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
 
@@ -343,13 +341,13 @@ where
     pub fn link_control(&mut self,
                         channel: C,
                         ctrl_type: LinkCtrlType,
-                        data: request::LinkCtrlData,
+                        data: request::LinkCtrl,
                         suppress_positive: bool,
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
             let service = Service::LinkCtrl;
             let sub_func = request::SubFunction::new(ctrl_type, Some(suppress_positive));
-            let request = Request::new(service, Some(sub_func), data);
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
 
             let response = Self::suppress_positive_sr(ctx, false, request, suppress_positive)?;
 
@@ -366,10 +364,10 @@ where
                                    channel: C,
                                    did: DataIdentifier,
                                    others: Vec<DataIdentifier>,
-    ) -> Result<response::ReadDIDData, Error> {
+    ) -> Result<response::ReadDID, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::ReadDIDData::new(did, others);
-            let request: Request<Placeholder> = Request::new(Service::ReadDID, None, data);
+            let data = request::ReadDIDD::new(did, others);
+            let request: Request<Placeholder> = Request::new(Service::ReadDID, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
 
@@ -382,8 +380,8 @@ where
                                   mem_loc: MemoryLocation,
     ) -> Result<Vec<u8>, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::ReadMemByAddrData(mem_loc);
-            let request: Request<Placeholder> = Request::new(Service::ReadMemByAddr, None, data);
+            let data = request::ReadMemByAddr(mem_loc);
+            let request: Request<Placeholder> = Request::new(Service::ReadMemByAddr, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
 
@@ -394,10 +392,10 @@ where
     pub fn read_scaling_data_by_identifier(&mut self,
                                            channel: C,
                                            did: DataIdentifier,
-    ) -> Result<response::ReadScalingDIDData, Error> {
+    ) -> Result<response::ReadScalingDID, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::ReadScalingDIDData(did);
-            let request: Request<Placeholder> = Request::new(Service::ReadScalingDID, None, data);
+            let data = request::ReadScalingDID(did);
+            let request: Request<Placeholder> = Request::new(Service::ReadScalingDID, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
 
@@ -407,12 +405,12 @@ where
 
     pub fn read_data_by_period_identifier(&mut self,
                                           channel: C,
-                                          mode: TransmissionMode,
+                                          mode: request::TransmissionMode,
                                           did: Vec<u8>,
     ) -> Result<response::ReadByPeriodIdData, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::ReadByPeriodIdData::new(mode, did)?;
-            let request: Request<Placeholder> = Request::new(Service::ReadDataByPeriodId, None, data);
+            let data = request::ReadDataByPeriodId::new(mode, did)?;
+            let request: Request<Placeholder> = Request::new(Service::ReadDataByPeriodId, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
 
@@ -429,7 +427,7 @@ where
         self.context_util(channel, |ctx| {
             let service = Service::DynamicalDefineDID;
             let sub_func = request::SubFunction::new(def_type, Some(suppress_positive));
-            let request = Request::new(service, Some(sub_func), data);
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
 
             let response = Self::suppress_positive_sr(ctx, false, request, suppress_positive)?;
 
@@ -449,8 +447,8 @@ where
                                     data: Vec<u8>,
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
-            let data = request::WriteDIDData(DIDData { did, data });
-            let request: Request<Placeholder> = Request::new(Service::WriteDID, None, data);
+            let data = request::WriteDID(DIDData { did, data });
+            let request: Request<Placeholder> = Request::new(Service::WriteDID, None, data.to_vec(&ctx.config));
 
             let _ = Self::send_and_response(ctx, false, request)?;
 
@@ -464,10 +462,10 @@ where
                                    mem_addr: u128,
                                    mem_size: u128,
                                    record: Vec<u8>,
-    ) -> Result<response::WriteMemByAddrData, Error> {
+    ) -> Result<response::WriteMemByAddr, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::WriteMemByAddrData::new(alfi, mem_addr, mem_size, record)?;
-            let request: Request<Placeholder> = Request::new(Service::WriteMemByAddr, None, data);
+            let data = request::WriteMemByAddr::new(alfi, mem_addr, mem_size, record)?;
+            let request: Request<Placeholder> = Request::new(Service::WriteMemByAddr, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
 
@@ -476,16 +474,16 @@ where
     }
 
     /** Stored data transmission functional unit - **/
-    pub fn clear_dtc(&mut self,
-                     channel: C,
-                     group: utils::U24,
-                     #[cfg(any(feature = "std2020"))]
-                     mem_sel: Option<u8>,
-                     functional: bool,
+    pub fn clear_dtc_info(&mut self,
+                          channel: C,
+                          group: utils::U24,
+                          #[cfg(any(feature = "std2020"))]
+                          mem_sel: Option<u8>,
+                          functional: bool,
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
-            let data = request::ClearDiagnostic::new(group, mem_sel);
-            let request: Request<Placeholder> = Request::new(Service::ClearDiagnosticInfo, None, data);
+            let data = request::ClearDiagnosticInfo::new(group, mem_sel);
+            let request: Request<Placeholder> = Request::new(Service::ClearDiagnosticInfo, None, data.to_vec(&ctx.config));
 
             let _ = Self::send_and_response(ctx, functional, request)?;
 
@@ -501,7 +499,7 @@ where
         self.context_util(channel, |ctx| {
             let service = Service::ReadDTCInfo;
             let sub_func = request::SubFunction::new(report_type, None);
-            let request = Request::new(service, Some(sub_func), data);
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
             Self::sub_func_check(&response, report_type.into(), service)?;
@@ -517,10 +515,10 @@ where
                       param: IOCtrlParameter,
                       state: Vec<u8>,
                       mask: Vec<u8>,
-    ) -> Result<response::IOCtrlData, Error> {
+    ) -> Result<response::IOCtrl, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::IOCtrlData::new(did, param, state, mask)?;
-            let request: Request<Placeholder> = Request::new(Service::IOCtrl, None, data);
+            let data = request::IOCtrl::new(did, param, state, mask)?;
+            let request: Request<Placeholder> = Request::new(Service::IOCtrl, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
 
@@ -534,12 +532,12 @@ where
                            ctrl_type: RoutineCtrlType,
                            routine_id: u16,
                            option_record: Vec<u8>,
-    ) -> Result<response::RoutineCtrlData, Error> {
+    ) -> Result<response::RoutineCtrl, Error> {
         self.context_util(channel, |ctx| {
             let service = Service::RoutineCtrl;
             let sub_func = request::SubFunction::new(ctrl_type, None);
-            let data = request::RoutineCtrlData { routine_id: RoutineId(routine_id), option_record };
-            let request = Request::new(service, Some(sub_func), data);
+            let data = request::RoutineCtrl { routine_id: RoutineId(routine_id), option_record };
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
             Self::sub_func_check(&response, ctrl_type.into(), service)?;
@@ -555,13 +553,13 @@ where
                             mem_addr: u128,
                             mem_size: u128,
                             dfi: Option<DataFormatIdentifier>,
-    ) -> Result<response::RequestLoadData, Error> {
+    ) -> Result<response::RequestLoad, Error> {
         self.context_util(channel, |ctx| {
             let data = request::RequestLoadData {
                 dfi: dfi.unwrap_or_default(),
                 mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)?
             };
-            let request: Request<Placeholder> = Request::new(Service::RequestDownload, None, data);
+            let request: Request<Placeholder> = Request::new(Service::RequestDownload, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
 
@@ -575,13 +573,13 @@ where
                           mem_addr: u128,
                           mem_size: u128,
                           dfi: Option<DataFormatIdentifier>,
-    ) -> Result<response::RequestLoadData, Error> {
+    ) -> Result<response::RequestLoad, Error> {
         self.context_util(channel, |ctx| {
             let data = request::RequestLoadData {
                 dfi: dfi.unwrap_or_default(),
                 mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)?
             };
-            let request: Request<Placeholder> = Request::new(Service::RequestDownload, None, data);
+            let request: Request<Placeholder> = Request::new(Service::RequestDownload, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
 
@@ -596,7 +594,7 @@ where
     ) -> Result<TransferData, Error> {
         self.context_util(channel, |ctx| {
             let data = TransferData { sequence, data };
-            let request: Request<Placeholder> = Request::new(Service::TransferData, None, data);
+            let request: Request<Placeholder> = Request::new(Service::TransferData, None, RequestData::to_vec(data, &ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
 
@@ -627,12 +625,12 @@ where
     pub fn request_file_transfer(&mut self,
                                  channel: C,
                                  operation: ModeOfOperation,
-                                 data: request::RequestFileTransferData,
+                                 data: request::RequestFileTransfer,
     ) -> Result<response::RequestFileTransferData, Error> {
         self.context_util(channel, |ctx| {
             let service = Service::RequestFileTransfer;
             let sub_func = request::SubFunction::new(operation, None);
-            let request = Request::new(service, Some(sub_func), data);
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
             Self::sub_func_check(&response, operation.into(), service)?;

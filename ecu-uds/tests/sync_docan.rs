@@ -2,16 +2,22 @@ mod utils;
 
 use std::time::Duration;
 use hex_literal::hex;
+use isotp_rs::can::Address;
 use isotp_rs::device::SyncDevice;
 use ecu_uds::service::{CommunicationCtrlType, CommunicationType, DataIdentifier, DTCSettingType, ECUResetType, IOCtrlParameter, RoutineCtrlType, SessionType};
-use crate::utils::{uds_flash_file, uds_security_algo};
+use crate::utils::{uds_flash_file, uds_security_algo, CHANNEL};
 
-const CHANNEL: u8 = 0;
 
 #[test]
+#[ignore]
 fn test_write_did() -> anyhow::Result<()> {
     let (mut device, mut client) = utils::init_client()?;
-    client.session_ctrl(CHANNEL, SessionType::Extended, false, false)?;
+
+    client.update_address(CHANNEL, Address {
+        tx_id: 0x7E4,
+        rx_id: 0x7EC,
+        fid: 0x7DF,
+    })?;
 
     client.session_ctrl(CHANNEL, SessionType::Extended, false, false)?;
 
@@ -27,12 +33,19 @@ fn test_write_did() -> anyhow::Result<()> {
 }
 
 #[test]
+#[ignore]
 fn test_read_did() -> anyhow::Result<()> {
     let (mut device, mut client) = utils::init_client()?;
 
+    client.update_address(CHANNEL, Address {
+        tx_id: 0x7E4,
+        rx_id: 0x7EC,
+        fid: 0x7DF,
+    })?;
+
     client.add_data_identifier(CHANNEL, DataIdentifier::VIN, 17)?;
     client.add_data_identifier(CHANNEL, DataIdentifier::BootSoftwareFingerprint, 16)?;
-    let result = client.read_data_by_identifier(CHANNEL, DataIdentifier::VIN, vec![]);
+    let result = client.read_data_by_identifier(CHANNEL, DataIdentifier::VIN, vec![])?;
     println!("read DID response: {:?}", result);
 
     let result = client.read_data_by_identifier(CHANNEL, DataIdentifier::VIN, vec![
@@ -46,6 +59,7 @@ fn test_read_did() -> anyhow::Result<()> {
 }
 
 #[test]
+#[ignore]
 fn test_communication_control() -> anyhow::Result<()> {
     let (mut device, mut client) = utils::init_client()?;
 
@@ -65,8 +79,15 @@ fn test_communication_control() -> anyhow::Result<()> {
 }
 
 #[test]
+#[ignore]
 fn test_io_control() -> anyhow::Result<()> {
     let (mut device, mut client) = utils::init_client()?;
+
+    client.update_address(CHANNEL, Address {
+        tx_id: 0x7E6,
+        rx_id: 0x7EE,
+        fid: 0x7DF,
+    })?;
 
     client.session_ctrl(CHANNEL, SessionType::Extended, false, false)?;
     let result = client.security_access(CHANNEL, 1, vec![])?;
@@ -90,10 +111,15 @@ fn test_io_control() -> anyhow::Result<()> {
 }
 
 #[test]
+#[ignore]
 fn test_flash() -> anyhow::Result<()> {
     let (mut device, mut client) = utils::init_client()?;
 
-    // client.update_security_algo(CHANNEL, )
+    client.update_address(CHANNEL, Address {
+        tx_id: 0x7E4,
+        rx_id: 0x7EC,
+        fid: 0x7DF,
+    })?;
 
     client.session_ctrl(CHANNEL, SessionType::Extended, false, true)?;
 

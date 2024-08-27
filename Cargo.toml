@@ -16,7 +16,7 @@ lazy_static = "1"
 half = "2"
 bitflags = "2"
 bitfield-struct = "0.8"
-isotp-rs = { version = "0.1.8-alph0" }
+isotp-rs = { version = "0.1.8-alpha1" }
 
 # dev dependencies
 anyhow = "1"
