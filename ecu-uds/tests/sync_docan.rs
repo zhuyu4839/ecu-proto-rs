@@ -18,6 +18,7 @@ fn test_write_did() -> anyhow::Result<()> {
         rx_id: 0x7EC,
         fid: 0x7DF,
     })?;
+    client.update_security_algo(CHANNEL, uds_security_algo)?;
 
     client.session_ctrl(CHANNEL, SessionType::Extended, false, false)?;
 
@@ -88,6 +89,7 @@ fn test_io_control() -> anyhow::Result<()> {
         rx_id: 0x7EE,
         fid: 0x7DF,
     })?;
+    client.update_security_algo(CHANNEL, uds_security_algo)?;
 
     client.session_ctrl(CHANNEL, SessionType::Extended, false, false)?;
     let result = client.security_access(CHANNEL, 1, vec![])?;
@@ -120,6 +122,7 @@ fn test_flash() -> anyhow::Result<()> {
         rx_id: 0x7EC,
         fid: 0x7DF,
     })?;
+    client.update_security_algo(CHANNEL, uds_security_algo)?;
 
     client.session_ctrl(CHANNEL, SessionType::Extended, false, true)?;
 

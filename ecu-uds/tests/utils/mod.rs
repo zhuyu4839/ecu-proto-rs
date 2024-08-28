@@ -45,7 +45,6 @@ pub(crate) fn init_client() -> Result<(ZCanSync, SyncClient<ZCanSync, ZCanDriver
     }, None)?;
 
     // let algo = Arc::new(Box::new(uds_security_algo));
-    client.update_security_algo(CHANNEL, uds_security_algo)?;
 
     device.sync_start(100);
 

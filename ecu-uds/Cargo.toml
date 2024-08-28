@@ -14,9 +14,6 @@ bitfield-struct = { workspace = true }
 isotp-rs = { workspace = true }
 hex-literal = { workspace = true }
 
-zlgcan_common = { path = "../../zlgcan-driver-rs/zlgcan-common" }
-zlgcan_driver = { path = "../../zlgcan-driver-rs/zlgcan-driver" }
-
 [dependencies.tokio]
 version = "1"
 features = ["time", ]
@@ -26,6 +23,9 @@ optional = true
 anyhow = { workspace = true }
 bin_file = "0.1"
 crc = "3.2"
+
+zlgcan_common = { path = "../../zlgcan-driver-rs/zlgcan-common" }
+zlgcan_driver = { path = "../../zlgcan-driver-rs/zlgcan-driver" }
 
 [features]
 default = ["std2020"]
