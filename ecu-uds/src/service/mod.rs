@@ -23,7 +23,7 @@ enum_to_vec! (
         ReadDTCInfo = 0x19,         // ⭕
         ReadDID = 0x22,             // ✅
         ReadMemByAddr = 0x23,       // ✅
-        ReadScalingDID = 0x24,      // ⭕
+        ReadScalingDID = 0x24,      // ✅
         SecurityAccess = 0x27,      // ✅
         CommunicationCtrl = 0x28,   // ✅
         #[cfg(any(feature = "std2020"))]

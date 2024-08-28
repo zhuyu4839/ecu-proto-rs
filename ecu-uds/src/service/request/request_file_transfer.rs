@@ -64,9 +64,9 @@ impl RequestData for RequestFileTransfer {
                         offset += 1;
                         let filesize_len = data[offset];
                         offset += 1;
-                        let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Little);
+                        let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
                         offset += filesize_len as usize;
-                        let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Little);
+                        let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
                         Ok(Self::AddFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
                     },
                     ModeOfOperation::ReplaceFile => {
@@ -74,9 +74,9 @@ impl RequestData for RequestFileTransfer {
                         offset += 1;
                         let filesize_len = data[offset];
                         offset += 1;
-                        let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Little);
+                        let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
                         offset += filesize_len as usize;
-                        let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Little);
+                        let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
                         Ok(Self::ReplaceFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
                     },
                     ModeOfOperation::ResumeFile => {
@@ -84,9 +84,9 @@ impl RequestData for RequestFileTransfer {
                         offset += 1;
                         let filesize_len = data[offset];
                         offset += 1;
-                        let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Little);
+                        let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
                         offset += filesize_len as usize;
-                        let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Little);
+                        let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
                         Ok(Self::ResumeFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
                     },
                     ModeOfOperation::DeleteFile => Ok(Self::DeleteFile { filepath }),
@@ -149,8 +149,8 @@ impl Into<Vec<u8>> for RequestFileTransfer {
                 result.push(dfi.into());
                 result.push(filesize_len);
 
-                result.append(&mut utils::u128_to_vec(uncompressed_size, filesize_len as usize, ByteOrder::Little));
-                result.append(&mut utils::u128_to_vec(compressed_size, filesize_len as usize, ByteOrder::Little));
+                result.append(&mut utils::u128_to_vec(uncompressed_size, filesize_len as usize, ByteOrder::Big));
+                result.append(&mut utils::u128_to_vec(compressed_size, filesize_len as usize, ByteOrder::Big));
             },
             Self::DeleteFile { filepath, } |
             Self::ReadDir { filepath, } => {

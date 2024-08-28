@@ -829,7 +829,7 @@ impl ResponseData for DTCInfo {
                 },
                 #[cfg(any(feature = "std2013", feature = "std2020"))]
                 DTCReportType::ReportDTCExtDataRecordByRecordNumber => {
-                    return Err(Error::OtherError("This library does not yet support".to_string()))
+                    Err(Error::OtherError("This library does not yet support".to_string()))
                 },
                 #[cfg(any(feature = "std2013", feature = "std2020"))]
                 DTCReportType::ReportUserDefMemoryDTCByStatusMask => {
@@ -925,7 +925,10 @@ impl ResponseData for DTCInfo {
                             return Err(Error::InvalidData(utils::hex_slice_to_string(data)));
                         }
 
+                        number = Some(value);
+
                         while data_len > offset {
+                            // TODO add to configuration
                             return Err(Error::OtherError("This library does not yet support".to_string()))
                         }
                     }

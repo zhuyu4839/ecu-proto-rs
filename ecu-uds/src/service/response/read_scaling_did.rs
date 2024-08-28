@@ -25,16 +25,16 @@ enum_to_vec! (
     pub enum ScalingByteType {
         UnSignedNumeric = 0x00,             // (1 to 4 bytes)
         SignedNumeric = 0x10,               // (1 to 4 bytes)
-        BitMappedReportedWithOutMask = 0x20,//
+        BitMappedReportedWithOutMask = 0x20,// 1 byte at least
         BitMappedReportedWithMask = 0x30,   // 0 byte
-        BinaryCodedDecimal = 0x40,
-        StateEncodedVariable = 0x50,        // always 1 byte
-        ASCII = 0x60,
-        SignedFloatingPoint = 0x70,
+        BinaryCodedDecimal = 0x40,          // n bytes(BCD code)
+        StateEncodedVariable = 0x50,        // always 1 byte(Codes "00", "01", "02" and "03" may indicate ignition off, locked, run, and start, respectively)
+        ASCII = 0x60,                       // 1 ~ 15 bytes
+        SignedFloatingPoint = 0x70,         //
         Packet = 0x80,
         Formula = 0x90,
         UnitFormat = 0xA0,
-        StateAndConnectionType = 0xB0,
+        StateAndConnectionType = 0xB0,      // 1 byte
     }, u8, Error, InvalidParam
 );
 
@@ -109,17 +109,17 @@ impl TwoByteRealNumber {
 }
 
 #[derive(Debug, Clone)]
-pub struct ScalingByte {
+pub struct ScalingByteData {
     pub byte_type: ScalingByteType,
     pub byte_len: u8,
-    pub bytes: Vec<u8>,
+    pub extensions: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ReadScalingDID {
     pub did: DataIdentifier,
-    pub scaling_byte: ScalingByte,
-    pub others: Vec<ScalingByte>, // at least one
+    pub data: ScalingByteData,
+    pub others: Vec<ScalingByteData>, // at least one
 }
 
 impl<'a> TryFrom<&'a [u8]> for ReadScalingDID {
@@ -136,8 +136,8 @@ impl<'a> TryFrom<&'a [u8]> for ReadScalingDID {
         let byte_context = data[offset];
         offset += 1;
         let byte_type = ScalingByteType::try_from(byte_context & 0xF0)?;
-        let mut byte_len = (byte_context & 0x0F) as usize;
-        let mut bytes = Vec::new();
+        let byte_len = (byte_context & 0x0F) as usize;
+        let mut extensions = Vec::new();
 
         match byte_type {
             ScalingByteType::BitMappedReportedWithOutMask |
@@ -145,7 +145,7 @@ impl<'a> TryFrom<&'a [u8]> for ReadScalingDID {
             ScalingByteType::UnitFormat => {
                 utils::data_length_check(data_len, offset + byte_len, false)?;
 
-                bytes.extend(&data[offset..offset + byte_len]);
+                extensions.extend(&data[offset..offset + byte_len]);
                 offset += byte_len;
             },
             _ => {},
@@ -156,8 +156,8 @@ impl<'a> TryFrom<&'a [u8]> for ReadScalingDID {
             let byte_context = data[offset];
             offset += 1;
             let byte_type = ScalingByteType::try_from(byte_context & 0xF0)?;
-            let mut byte_len = (byte_context & 0x0F) as usize;
-            let mut bytes = Vec::new();
+            let byte_len = (byte_context & 0x0F) as usize;
+            let mut extensions = Vec::new();
 
             match byte_type {
                 ScalingByteType::BitMappedReportedWithOutMask |
@@ -165,16 +165,16 @@ impl<'a> TryFrom<&'a [u8]> for ReadScalingDID {
                 ScalingByteType::UnitFormat => {
                     utils::data_length_check(data_len, offset + byte_len, false)?;
 
-                    bytes.extend(&data[offset..offset + byte_len]);
+                    extensions.extend(&data[offset..offset + byte_len]);
                     offset += byte_len;
                 },
                 _ => {},
             }
 
-            others.push(ScalingByte { byte_type, byte_len: byte_len as u8, bytes });
+            others.push(ScalingByteData { byte_type, byte_len: byte_len as u8, extensions });
         }
 
-        Ok(Self { did, scaling_byte: ScalingByte { byte_type, byte_len: byte_len as u8, bytes }, others })
+        Ok(Self { did, data: ScalingByteData { byte_type, byte_len: byte_len as u8, extensions }, others })
     }
 }
 
@@ -183,15 +183,15 @@ impl Into<Vec<u8>> for ReadScalingDID {
         let did: u16 = self.did.into();
         let mut result = did.to_be_bytes().to_vec();
 
-        let byte_type: u8 = self.scaling_byte.byte_type.into();
-        result.push(byte_type | self.scaling_byte.byte_len);
+        let byte_type: u8 = self.data.byte_type.into();
+        result.push(byte_type | self.data.byte_len);
 
         self.others
             .into_iter()
             .for_each(|mut v| {
                 let byte_type: u8 = v.byte_type.into();
                 result.push(byte_type | v.byte_len);
-                result.append(&mut v.bytes);
+                result.append(&mut v.extensions);
             });
 
         result

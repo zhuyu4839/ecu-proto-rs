@@ -55,7 +55,7 @@ impl<'a> TryFrom<&'a [u8]> for RequestLoad {
         let remain = &data[offset..];
         utils::data_length_check(lfi.max_number_of_block_length(), remain.len(), true)?;
 
-        let max_num_of_block_len = utils::slice_to_u128(remain, ByteOrder::Little);
+        let max_num_of_block_len = utils::slice_to_u128(remain, ByteOrder::Big);
         if max_num_of_block_len == 0 {
             return Err(Error::InvalidParam("`maxNumberOfBlockLength` must be rather than 0".to_string()));
         }

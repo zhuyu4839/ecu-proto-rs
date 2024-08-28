@@ -219,6 +219,32 @@ fn is_big_endian() -> bool {
     1u16.to_ne_bytes()[0] == 0
 }
 
+pub(crate) fn u128_to_vec_fix(value: u128, bo: ByteOrder) -> Vec<u8> {
+    let mut result = value.to_le_bytes().to_vec();
+    let mut count = result.len();
+
+    for i in result.iter().rev() {
+        if *i == 0x00 {
+            count -= 1;
+        }
+        else {
+            break;
+        }
+    }
+
+    result.resize(count, Default::default());
+
+    match bo {
+        ByteOrder::Big => result.reverse(),
+        ByteOrder::Little => {},
+        ByteOrder::Native => if is_big_endian() {
+            result.reverse();
+        },
+    }
+
+    result
+}
+
 pub(crate) fn u128_to_vec(value: u128, len: usize, bo: ByteOrder) -> Vec<u8> {
     let mut result = value.to_le_bytes().to_vec();
     result.resize(len, Default::default());
@@ -299,11 +325,19 @@ mod tests {
     }
 
     #[test]
-    fn test_vec_to_u128() ->anyhow:: Result<()> {
+    fn test_vec_to_u128() -> anyhow:: Result<()> {
         let result = super::slice_to_u128(hex!("78 56 34 12").as_slice(), ByteOrder::Little);
         assert_eq!(result, 0x12_34_56_78);
         let result = super::slice_to_u128(hex!("12 34 56 78").as_slice(), ByteOrder::Big);
         assert_eq!(result, 0x12_34_56_78);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_u128_to_vec_fix() -> anyhow:: Result<()> {
+        let result = super::u128_to_vec_fix(0x00_12_34_78, ByteOrder::Big);
+        assert_eq!(result, hex!("12 34 78").to_vec());
 
         Ok(())
     }
