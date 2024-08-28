@@ -1,4 +1,4 @@
-/// Commons of Service 84
+//! Commons of Service 84
 
 
 use std::ops::{BitAnd, BitXorAssign};

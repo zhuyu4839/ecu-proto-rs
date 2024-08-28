@@ -1,4 +1,4 @@
-/// Commons of Service 11
+//! Commons of Service 11
 
 use crate::error::Error;
 use crate::utils;

@@ -1,4 +1,4 @@
-/// Commons of Service 22|2E
+//! Commons of Service 22|2E
 
 
 use crate::error::Error;

@@ -189,7 +189,7 @@ impl<F: Copy> Response<F> {
             return Err(Error::OtherError("invalid data length when getting NRC from negative".into()));
         }
 
-        Code::try_from(self.data[0])
+        Ok(Code::from(self.data[0]))
     }
 
     #[inline]
@@ -298,7 +298,7 @@ impl<F: TryFrom<u8, Error = Error> + Copy> TryFrom<Vec<u8>> for Response<F> {
 
                 Ok(Self::new(service, false, Some(SubFunction::new(sub_func)), data))
             },
-            #[cfg(any(feature = "std2013", feature = "std2020"))]
+            #[cfg(any(feature = "std2006", feature = "std2013"))]
             Service::AccessTimingParam => {
                 utils::data_length_check(data_len, offset + 1, false)?;
 

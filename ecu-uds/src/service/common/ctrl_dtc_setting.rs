@@ -1,4 +1,4 @@
-/// Commons of Service 85
+//! Commons of Service 85
 
 use crate::error::Error;
 use crate::utils;

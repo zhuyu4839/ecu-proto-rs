@@ -1,4 +1,4 @@
-/// Service 2C
+//! response of Service 2C
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;

@@ -1,4 +1,4 @@
-/// Commons of Service 19
+//! Commons of Service 19
 
 use bitflags::bitflags;
 use crate::enum_to_vec;

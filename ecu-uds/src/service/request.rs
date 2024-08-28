@@ -240,7 +240,7 @@ impl<F: TryFrom<u8, Error = Error> + Copy> TryFrom<Vec<u8>> for Request<F> {
 
                 Ok(Request::new(service, Some(sub_func), data))
             },
-            #[cfg(any(feature = "std2013", feature = "std2020"))]
+            #[cfg(any(feature = "std2006", feature = "std2013"))]
             Service::AccessTimingParam => {
                 utils::data_length_check(data_len, offset + 1, false)?;
                 let (suppress_positive, sub_func) = utils::peel_suppress_positive(data[offset]);

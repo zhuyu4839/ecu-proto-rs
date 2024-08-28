@@ -1,4 +1,4 @@
-/// Commons of Service 87
+//! Commons of Service 87
 
 use crate::{enum_to_vec, utils};
 use crate::error::Error;

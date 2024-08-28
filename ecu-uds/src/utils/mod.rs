@@ -214,43 +214,40 @@ pub(crate) fn data_length_check(actual: usize, expect: usize, equal: bool) -> Re
     Ok(())
 }
 
-pub(crate) fn u128_to_vec(
-    value: u128,
-    len: usize,
-    bo: ByteOrder,
-) -> Vec<u8> {
-    let mut result = match bo {
-        ByteOrder::Big => value.to_be_bytes().to_vec(),
-        ByteOrder::Little => value.to_le_bytes().to_vec(),
-        ByteOrder::Native => value.to_ne_bytes().to_vec(),
-    };
+#[inline]
+fn is_big_endian() -> bool {
+    1u16.to_ne_bytes()[0] == 0
+}
 
+pub(crate) fn u128_to_vec(value: u128, len: usize, bo: ByteOrder) -> Vec<u8> {
+    let mut result = value.to_le_bytes().to_vec();
     result.resize(len, Default::default());
-    result.reverse();
+
+    match bo {
+        ByteOrder::Big => result.reverse(),
+        ByteOrder::Little => {},
+        ByteOrder::Native => if is_big_endian() {
+            result.reverse();
+        },
+    }
 
     result
 }
 
 #[inline]
-pub(crate) fn slice_to_u128(
-    slice: &[u8],
-    bo: ByteOrder,
-) -> u128 {
+pub(crate) fn slice_to_u128(slice: &[u8], bo: ByteOrder) -> u128 {
     let mut data = slice.to_vec();
     match bo {
-        ByteOrder::Big => {
-            data.resize(std::mem::size_of::<u128>(), Default::default());
-            u128::from_be_bytes(data.try_into().unwrap())
-        },
-        ByteOrder::Little => {
+        ByteOrder::Big => data.reverse(),
+        ByteOrder::Little => {},
+        ByteOrder::Native => if is_big_endian() {
             data.reverse();
-            data.resize(std::mem::size_of::<u128>(), Default::default());
-            u128::from_le_bytes(data.try_into().unwrap())
-        },
-        ByteOrder::Native => {
-            u128::from_ne_bytes(data.try_into().unwrap())
         },
     }
+
+    data.resize(std::mem::size_of::<u128>(), Default::default());
+    data.reverse();
+    u128::from_be_bytes(data.try_into().unwrap())
 }
 
 #[inline]
@@ -288,41 +285,26 @@ mod tests {
 
     #[test]
     fn test_u128_to_vec() -> anyhow::Result<()> {
-        let result = super::u128_to_vec(0x00_12_34_78, 3, ByteOrder::Little);
+        let result = super::u128_to_vec(0x00_12_34_78, 3, ByteOrder::Big);
         assert_eq!(result, hex!("12 34 78").to_vec());
+        let result = super::u128_to_vec(0x00_12_34_78, 3, ByteOrder::Little);
+        assert_eq!(result, hex!("78 34 12").to_vec());
 
-        let result = super::u128_to_vec(0x12_34_00_78, 4, ByteOrder::Little);
+        let result = super::u128_to_vec(0x12_34_00_78, 4, ByteOrder::Big);
         assert_eq!(result, hex!("12 34 00 78").to_vec());
+        let result = super::u128_to_vec(0x12_34_00_78, 4, ByteOrder::Little);
+        assert_eq!(result, hex!("78 00 34 12").to_vec());
 
         Ok(())
     }
 
     #[test]
     fn test_vec_to_u128() ->anyhow:: Result<()> {
-        let result = super::slice_to_u128(hex!("12 34 56 78").as_slice(), ByteOrder::Little);
+        let result = super::slice_to_u128(hex!("78 56 34 12").as_slice(), ByteOrder::Little);
         assert_eq!(result, 0x12_34_56_78);
+        let result = super::slice_to_u128(hex!("12 34 56 78").as_slice(), ByteOrder::Big);
+        assert_eq!(result, 0x12_34_56_78);
+
         Ok(())
     }
 }
-
-// use std::fmt::Debug;
-//
-// pub trait SecurityAlgo: Debug + Send + Sync + 'static {
-//     fn encrypt(&self, key: [u8; 4], data: Vec<u8>) -> Vec<u8>;
-// }
-//
-// pub trait DidCodec: Debug + Send + Sync + 'static {
-//     fn size() -> usize where Self: Sized;
-//     fn encode<T>(value: T) -> Option<Vec<u8>> where Self: Sized;
-//     fn decode<T: AsRef<u8>, R>(value: T) -> Option<R> where Self: Sized;
-// }
-//
-// #[derive(Debug)]
-// pub struct IoConfig {
-//     pub codec: Box<dyn DidCodec>,
-//     pub mask: u32,
-//     pub mask_size: usize,
-// }
-//
-// unsafe impl Sync for IoConfig {}
-// unsafe impl Send for IoConfig {}

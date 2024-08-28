@@ -1,4 +1,4 @@
-/// Service(0x87) 0xC7
+//! response of Service 87
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;

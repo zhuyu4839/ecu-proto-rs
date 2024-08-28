@@ -1,4 +1,4 @@
-/// Commons of Service 27
+//! Commons of Service 27
 
 use crate::error::Error;
 use crate::service::{Configuration, Placeholder, RequestData, ResponseData};

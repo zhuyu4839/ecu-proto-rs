@@ -1,3 +1,6 @@
+//! request of Service 2E
+
+
 use crate::error::Error;
 use crate::service::{DataIdentifier, DIDData, Placeholder, RequestData, Service, Configuration};
 use crate::utils;

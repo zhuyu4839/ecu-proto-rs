@@ -1,4 +1,4 @@
-/// Commons of Service 3E
+//! Commons of Service 3E
 
 use crate::enum_to_vec;
 use crate::error::Error;

@@ -1,4 +1,5 @@
-/// 0x86
+//! request of Service 86
+
 
 use bitfield_struct::bitfield;
 use crate::enum_to_vec;

@@ -63,6 +63,7 @@ impl Display for Service {
             Service::ReadScalingDID => write!(f, "ReadScalingDataByIdentifier"),
             Service::SecurityAccess => write!(f, "SecurityAccess"),
             Service::CommunicationCtrl => write!(f, "CommunicationControl"),
+            #[cfg(any(feature = "std2020"))]
             Service::Authentication => write!(f, "Authentication"),
             Service::ReadDataByPeriodId => write!(f, "ReadDataByPeriodicIdentifier"),
             Service::DynamicalDefineDID => write!(f, "DynamicalDefineDyIdentifier"),
@@ -73,9 +74,11 @@ impl Display for Service {
             Service::RequestUpload => write!(f, "RequestUpload"),
             Service::TransferData => write!(f, "TransferData"),
             Service::RequestTransferExit => write!(f, "RequestTransferExit"),
+            #[cfg(any(feature = "std2013", feature = "std2020"))]
             Service::RequestFileTransfer => write!(f, "RequestFileTransfer"),
             Service::WriteMemByAddr => write!(f, "WriteMemoryByAddress"),
             Service::TesterPresent => write!(f, "TesterPresent"),
+            #[cfg(any(feature = "std2006", feature = "std2013"))]
             Service::AccessTimingParam => write!(f, "AccessTimingParam"),
             Service::SecuredDataTrans => write!(f, "SecuredDataTransmission"),
             Service::CtrlDTCSetting => write!(f, "ControlDTCSetting"),
@@ -104,12 +107,24 @@ impl Into<u8> for Placeholder {
     }
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub struct Configuration {
     pub(crate) security_algo: Option<SecurityAlgo>,
     pub(crate) did_cfg: HashMap<DataIdentifier, usize>,
     pub(crate) bo_addr: ByteOrder,
     pub(crate) bo_mem_size: ByteOrder,
+}
+
+impl Default for Configuration {
+    /// ISO 14229-2 default using big-endian.
+    fn default() -> Self {
+        Self {
+            security_algo: None,
+            did_cfg: Default::default(),
+            bo_addr: ByteOrder::Big,
+            bo_mem_size: ByteOrder::Big,
+        }
+    }
 }
 
 pub trait RequestData {

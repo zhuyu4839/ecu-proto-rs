@@ -1,4 +1,4 @@
-/// Commons of Service 10
+//! Commons of Service 10
 
 
 use crate::error::Error;

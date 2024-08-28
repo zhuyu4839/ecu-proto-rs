@@ -1,3 +1,6 @@
+//! response of Service 24
+
+
 use std::collections::HashSet;
 use bitfield_struct::bitfield;
 use lazy_static::lazy_static;

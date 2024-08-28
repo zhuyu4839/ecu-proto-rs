@@ -1,4 +1,4 @@
-/// Service 87
+//! request of Service 87
 
 use crate::error::Error;
 use crate::service::{Configuration, LinkCtrlMode, LinkCtrlType, RequestData};

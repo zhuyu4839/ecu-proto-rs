@@ -1,4 +1,4 @@
-/// Commons of Service 2F
+//! Commons of Service 2F
 
 use crate::enum_to_vec;
 use crate::error::Error;
