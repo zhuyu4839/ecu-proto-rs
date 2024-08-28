@@ -1,8 +1,6 @@
 use std::fmt::{Display, LowerHex, Write};
 use isotp_rs::ByteOrder;
 use crate::error::Error;
-use crate::constant::POSITIVE_OFFSET;
-use crate::service::Service;
 
 /// Add to_vector function and
 /// implement `Debug`, `Copy`, `Clone`, `Eq`, `PartialEq`,
@@ -179,13 +177,6 @@ pub fn hex_slice_to_string<T>(data: &[T]) -> String
             let _ = write!(out, "{b:02X} ");
             out
         })
-}
-
-/// convert [`ServiceId`] to positive integer.
-#[inline]
-pub fn positive(sid: Service) -> u8 {
-    debug_assert!(sid != Service::NRC);
-    sid as u8 | POSITIVE_OFFSET
 }
 
 #[inline]

@@ -39,9 +39,9 @@ impl IOCtrl {
 
 impl Into<Vec<u8>> for IOCtrl {
     fn into(mut self) -> Vec<u8> {
-        let mut result = vec![utils::positive(Service::IOCtrl), ];
         let did: u16 = self.did.into();
-        result.extend(did.to_be_bytes());
+
+        let mut result = did.to_be_bytes().to_vec();
         result.push(self.status.param.into());
         result.append(&mut self.status.state);
 
@@ -96,7 +96,7 @@ mod tests {
             hex!("0040").to_vec(),
         );
         let result: Vec<_> = response.into();
-        assert_eq!(result, source);
+        assert_eq!(result, source[1..]);
 
         let response = IOCtrl::try_parse(&source[1..], None, &cfg)?;
         assert_eq!(response.did, did);

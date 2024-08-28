@@ -251,9 +251,7 @@ impl<F: TryFrom<u8, Error = Error> + Copy> TryFrom<Vec<u8>> for Request<F> {
 
                 Ok(Request::new(service, Some(sub_func), data))
             },
-            Service::NRC => {
-                todo!()
-            },
+            Service::NRC => Err(Error::OtherError("got an NRC code from request data".into())),
         }
     }
 }

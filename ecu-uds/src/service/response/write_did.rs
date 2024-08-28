@@ -37,11 +37,9 @@ impl<'a> TryFrom<&'a [u8]> for WriteDID {
 impl Into<Vec<u8>> for WriteDID {
     #[inline]
     fn into(self) -> Vec<u8> {
-        let mut result = vec![utils::positive(Service::WriteDID), ];
         let did: u16 = self.0.into();
-        result.extend(did.to_be_bytes());
 
-        result
+        did.to_be_bytes().to_vec()
     }
 }
 
@@ -56,7 +54,7 @@ mod tests {
         let source = hex!("6EF190").as_slice();
         let response = WriteDID(DataIdentifier::VIN);
         let result: Vec<_> = response.into();
-        assert_eq!(result, source);
+        assert_eq!(result, source[1..]);
 
         let response = WriteDID::try_from(&source[1..])?;
         assert_eq!(response.0, DataIdentifier::VIN);
