@@ -4,7 +4,7 @@
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, SystemTime};
 use isotp_rs::{IsoTpEvent, IsoTpEventListener};
-use isotp_rs::can::SyncCanIsoTp;
+use isotp_rs::can::isotp::SyncCanIsoTp;
 use isotp_rs::error::Error as IsoTpError;
 use crate::{P2Context, utils};
 use crate::service::Configuration;

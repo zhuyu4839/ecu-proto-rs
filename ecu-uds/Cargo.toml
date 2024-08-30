@@ -1,7 +1,12 @@
 [package]
 name = "ecu-uds"
-version = "0.1.0"
+version = "0.1.0-alpha0"
 edition = "2021"
+license = "GPL-3.0"
+authors = ["zhuyu <zhuyu4839@gmail.com>"]
+description = "A ECU-UDS protocol."
+homepage = "https://github.com/zhuyu4839/ecu-proto-rs"
+repository = "https://github.com/zhuyu4839/ecu-proto-rs"
 
 [dependencies]
 anyhow = { workspace = true }
@@ -21,11 +26,6 @@ optional = true
 
 [dev-dependencies]
 anyhow = { workspace = true }
-bin_file = "0.1"
-crc = "3.2"
-
-zlgcan_common = { path = "../../zlgcan-driver-rs/zlgcan-common" }
-zlgcan_driver = { path = "../../zlgcan-driver-rs/zlgcan-driver" }
 
 [features]
 default = ["std2020"]

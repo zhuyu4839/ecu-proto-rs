@@ -3,8 +3,9 @@ use std::fmt::Display;
 use std::hash::Hash;
 use std::time::Duration;
 use isotp_rs::ByteOrder;
-use isotp_rs::can::{Address, frame::Frame as CanFrame, SyncCanIsoTp};
-use isotp_rs::device::SyncDevice;
+use isotp_rs::can::{Address, frame::Frame, isotp::SyncCanIsoTp};
+use isotp_rs::can::driver::SyncCan;
+use isotp_rs::device::Driver;
 use isotp_rs::error::Error as IsoTpError;
 use crate::docan::client::context::{Context, IsoTpListener};
 use crate::error::Error;
@@ -12,23 +13,21 @@ use crate::{P2Context, utils, SecurityAlgo};
 use crate::service::{response::{self, Response, Code}, request::{self, Request}, *};
 
 #[derive(Clone)]
-pub struct SyncClient<D, Device, C, F>
+pub struct SyncClient<D, C, F>
 where
-    D: SyncDevice<Device = Device, Channel = C, Id = u32, Frame = F>,
     C: Clone + Eq,
-    F: CanFrame<Channel = C>,
 {
-    device: D,
+    device: SyncCan<D, C, F>,
     context: HashMap<C, Context<C, F>>,
 }
 
-impl<D, Device, C, F> SyncClient<D, Device, C, F>
+impl<D, C, F> SyncClient<D, C, F>
 where
-    D: SyncDevice<Device = Device, Channel = C, Id = u32, Frame = F>,
+    D: Driver<C = C, F = F> + Clone + 'static,
     C: Display + Clone + Hash + Eq + 'static,
-    F: CanFrame<Channel = C> + Clone + 'static
+    F: Frame<Channel = C> + Clone + Send + Display + 'static
 {
-    pub fn new(device: D) -> Self {
+    pub fn new(device: SyncCan<D, C, F>) -> Self {
         Self { device, context: Default::default(), }
     }
 
