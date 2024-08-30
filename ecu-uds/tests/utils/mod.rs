@@ -3,18 +3,21 @@ pub(crate) use algo::uds_security_algo;
 
 use crc::{Crc, CRC_32_BZIP2};
 use isotp_rs::can::Address;
-use isotp_rs::device::SyncDevice;
-use zlgcan_common::can::{CanChlCfgExt, CanChlCfgFactory, CanMessage, ZCanChlMode, ZCanChlType};
-use zlgcan_common::device::ZCanDeviceType;
-use zlgcan_driver::driver::{ZCanDriver, ZDevice};
-use zlgcan_driver::extends::ZCanSync;
+use isotp_rs::can::driver::SyncCan;
+use zlgcan::can::{CanChlCfgExt, CanChlCfgFactory, CanMessage, ZCanChlMode, ZCanChlType};
+use zlgcan::device::ZCanDeviceType;
+use zlgcan::driver::{ZCanDriver, ZDevice};
 use ecu_uds::docan::client::SyncClient;
 use ecu_uds::error::Error;
 use ecu_uds::service::{AddressAndLengthFormatIdentifier, RoutineCtrlType, TesterPresentType};
 
 pub(crate) const CHANNEL: u8 = 0;
 
-pub(crate) fn init_client() -> Result<(ZCanSync, SyncClient<ZCanSync, ZCanDriver, u8, CanMessage>), Error> {
+pub(crate) fn init_client() -> Result<(
+    // ZCanDriver,
+    SyncCan<ZCanDriver, u8, CanMessage>,
+    SyncClient<ZCanDriver, u8, CanMessage>,
+), Error> {
     let dev_type = ZCanDeviceType::ZCAN_USBCANFD_200U;
     let mut device = ZCanDriver::new(dev_type as u32, 0, None)
         .map_err(|e| Error::OtherError(e.to_string()))?;
@@ -35,9 +38,9 @@ pub(crate) fn init_client() -> Result<(ZCanSync, SyncClient<ZCanSync, ZCanDriver
 
     std::thread::sleep(std::time::Duration::from_millis(100));
 
-    let mut device = ZCanSync::from(device);
+    let mut sync_can = SyncCan::new(device.clone());
 
-    let mut client = SyncClient::new(device.clone());
+    let mut client = SyncClient::new(sync_can.clone());
     client.init_channel(CHANNEL, Address {
         tx_id: 0x7E0,
         rx_id: 0x7E8,
@@ -46,14 +49,14 @@ pub(crate) fn init_client() -> Result<(ZCanSync, SyncClient<ZCanSync, ZCanDriver
 
     // let algo = Arc::new(Box::new(uds_security_algo));
 
-    device.sync_start(100);
+    sync_can.sync_start(100);
 
-    Ok((device, client))
+    Ok((sync_can, client))
 }
 
 pub(crate) fn uds_flash_file(
     filepath: &str,
-    client: &mut SyncClient<ZCanSync, ZCanDriver, u8, CanMessage>,
+    client: &mut SyncClient<ZCanDriver, u8, CanMessage>,
     channel: u8,
     erase: bool,
 ) -> anyhow::Result<()> {

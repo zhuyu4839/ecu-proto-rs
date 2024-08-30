@@ -3,7 +3,6 @@ mod utils;
 use std::time::Duration;
 use hex_literal::hex;
 use isotp_rs::can::Address;
-use isotp_rs::device::SyncDevice;
 use ecu_uds::service::{CommunicationCtrlType, CommunicationType, DataIdentifier, DTCSettingType, ECUResetType, IOCtrlParameter, RoutineCtrlType, SessionType};
 use crate::utils::{uds_flash_file, uds_security_algo, CHANNEL};
 
@@ -28,7 +27,7 @@ fn test_write_did() -> anyhow::Result<()> {
     let result = client.write_data_by_identifier(CHANNEL, DataIdentifier::VIN, vin)?;
     println!("write DID response: {:?}", result);
 
-    device.close();
+    device.stop();
 
     Ok(())
 }
@@ -54,7 +53,7 @@ fn test_read_did() -> anyhow::Result<()> {
     ])?;
     println!("read DID response: {:?}", result);
 
-    device.close();
+    device.stop();
 
     Ok(())
 }
@@ -74,7 +73,7 @@ fn test_communication_control() -> anyhow::Result<()> {
         false,
         false
     )?;
-    device.close();
+    device.stop();
 
     Ok(())
 }
@@ -107,7 +106,7 @@ fn test_io_control() -> anyhow::Result<()> {
     )?;
     print!("io control response: {:?}", result);
 
-    device.close();
+    device.stop();
 
     Ok(())
 }
@@ -163,7 +162,7 @@ fn test_flash() -> anyhow::Result<()> {
     client.communication_control(CHANNEL, CommunicationCtrlType::EnableRxAndTx, CommunicationType::NormalCommunicationMessages, None, false, false)?;
     client.control_dtc_setting(CHANNEL, DTCSettingType::On, vec![], false)?;
 
-    device.close();
+    device.stop();
 
     Ok(())
 }
