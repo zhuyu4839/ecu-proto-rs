@@ -34,6 +34,9 @@ pub enum Error {
     #[error("UDS - service `{service}` got a NRC({code:?})")]
     NRCError { service: Service, code: Code },
 
+    #[error("UDS - security algorithm error: {0}")]
+    SecurityAlgoError(String),
+
     #[error("{0}")]
     IsoTpError(IsoTpError),
 

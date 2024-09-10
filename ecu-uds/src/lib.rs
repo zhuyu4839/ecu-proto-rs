@@ -5,6 +5,7 @@ pub mod service;
 pub mod docan;
 
 use isotp_rs::constant::{P2_ISO14229, P2_STAR_ISO14229};
+use error::Error;
 
 #[derive(Debug, Clone, Copy)]
 pub struct P2Context {
@@ -23,4 +24,4 @@ impl Default for P2Context {
     }
 }
 
-pub type SecurityAlgo = fn(u8, Vec<u8>, Vec<u8>) -> Vec<u8>;
+pub type SecurityAlgo = fn(u8, Vec<u8>, Vec<u8>) -> Result<Vec<u8>, Error>;

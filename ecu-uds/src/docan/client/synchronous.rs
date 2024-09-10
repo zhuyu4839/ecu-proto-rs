@@ -17,7 +17,7 @@ pub struct SyncClient<D, C, F>
 where
     C: Clone + Eq,
 {
-    device: SyncCan<D, C, F>,
+    driver: SyncCan<D, C, F>,
     context: HashMap<C, Context<C, F>>,
 }
 
@@ -27,8 +27,8 @@ where
     C: Display + Clone + Hash + Eq + 'static,
     F: Frame<Channel = C> + Clone + Send + Display + 'static
 {
-    pub fn new(device: SyncCan<D, C, F>) -> Self {
-        Self { device, context: Default::default(), }
+    pub fn new(driver: SyncCan<D, C, F>) -> Self {
+        Self { driver, context: Default::default(), }
     }
 
     pub fn init_channel(&mut self,
@@ -42,9 +42,9 @@ where
         }
 
         let listener = IsoTpListener::new(p2_ctx);
-        let iso_tp = SyncCanIsoTp::new(channel.clone(), address, self.device.sender(), Box::new(listener.clone()));
+        let iso_tp = SyncCanIsoTp::new(channel.clone(), address, self.driver.sender(), Box::new(listener.clone()));
 
-        self.device.register_listener(format!("UDS-{}", channel), Box::new(iso_tp.clone()));
+        self.driver.register_listener(format!("UDS-{}", channel), Box::new(iso_tp.clone()));
         self.context.insert(channel, Context {
             iso_tp,
             listener,
@@ -52,6 +52,10 @@ where
         });
 
         Ok(())
+    }
+    #[inline]
+    pub fn driver(&self) -> &SyncCan<D, C, F> {
+        &self.driver
     }
     #[inline]
     pub fn update_address(&mut self, channel: C, address: Address) -> Result<(), Error> {
@@ -187,7 +191,7 @@ where
                 let seed = response.raw_data().to_vec();
 
                 let sub_func = request::SubFunction::new(SecurityAccessLevel::new(level + 1)?, None);
-                let data = SecurityAccessData(algo(level, seed, salt));
+                let data = SecurityAccessData(algo(level, seed, salt)?);
                 let request = Request::new(service, Some(sub_func), RequestData::to_vec(data, &ctx.config));
                 let response = Self::send_and_response::<SecurityAccessLevel>(ctx, false, request)?;
 
