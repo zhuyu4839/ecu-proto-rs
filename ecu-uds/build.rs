@@ -1,8 +1,8 @@
 fn main() {
     let features = [
-        std::env::var("CARGO_FEATURE_std2006").is_ok(),
-        std::env::var("CARGO_FEATURE_std2013").is_ok(),
-        std::env::var("CARGO_FEATURE_std2020").is_ok(),
+        std::env::var("CARGO_FEATURE_STD2006").is_ok(),
+        std::env::var("CARGO_FEATURE_STD2013").is_ok(),
+        std::env::var("CARGO_FEATURE_STD2020").is_ok(),
     ];
 
     let crate_name = std::env::var("CARGO_PKG_NAME")
