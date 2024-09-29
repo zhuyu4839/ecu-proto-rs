@@ -1,5 +1,10 @@
 # A UDS PROTOCOL for ECU
 
+[![Latest version](https://img.shields.io/crates/v/ecu-uds.svg)](https://crates.io/crates/ecu-uds)
+[![Documentation](https://docs.rs/bleasy/badge.svg)](https://docs.rs/ecu-uds)
+![LGPL](https://img.shields.io/badge/license-LGPL-green.svg)
+![MIT](https://img.shields.io/badge/license-MIT-yellow.svg)
+
 ## Overview
 
 **ecu-uds** is dedicated to implementing ISO 14229. ISO-TP (ISO 14229) is a UDS protocol used in automotive communication.
