@@ -15,8 +15,8 @@ thiserror = "1.0"
 lazy_static = "1"
 half = "2"
 bitflags = "2"
-bitfield-struct = "0.8"
-isotp-rs = { version = "0.1.8-beta2" }
+bitfield-struct = "0.9"
+isotp-rs = { version = "0.1.8" }
 
 # dev dependencies
 anyhow = "1"

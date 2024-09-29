@@ -23,7 +23,7 @@ pub enum Error {
     // UnsupportedSuppressPositiveSubFunction,
 
     #[error("UDS - service `{service}` got an unexpected sub-function(expect: {expect}, actual: {actual})")]
-    UnexpectedSunFunction { service: Service, expect: u8, actual: u8 },
+    UnexpectedSubFunction { service: Service, expect: u8, actual: u8 },
 
     #[error("UDS - service `{expect}` got an unexpect response `{actual}`")]
     UnexpectedResponse { expect: Service, actual: Service },

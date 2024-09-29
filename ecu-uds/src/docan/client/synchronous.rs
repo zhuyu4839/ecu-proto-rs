@@ -733,7 +733,7 @@ where
                 // let source: u8 = session_type.into();
                 let target: u8 = v.function().into();
                 if target != source {
-                    Err(Error::UnexpectedSunFunction { service, expect: source, actual: target })
+                    Err(Error::UnexpectedSubFunction { service, expect: source, actual: target })
                 }
                 else {
                     Ok(())
