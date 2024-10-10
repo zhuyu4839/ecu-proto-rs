@@ -288,7 +288,7 @@ impl ResponseData for DTCInfo {
                     })
                 },
                 DTCReportType::ReportDTCByStatusMask => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
+                    utils::data_length_check(data_len, offset + 1, false)?;
                     if (data_len - offset - 1) % 4 != 0 {
                         return Err(Error::InvalidData(utils::hex_slice_to_string(data)));
                     }
