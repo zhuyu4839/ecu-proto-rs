@@ -3,6 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
+use crate::docan::constant::{P2_MAX, P2_STAR_MAX, P2_STAR_MAX_MS};
 use crate::error::Error;
 use crate::service::response::Code;
 use crate::service::{Configuration, ResponseData, SessionType};
@@ -27,9 +28,12 @@ impl SessionTiming {
     pub fn new(
         p2_ms: u16,
         p2_star_ms: u32,
-    ) -> Self {
+    ) -> Result<Self, Error> {
+        if p2_ms > P2_MAX || p2_star_ms > P2_STAR_MAX_MS {
+            return Err(Error::InvalidData(format!("P2: {} or P2*: {}", p2_ms, p2_star_ms)));
+        }
         let p2_star = (p2_star_ms / 10) as u16;
-        Self { p2: p2_ms, p2_star }
+        Ok(Self { p2: p2_ms, p2_star })
     }
 
     #[inline]
@@ -52,8 +56,14 @@ impl<'a> TryFrom<&'a [u8]> for SessionTiming {
         let mut offset = 0;
 
         let p2 = u16::from_be_bytes([data[offset], data[offset + 1]]);
+        if p2 > P2_MAX {
+            return Err(Error::InvalidSessionData(format!("P2: {}", p2)));
+        }
         offset += 2;
         let p2_star = u16::from_be_bytes([data[offset], data[offset + 1]]);
+        if p2_star > P2_STAR_MAX {
+            return Err(Error::InvalidSessionData(format!("P2*: {}", p2)));
+        }
 
         Ok(Self { p2, p2_star })
     }

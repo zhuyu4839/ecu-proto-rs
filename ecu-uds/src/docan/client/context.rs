@@ -1,23 +1,21 @@
 // mod config;
 // pub use config::*;
 
-use std::sync::{Arc, RwLock};
-use std::time::{Duration, SystemTime};
-use isotp_rs::{IsoTpEvent, IsoTpEventListener};
-use isotp_rs::can::isotp::SyncCanIsoTp;
-use isotp_rs::error::Error as IsoTpError;
+use std::{sync::{Arc, Mutex}, time::{Duration, Instant}};
+use std::collections::VecDeque;
+use isotp_rs::{can::isotp::SyncCanIsoTp, error::Error as IsoTpError, IsoTpEvent, IsoTpEventListener};
 use crate::{P2Context, utils};
 use crate::service::Configuration;
 
 #[derive(Debug, Default, Clone)]
 pub struct IsoTpBuffer {
-    inner: Arc<RwLock<Option<IsoTpEvent>>>,
+    inner: Arc<Mutex<VecDeque<IsoTpEvent>>>,
 }
 
 impl IsoTpBuffer {
     fn clear(&self) {
-        match self.inner.try_write() {
-            Ok(mut buffer) => *buffer = None,
+        match self.inner.lock() {
+            Ok(mut buffer) => buffer.clear(),
             Err(_) => {
                 log::warn!("UDS - failed to acquire write lock for `IsoTpBuffer::clear`");
             },
@@ -25,8 +23,8 @@ impl IsoTpBuffer {
     }
 
     fn set(&self, event: IsoTpEvent) {
-        match self.inner.try_write() {
-            Ok(mut buffer) => *buffer = Some(event),
+        match self.inner.lock() {
+            Ok(mut buffer) => buffer.push_back(event),
             Err(_) => {
                 log::warn!("UDS - failed to acquire write lock for `IsoTpBuffer::set`");
             },
@@ -34,8 +32,8 @@ impl IsoTpBuffer {
     }
 
     fn get(&self) -> Option<IsoTpEvent> {
-        match self.inner.try_read() {
-            Ok(buffer) => buffer.clone(),
+        match self.inner.lock() {
+            Ok(mut buffer) => buffer.pop_front(),
             Err(_) => {
                 log::warn!("UDS - failed to acquire write lock for `IsoTpBuffer::get`");
                 None
@@ -70,32 +68,29 @@ impl IsoTpListener {
         };
 
         let timeout = Duration::from_millis(tov);
-        let mut start = SystemTime::now();
+        let mut start = Instant::now();
 
         loop {
-            tokio::time::sleep(Duration::from_millis(5)).await;
+            tokio::time::sleep(Duration::from_millis(1)).await;
 
-            match SystemTime::now().duration_since(start) {
-                Ok(elapsed) => if elapsed > timeout {
-                    self.buffer.clear();
-                    return Err(IsoTpError::Timeout { value: tov, unit: "ms" })
-                },
-                Err(e) => {
-                    self.buffer.clear();
-                    return Err(IsoTpError::ContextError(e.to_string()));
-                },
+            if start.elapsed() > timeout {
+                self.clear_buffer();
+                return Err(IsoTpError::Timeout { value: tov, unit: "ms" })
             }
 
-            match self.buffer.get() {
+            match self.from_buffer() {
                 Some(event) => match event {
                     IsoTpEvent::Wait | IsoTpEvent::FirstFrameReceived => {
-                        start = SystemTime::now();
+                        start = Instant::now();
                     },
                     IsoTpEvent::DataReceived(data) => {
-                        self.buffer.clear();
+                        log::trace!("UDS - data received: {}", utils::hex_slice_to_string(data.as_slice()));
                         return Ok(data);
                     },
-                    IsoTpEvent::ErrorOccurred(e) => return Err(e.clone()),
+                    IsoTpEvent::ErrorOccurred(e) => {
+                        self.clear_buffer();
+                        return Err(e.clone());
+                    },
                 },
                 None => {
                     continue
@@ -113,33 +108,29 @@ impl IsoTpListener {
         };
 
         let timeout = Duration::from_millis(tov);
-        let mut start = SystemTime::now();
+        let mut start = Instant::now();
 
         loop {
             std::thread::sleep(Duration::from_millis(5));
 
-            match SystemTime::now().duration_since(start) {
-                Ok(elapsed) => if elapsed > timeout {
-                    self.buffer.clear();
-                    return Err(IsoTpError::Timeout { value: tov, unit: "ms" })
-                },
-                Err(e) => {
-                    self.buffer.clear();
-                    return Err(IsoTpError::ContextError(e.to_string()));
-                },
+            if start.elapsed() > timeout {
+                self.clear_buffer();
+                return Err(IsoTpError::Timeout { value: tov, unit: "ms" });
             }
 
-            match self.buffer.get() {
+            match self.from_buffer() {
                 Some(event) => match event {
                     IsoTpEvent::Wait | IsoTpEvent::FirstFrameReceived => {
-                        start = SystemTime::now();
+                        start = Instant::now();
                     },
                     IsoTpEvent::DataReceived(data) => {
                         log::trace!("UDS - data received: {}", utils::hex_slice_to_string(data.as_slice()));
-                        self.buffer.clear();
                         return Ok(data);
                     },
-                    IsoTpEvent::ErrorOccurred(e) => return Err(e.clone()),
+                    IsoTpEvent::ErrorOccurred(e) => {
+                        self.clear_buffer();
+                        return Err(e.clone());
+                    },
                 },
                 None => {
                     continue
@@ -156,10 +147,15 @@ impl IsoTpListener {
 }
 
 impl IsoTpEventListener for IsoTpListener {
+    #[inline]
+    fn from_buffer(&mut self) -> Option<IsoTpEvent> {
+        self.buffer.get()
+    }
+    #[inline]
     fn clear_buffer(&mut self) {
         self.buffer.clear();
     }
-
+    #[inline]
     fn on_iso_tp_event(&mut self, event: IsoTpEvent) {
         self.buffer.set(event)
     }

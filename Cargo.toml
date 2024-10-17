@@ -16,7 +16,7 @@ lazy_static = "1"
 half = "2"
 bitflags = "2"
 bitfield-struct = "0.9"
-isotp-rs = { version = "0.2.0" }
+isotp-rs = { path = "../isotp-rs" }
 
 # dev dependencies
 anyhow = "1"
