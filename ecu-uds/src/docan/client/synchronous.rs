@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::time::Duration;
-use isotp_rs::ByteOrder;
+use isotp_rs::{ByteOrder, IsoTpEventListener};
 use isotp_rs::can::{Address, frame::Frame, isotp::SyncCanIsoTp};
 use isotp_rs::can::driver::SyncCan;
 use isotp_rs::device::Driver;
@@ -704,6 +704,7 @@ where
         T: TryFrom<u8, Error = Error> + Copy + Debug,
         Request<T>: Into<Vec<u8>>,
     {
+        ctx.listener.clear_buffer();
         let service = request.service();
         ctx.iso_tp.write(functional, request.into())
             .map_err(Error::IsoTpError)?;

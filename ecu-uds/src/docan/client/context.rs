@@ -13,6 +13,7 @@ pub struct IsoTpBuffer {
 }
 
 impl IsoTpBuffer {
+    #[inline]
     fn clear(&self) {
         match self.inner.lock() {
             Ok(mut buffer) => buffer.clear(),
@@ -22,6 +23,7 @@ impl IsoTpBuffer {
         }
     }
 
+    #[inline]
     fn set(&self, event: IsoTpEvent) {
         match self.inner.lock() {
             Ok(mut buffer) => buffer.push_back(event),
@@ -31,6 +33,7 @@ impl IsoTpBuffer {
         }
     }
 
+    #[inline]
     fn get(&self) -> Option<IsoTpEvent> {
         match self.inner.lock() {
             Ok(mut buffer) => buffer.pop_front(),

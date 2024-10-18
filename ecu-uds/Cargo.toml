@@ -1,6 +1,6 @@
 [package]
 name = "ecu-uds"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 license = "GPL-3.0"
 authors = ["zhuyu <zhuyu4839@gmail.com>"]
@@ -33,3 +33,4 @@ default = ["std2020"]
 std2006 = []
 std2013 = []
 std2020 = []
+session_data_check = []

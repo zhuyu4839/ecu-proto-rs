@@ -56,13 +56,13 @@ impl<'a> TryFrom<&'a [u8]> for SessionTiming {
         let mut offset = 0;
 
         let p2 = u16::from_be_bytes([data[offset], data[offset + 1]]);
-        if p2 > P2_MAX {
-            return Err(Error::InvalidSessionData(format!("P2: {}", p2)));
-        }
         offset += 2;
         let p2_star = u16::from_be_bytes([data[offset], data[offset + 1]]);
-        if p2_star > P2_STAR_MAX {
-            return Err(Error::InvalidSessionData(format!("P2*: {}", p2)));
+        if p2 > P2_MAX || p2_star > P2_STAR_MAX {
+            #[cfg(not(feature = "session_data_check"))]
+            log::warn!("UDS - invalid session data P2: {}, P2*: {}", p2, p2_star);
+            #[cfg(feature = "session_data_check")]
+            return Err(Error::InvalidSessionData(format!("P2: {}, P2*: {}", p2, p2_star)));
         }
 
         Ok(Self { p2, p2_star })

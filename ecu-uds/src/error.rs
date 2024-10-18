@@ -21,7 +21,7 @@ pub enum Error {
 
     // #[error("UDS - service is unsupported suppress positive sub-function")]
     // UnsupportedSuppressPositiveSubFunction,
-    #[error("UDS - invalid session data: {0}")]
+    #[error("UDS - invalid session data {0}")]
     InvalidSessionData(String),
 
     #[error("UDS - service `{service}` got an unexpected sub-function(expect: {expect}, actual: {actual})")]
