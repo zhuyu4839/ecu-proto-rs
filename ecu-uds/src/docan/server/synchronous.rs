@@ -1,7 +1,6 @@
 use std::fmt::Display;
 use std::hash::Hash;
-use isotp_rs::can::frame::Frame as CanFrame;
-use isotp_rs::device::SyncDevice;
+use isotp_rs::{can::frame::Frame as CanFrame, device::SyncDevice};
 
 pub struct SyncServer<D, Device, C, F>
 where

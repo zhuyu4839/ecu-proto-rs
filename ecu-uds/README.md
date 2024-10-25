@@ -7,7 +7,7 @@
 
 ## Overview
 
-**ecu-uds** is dedicated to implementing ISO 14229. ISO-TP (ISO 14229) is a UDS protocol used in automotive communication.
+**ecu-uds** is dedicated to implementing ISO 14229. ISO-TP (ISO 15765) is a UDS protocol used in automotive communication.
 
 ### Prerequisites
 

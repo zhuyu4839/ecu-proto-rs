@@ -3,6 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
+use crate::docan::constant::{P2_MAX, P2_STAR_MAX, P2_STAR_MAX_MS};
 use crate::error::Error;
 use crate::service::response::Code;
 use crate::service::{Configuration, ResponseData, SessionType};
@@ -27,9 +28,12 @@ impl SessionTiming {
     pub fn new(
         p2_ms: u16,
         p2_star_ms: u32,
-    ) -> Self {
+    ) -> Result<Self, Error> {
+        if p2_ms > P2_MAX || p2_star_ms > P2_STAR_MAX_MS {
+            return Err(Error::InvalidData(format!("P2: {} or P2*: {}", p2_ms, p2_star_ms)));
+        }
         let p2_star = (p2_star_ms / 10) as u16;
-        Self { p2: p2_ms, p2_star }
+        Ok(Self { p2: p2_ms, p2_star })
     }
 
     #[inline]
@@ -45,15 +49,27 @@ impl SessionTiming {
 
 impl<'a> TryFrom<&'a [u8]> for SessionTiming {
     type Error = Error;
+    #[allow(unused_mut)]
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
         utils::data_length_check(data_len, 4, true)?;
 
         let mut offset = 0;
 
-        let p2 = u16::from_be_bytes([data[offset], data[offset + 1]]);
+        let mut p2 = u16::from_be_bytes([data[offset], data[offset + 1]]);
         offset += 2;
-        let p2_star = u16::from_be_bytes([data[offset], data[offset + 1]]);
+        let mut p2_star = u16::from_be_bytes([data[offset], data[offset + 1]]);
+
+        #[cfg(not(feature = "session_data_check"))]
+        if p2 > P2_MAX || p2_star > P2_STAR_MAX {
+            log::warn!("UDS - invalid session data P2: {}, P2*: {}", p2, p2_star);
+            if p2 > P2_MAX { p2 = P2_MAX; }
+            if p2_star > P2_STAR_MAX { p2_star = P2_STAR_MAX; }
+        }
+        #[cfg(feature = "session_data_check")]
+        if p2 > P2_MAX || p2_star > P2_STAR_MAX {
+            return Err(Error::InvalidSessionData(format!("P2: {}, P2*: {}", p2, p2_star)));
+        }
 
         Ok(Self { p2, p2_star })
     }

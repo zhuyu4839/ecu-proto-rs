@@ -1,4 +1,3 @@
 pub mod client;
 // pub mod server;
-mod constant;
-
+pub mod constant;

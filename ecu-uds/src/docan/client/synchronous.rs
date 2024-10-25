@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::time::Duration;
-use isotp_rs::ByteOrder;
+use isotp_rs::{ByteOrder, IsoTpEventListener};
 use isotp_rs::can::{Address, frame::Frame, isotp::SyncCanIsoTp};
 use isotp_rs::can::driver::SyncCan;
 use isotp_rs::device::Driver;
@@ -252,9 +252,8 @@ where
                           suppress_positive: bool,
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
-            let service = Service::TesterPresent;
-            let sub_func = request::SubFunction::new(test_type, Some(suppress_positive));
-            let request = Request::new(service, Some(sub_func), vec![]);
+            let (service, request) =
+                Self::tester_present_request(test_type, suppress_positive);
 
             let response = Self::suppress_positive_sr(ctx, functional, request, suppress_positive)?;
 
@@ -655,23 +654,21 @@ where
 
     fn response_service_check<T>(response: &Response<T>, target: Service) -> Result<bool, Error>
     where
-        T: TryFrom<u8, Error = Error> + Copy
+        T: TryFrom<u8, Error = Error> + Copy + Debug
     {
         let service = response.service();
         if response.is_negative() {
             let nrc_code = response.nrc_code()?;
-            if Code::RequestCorrectlyReceivedResponsePending == nrc_code {
-                return Ok(true);
+            match nrc_code {
+                Code::RequestCorrectlyReceivedResponsePending => Ok(true),
+                _ => Err(Error::NRCError { service, code: nrc_code }),
             }
-
-            return Err(Error::NRCError { service, code: response.nrc_code()? })
+        } else if service != target {
+            Err(Error::UnexpectedResponse { expect: target, actual: service })
         }
-
-        if service != target {
-            return Err(Error::UnexpectedResponse { expect: target, actual: service });
+        else {
+            Ok(false)
         }
-
-        Ok(false)
     }
 
     fn suppress_positive_sr<T>(ctx: &mut Context<C, F>,
@@ -680,7 +677,7 @@ where
                                suppress_positive: bool,
     ) -> Result<Option<Response<T>>, Error>
     where
-        T: TryFrom<u8, Error = Error> + Copy,
+        T: TryFrom<u8, Error = Error> + Copy + Debug,
         Request<T>: Into<Vec<u8>>,
     {
         match Self::send_and_response::<T>(ctx, functional, request) {
@@ -704,9 +701,10 @@ where
                             request: Request<T>,
     ) -> Result<Response<T>, Error>
     where
-        T: TryFrom<u8, Error = Error> + Copy,
+        T: TryFrom<u8, Error = Error> + Copy + Debug,
         Request<T>: Into<Vec<u8>>,
     {
+        ctx.listener.clear_buffer();
         let service = request.service();
         ctx.iso_tp.write(functional, request.into())
             .map_err(Error::IsoTpError)?;
@@ -715,6 +713,12 @@ where
             .map_err(Error::IsoTpError)?;
         let mut response: Response<T> = Response::try_from(data)?;
         while Self::response_service_check(&response, service)? {
+            log::debug!("UDS - tester present when {:?}", Code::RequestCorrectlyReceivedResponsePending);
+            let (_, request) =
+                Self::tester_present_request(TesterPresentType::Zero, true);
+            ctx.iso_tp.write(functional, request.into())
+                .map_err(Error::IsoTpError)?;
+
             let data = ctx.listener.sync_timer(true)
                 .map_err(Error::IsoTpError)?;
 
@@ -741,6 +745,18 @@ where
             },
             None => Err(Error::OtherError(format!("response of service `{}` got an empty sub-function", service))),
         }
+    }
+
+    #[inline]
+    fn tester_present_request(
+        test_type: TesterPresentType,
+        suppress_positive: bool,
+    ) -> (Service, Request<TesterPresentType>) {
+        let service = Service::TesterPresent;
+        let sub_func = request::SubFunction::new(test_type, Some(suppress_positive));
+        let request = Request::new(service, Some(sub_func), vec![]);
+
+        (service, request)
     }
 }
 
