@@ -191,11 +191,15 @@ where
                 let seed = response.raw_data().to_vec();
 
                 let sub_func = request::SubFunction::new(SecurityAccessLevel::new(level + 1)?, None);
-                let data = SecurityAccessData(algo(level, seed, salt)?);
-                let request = Request::new(service, Some(sub_func), RequestData::to_vec(data, &ctx.config));
-                let response = Self::send_and_response::<SecurityAccessLevel>(ctx, false, request)?;
+                match algo(level, seed, salt)? {
+                    Some(data) => {
+                        let request = Request::new(service, Some(sub_func), RequestData::to_vec(data, &ctx.config));
+                        let response = Self::send_and_response::<SecurityAccessLevel>(ctx, false, request)?;
 
-                Self::sub_func_check(&response, level + 1, service)
+                        Self::sub_func_check(&response, level + 1, service)
+                    },
+                    None => Ok(())
+                }
             }
             else {
                 Err(Error::OtherError("security algorithm required".into()))
