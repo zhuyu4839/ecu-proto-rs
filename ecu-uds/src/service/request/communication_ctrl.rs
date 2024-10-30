@@ -102,13 +102,12 @@ impl Into<Vec<u8>> for CommunicationCtrl {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{CommunicationCtrlType, CommunicationType, Configuration, RequestData};
     use super::CommunicationCtrl;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("280203").as_slice();
+        let source = hex::decode("280203")?;
 
         let request = CommunicationCtrl::new(
             CommunicationCtrlType::DisableRxAndEnableTx,

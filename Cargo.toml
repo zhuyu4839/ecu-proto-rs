@@ -20,4 +20,4 @@ isotp-rs = { version = "0.2.1" }
 
 # dev dependencies
 anyhow = "1"
-hex-literal = "0.4"
+hex = "0.4"

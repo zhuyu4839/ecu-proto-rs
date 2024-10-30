@@ -86,26 +86,25 @@ impl ResponseData for ReadDID {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{DataIdentifier, DIDData, ResponseData, Configuration};
     use super::ReadDID;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!(
+        let source = hex::decode(
             "62\
             f1904441564443313030394e544c5036313338\
             F187445643374532303030303037"
-        ).as_slice();
+        )?;
         let response = ReadDID {
             data: DIDData {
                 did: DataIdentifier::VIN,
-                data: hex!("4441564443313030394e544c5036313338").to_vec()
+                data: hex::decode("4441564443313030394e544c5036313338")?
             },
             others: vec![
                 DIDData {
                 did: DataIdentifier::VehicleManufacturerSparePartNumber,
-                data: hex!("445643374532303030303037").to_vec()
+                data: hex::decode("445643374532303030303037")?
             },
         ]};
 

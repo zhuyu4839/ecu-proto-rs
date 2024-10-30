@@ -62,7 +62,6 @@ impl RequestData for WriteMemByAddr {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{AddressAndLengthFormatIdentifier, Configuration, RequestData};
     use super::WriteMemByAddr;
 
@@ -70,12 +69,12 @@ mod tests {
     fn new() -> anyhow::Result<()> {
         let cfg = Configuration::default();
 
-        let source = hex!("3D4420481213000000051122334455").as_slice();
+        let source = hex::decode("3D4420481213000000051122334455")?;
         let request = WriteMemByAddr::new(
             AddressAndLengthFormatIdentifier::new(4, 4)?,
             0x20481213,
             0x05,
-            hex!("1122334455").to_vec(),
+            hex::decode("1122334455")?,
         )?;
         let result: Vec<_> = request.to_vec(&cfg);
         assert_eq!(result, source[1..].to_vec());
@@ -83,7 +82,7 @@ mod tests {
         let request = WriteMemByAddr::try_parse(&source[1..], None, &cfg)?;
         assert_eq!(request.mem_loc.memory_address(), 0x20481213);
         assert_eq!(request.mem_loc.memory_size(), 0x05);
-        assert_eq!(request.data, hex!("1122334455"));
+        assert_eq!(request.data, hex::decode("1122334455")?);
 
         Ok(())
     }

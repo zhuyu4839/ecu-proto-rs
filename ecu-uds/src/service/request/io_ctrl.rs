@@ -114,7 +114,6 @@ impl RequestData for IOCtrl {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{Configuration, DataIdentifier, IOCtrlParameter, RequestData};
     use super::IOCtrl;
 
@@ -125,12 +124,12 @@ mod tests {
         let mut cfg = Configuration::default();
         cfg.did_cfg.insert(did, 2);
 
-        let source = hex!("2f4101030040ffff").as_slice();
+        let source = hex::decode("2f4101030040ffff")?;
         let request = IOCtrl::new(
             did,
             IOCtrlParameter::ShortTermAdjustment,
-            hex!("0040").to_vec(),
-            hex!("ffff").to_vec(),
+            hex::decode("0040")?,
+            hex::decode("ffff")?,
         )?;
         let result: Vec<_> = request.to_vec(&cfg);
         assert_eq!(result, source[1..].to_vec());
@@ -138,8 +137,8 @@ mod tests {
         let request = IOCtrl::try_parse(&source[1..], None, &cfg)?;
         assert_eq!(request.did, did);
         assert_eq!(request.option.param, IOCtrlParameter::ShortTermAdjustment);
-        assert_eq!(request.option.state, hex!("0040"));
-        assert_eq!(request.mask, hex!("ffff"));
+        assert_eq!(request.option.state, hex::decode("0040")?);
+        assert_eq!(request.mask, hex::decode("ffff")?);
 
         Ok(())
     }

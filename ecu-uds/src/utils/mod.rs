@@ -297,29 +297,28 @@ pub fn fix_length(length: u8) -> Option<u8> {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use isotp_rs::ByteOrder;
 
     #[test]
     fn test_u128_to_vec() -> anyhow::Result<()> {
         let result = super::u128_to_vec(0x00_12_34_78, 3, ByteOrder::Big);
-        assert_eq!(result, hex!("12 34 78").to_vec());
+        assert_eq!(result, hex::decode("123478")?);
         let result = super::u128_to_vec(0x00_12_34_78, 3, ByteOrder::Little);
-        assert_eq!(result, hex!("78 34 12").to_vec());
+        assert_eq!(result, hex::decode("783412")?);
 
         let result = super::u128_to_vec(0x12_34_00_78, 4, ByteOrder::Big);
-        assert_eq!(result, hex!("12 34 00 78").to_vec());
+        assert_eq!(result, hex::decode("12340078")?);
         let result = super::u128_to_vec(0x12_34_00_78, 4, ByteOrder::Little);
-        assert_eq!(result, hex!("78 00 34 12").to_vec());
+        assert_eq!(result, hex::decode("78003412")?);
 
         Ok(())
     }
 
     #[test]
     fn test_vec_to_u128() -> anyhow:: Result<()> {
-        let result = super::slice_to_u128(hex!("78 56 34 12").as_slice(), ByteOrder::Little);
+        let result = super::slice_to_u128(&hex::decode("78563412")?, ByteOrder::Little);
         assert_eq!(result, 0x12_34_56_78);
-        let result = super::slice_to_u128(hex!("12 34 56 78").as_slice(), ByteOrder::Big);
+        let result = super::slice_to_u128(&hex::decode("12345678")?, ByteOrder::Big);
         assert_eq!(result, 0x12_34_56_78);
 
         Ok(())
@@ -328,7 +327,7 @@ mod tests {
     #[test]
     fn test_u128_to_vec_fix() -> anyhow:: Result<()> {
         let result = super::u128_to_vec_fix(0x00_12_34_78, ByteOrder::Big);
-        assert_eq!(result, hex!("12 34 78").to_vec());
+        assert_eq!(result, hex::decode("123478")?);
 
         Ok(())
     }

@@ -19,8 +19,6 @@ pub enum Error {
     #[error("UDS - invalid dynamically defined data identifier: {0:x}")]
     InvalidDynamicallyDefinedDID(u16),
 
-    // #[error("UDS - service is unsupported suppress positive sub-function")]
-    // UnsupportedSuppressPositiveSubFunction,
     #[error("UDS - invalid session data {0}")]
     InvalidSessionData(String),
 

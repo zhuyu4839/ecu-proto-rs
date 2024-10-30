@@ -51,13 +51,12 @@ impl RequestData for RoutineCtrl {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{CheckProgrammingDependencies, RoutineCtrlType};
     use super::RoutineCtrl;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("3101FF01").as_slice();
+        let source = hex::decode("3101FF01")?;
         let request = RoutineCtrl {
             routine_id: CheckProgrammingDependencies,
             option_record: vec![],
@@ -65,11 +64,11 @@ mod tests {
         let result: Vec<_> = request.into();
         assert_eq!(result, source[2..].to_vec());
 
-        let source = hex!("3101FF01112233445566").as_slice();
+        let source = hex::decode("3101FF01112233445566")?;
         let request = RoutineCtrl::try_from(&source[2..])?;
 
         assert_eq!(request.routine_id, CheckProgrammingDependencies);
-        assert_eq!(request.option_record, hex!("112233445566"));
+        assert_eq!(request.option_record, hex::decode("112233445566")?);
 
         Ok(())
     }

@@ -95,13 +95,12 @@ impl ResponseData for RoutineCtrl {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::CheckProgrammingDependencies;
     use super::RoutineCtrl;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("7101FF01").as_slice();
+        let source = hex::decode("7101FF01")?;
         let response = RoutineCtrl::new(
             CheckProgrammingDependencies,
             None,
@@ -110,12 +109,12 @@ mod tests {
         let result: Vec<_> = response.into();
         assert_eq!(result, source[2..].to_vec());
 
-        let source = hex!("7101FF01112233445566").as_slice();
+        let source = hex::decode("7101FF01112233445566")?;
         let response = RoutineCtrl::try_from(&source[2..])?;
 
         assert_eq!(response.routine_id, CheckProgrammingDependencies);
         assert_eq!(response.routine_info, Some(0x11));
-        assert_eq!(response.routine_status, hex!("2233445566"));
+        assert_eq!(response.routine_status, hex::decode("2233445566")?);
 
         Ok(())
     }

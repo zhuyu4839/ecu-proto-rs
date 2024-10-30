@@ -172,14 +172,13 @@ impl Into<Vec<u8>> for RequestFileTransfer {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{Configuration, DataFormatIdentifier, ModeOfOperation, RequestData};
     use super::RequestFileTransfer;
 
     #[test]
     fn add_file() -> anyhow::Result<()> {
         // D:\mapdata\europe\germany1.yxz
-        let source = hex!("3801001E443A5C6D6170646174615C6575726F70655C6765726D616E79312E79787A1102C3507530").as_slice();
+        let source = hex::decode("3801001E443A5C6D6170646174615C6575726F70655C6765726D616E79312E79787A1102C3507530")?;
 
         let cfg = Configuration::default();
         let request = RequestFileTransfer::try_parse(&source[2..], Some(ModeOfOperation::AddFile), &cfg)?;

@@ -75,13 +75,12 @@ impl RequestData for ReadDIDD {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::DataIdentifier;
     use super::ReadDIDD;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("22F190F180").as_slice();
+        let source = hex::decode("22F190F180")?;
         let request = ReadDIDD::new(
             DataIdentifier::VIN,
             vec![
@@ -91,7 +90,8 @@ mod tests {
         let result: Vec<_> = request.into();
         assert_eq!(result, source[1..].to_vec());
 
-        let source = hex!("22F190F180 F181F182F183F184F185F186F187F188F189").as_slice();
+        let source = hex::decode("22F190F180\
+        F181F182F183F184F185F186F187F188F189")?;
         let request = ReadDIDD::new(
             DataIdentifier::VIN,
             vec![

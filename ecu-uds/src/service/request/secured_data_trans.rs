@@ -116,13 +116,12 @@ impl RequestData for SecuredDataTrans {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{AdministrativeParameter, SignatureEncryptionCalculation};
     use super::SecuredDataTrans;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("84006100000601242EF123AA55DBD10EDC55AA").as_slice();
+        let source = hex::decode("84006100000601242EF123AA55DBD10EDC55AA")?;
 
         let mut apar = AdministrativeParameter::new();
         apar.signed_set(true)
@@ -133,8 +132,8 @@ mod tests {
             SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00),
             0x0124,
             0x2E,
-            hex!("F123AA55").to_vec(),
-            hex!("DBD10EDC55AA").to_vec(),
+            hex::decode("F123AA55")?,
+            hex::decode("DBD10EDC55AA")?,
         )?;
         let result: Vec<_> = request.into();
         assert_eq!(result, source[1..].to_vec());
@@ -145,8 +144,8 @@ mod tests {
         assert_eq!(request.signature, SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00));
         assert_eq!(request.anti_replay_cnt, 0x0124);
         assert_eq!(request.service, 0x2E);
-        assert_eq!(request.service_data, hex!("F123AA55"));
-        assert_eq!(request.signature_data, hex!("DBD10EDC55AA"));
+        assert_eq!(request.service_data, hex::decode("F123AA55")?);
+        assert_eq!(request.signature_data, hex::decode("DBD10EDC55AA")?);
 
         Ok(())
     }

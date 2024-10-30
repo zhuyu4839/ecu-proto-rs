@@ -43,13 +43,12 @@ impl RequestData for WriteDID {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{DataIdentifier, DIDData};
     use super::WriteDID;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("2ef1904441564443313030394e544c5036313338").as_slice();
+        let source = hex::decode("2ef1904441564443313030394e544c5036313338")?;
         let request = WriteDID(
             DIDData {
                 did: DataIdentifier::VIN,
@@ -61,7 +60,7 @@ mod tests {
 
         let request = WriteDID::try_from(&source[1..])?;
         assert_eq!(request.0.did, DataIdentifier::VIN);
-        assert_eq!(request.0.data, hex!("4441564443313030394e544c5036313338"));
+        assert_eq!(request.0.data, hex::decode("4441564443313030394e544c5036313338")?);
 
         Ok(())
     }

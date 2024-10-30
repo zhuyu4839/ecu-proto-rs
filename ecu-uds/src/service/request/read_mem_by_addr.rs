@@ -21,13 +21,12 @@ impl RequestData for ReadMemByAddr {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{AddressAndLengthFormatIdentifier, Configuration, MemoryLocation, RequestData};
     use super::ReadMemByAddr;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("2312481305").as_slice();
+        let source = hex::decode("2312481305")?;
         let cfg = Configuration::default();
         let request = ReadMemByAddr(
             MemoryLocation::new(AddressAndLengthFormatIdentifier::new(2, 1)?, 0x4813,0x05,)?);
@@ -39,7 +38,7 @@ mod tests {
         assert_eq!(request.0.memory_address(), 0x4813);
         assert_eq!(request.0.memory_size(), 0x05);
 
-        let source = hex!("2324204813920103").as_slice();
+        let source = hex::decode("2324204813920103")?;
         let request = ReadMemByAddr(
             MemoryLocation::new(AddressAndLengthFormatIdentifier::new(4, 2)?,0x20481392,0x0103,)?);
         let result: Vec<_> = request.to_vec(&cfg);

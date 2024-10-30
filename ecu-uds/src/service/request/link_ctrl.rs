@@ -84,14 +84,13 @@ impl Into<Vec<u8>> for LinkCtrl {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{Configuration, LinkCtrlMode, LinkCtrlType, RequestData, Service};
     use crate::utils::U24;
     use super::LinkCtrl;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("870113").as_slice();
+        let source = hex::decode("870113")?;
         let request = LinkCtrl::VerifyModeTransitionWithFixedParameter(LinkCtrlMode::CAN1MBaud);
         let result: Vec<_> = request.into();
         assert_eq!(result, source[2..].to_vec());
@@ -108,7 +107,7 @@ mod tests {
             LinkCtrl::SystemSupplierSpecific(_) => panic!(),
         }
 
-        let source = hex!("8702112233").as_slice();
+        let source = hex::decode("8702112233")?;
 
         let request = LinkCtrl::try_parse(&source[2..], Some(LinkCtrlType::VerifyModeTransitionWithSpecificParameter), &cfg)?;
         match request {
@@ -121,7 +120,7 @@ mod tests {
             LinkCtrl::SystemSupplierSpecific(_) => panic!(),
         }
 
-        let source = hex!("8703").as_slice();
+        let source = hex::decode("8703")?;
 
         let request = LinkCtrl::try_parse(&source[2..], Some(LinkCtrlType::TransitionMode), &cfg)?;
         match request {

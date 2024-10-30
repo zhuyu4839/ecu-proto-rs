@@ -17,7 +17,7 @@ half = { workspace = true }
 bitflags = { workspace = true }
 bitfield-struct = { workspace = true }
 isotp-rs = { workspace = true }
-hex-literal = { workspace = true }
+hex = { workspace = true }
 
 [dependencies.tokio]
 version = "1"

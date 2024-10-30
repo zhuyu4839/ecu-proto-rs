@@ -45,13 +45,12 @@ impl Into<Vec<u8>> for WriteDID {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::DataIdentifier;
     use super::WriteDID;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("6EF190").as_slice();
+        let source = hex::decode("6EF190")?;
         let response = WriteDID(DataIdentifier::VIN);
         let result: Vec<_> = response.into();
         assert_eq!(result, source[1..]);

@@ -167,14 +167,13 @@ impl RequestData for DynamicallyDefineDID {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{Configuration, DynamicallyDID, DynamicallyMemAddr, RequestData};
     use super::DynamicallyDefineDID;
 
     #[test]
     fn new() -> anyhow::Result<()> {
         let cfg = Configuration::default();
-        let source = hex!("2C 01 F3 01 12 34 01 02 56 78 01 01 9A BC 01 04").as_slice();
+        let source = hex::decode("2C01F30112340102567801019ABC0104")?;
         let request = DynamicallyDefineDID::DefineByIdentifier {
                 did: DynamicallyDID::try_from(0xF301)?,
                 source: DynamicallyMemAddr {
@@ -198,7 +197,7 @@ mod tests {
         let result: Vec<_> = request.to_vec(&cfg);
         assert_eq!(result, source[2..].to_vec());
 
-        let source = hex!("2C 02 F3 02 24 00 09 19 69 00 01 21 09 19 69 00 01 21 09 19 6b 01 02 13 10 19 95 00 01").as_slice();
+        let source = hex::decode("2C02F302240009196900012109196900012109196b0102131019950001")?;
         let request = DynamicallyDefineDID::DefineByMemoryAddress {
                 did: DynamicallyDID::try_from(0xF302)?,
                 memory: (0x00091969, 1),

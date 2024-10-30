@@ -227,13 +227,12 @@ impl ResponseData for SecuredDataTrans {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::service::{AdministrativeParameter, SignatureEncryptionCalculation};
     use super::{SecuredDataTrans, SecuredDataTransNegative, SecuredDataTransPositive};
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("C4002000000601246EF123FEDB910EDCFF").as_slice();
+        let source = hex::decode("C4002000000601246EF123FEDB910EDCFF")?;
         let mut apar = AdministrativeParameter::new();
         apar.signed_set(true);
         let response = SecuredDataTrans::Successful(
@@ -242,8 +241,8 @@ mod tests {
                     SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00),
                     0x0124,
                     0x6E,
-                    hex!("F123").to_vec(),
-                    hex!("FEDB910EDCFF").to_vec(),
+                    hex::decode("F123")?,
+                    hex::decode("FEDB910EDCFF")?,
                 )?
             );
         let result: Vec<_> = response.into();
@@ -256,13 +255,13 @@ mod tests {
                 assert_eq!(v.signature, SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00));
                 assert_eq!(v.anti_replay_cnt, 0x0124);
                 assert_eq!(v.response, 0x6E);
-                assert_eq!(v.response_params, hex!("F123"));
-                assert_eq!(v.signature_data, hex!("FEDB910EDCFF"));
+                assert_eq!(v.response_params, hex::decode("F123")?);
+                assert_eq!(v.signature_data, hex::decode("FEDB910EDCFF")?);
             },
             SecuredDataTrans::Unsuccessful(_) => panic!(),
         }
 
-        let source = hex!("C4002000000601367F2E13FEC9A180ECFF").as_slice();
+        let source = hex::decode("C4002000000601367F2E13FEC9A180ECFF")?;
         let mut apar = AdministrativeParameter::new();
         apar.signed_set(true);
         let response = SecuredDataTrans::Unsuccessful(
@@ -272,7 +271,7 @@ mod tests {
                 0x0136,
                 0x2E,
                 0x13,
-                hex!("FEC9A180ECFF").to_vec(),
+                hex::decode("FEC9A180ECFF")?,
             )?);
         let result: Vec<_> = response.into();
         assert_eq!(result, source[1..]);
@@ -286,7 +285,7 @@ mod tests {
                 assert_eq!(v.anti_replay_cnt, 0x0136);
                 assert_eq!(v.service, 0x2E);
                 assert_eq!(v.response, 0x13);
-                assert_eq!(v.signature_data, hex!("FEC9A180ECFF"));
+                assert_eq!(v.signature_data, hex::decode("FEC9A180ECFF")?);
             },
         }
 

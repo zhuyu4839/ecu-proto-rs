@@ -97,13 +97,12 @@ impl RequestData for ClearDiagnosticInfo {
 
 #[cfg(test)]
 mod tests {
-    use hex_literal::hex;
     use crate::utils::U24;
     use super::ClearDiagnosticInfo;
 
     #[test]
     fn new() -> anyhow::Result<()> {
-        let source = hex!("14FFFF3301").as_slice();
+        let source = hex::decode("14FFFF3301")?;
         let request = ClearDiagnosticInfo::new(
             U24::from_be_bytes([0x00, 0xFF, 0xFF, 0x33]),
             Some(0x01),
