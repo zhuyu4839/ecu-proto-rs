@@ -1,12 +1,9 @@
-mod constant;
-pub mod error;
-pub mod utils;
-pub mod service;
+mod error;
+pub use error::*;
 pub mod docan;
 pub mod doip;
 
 use isotp_rs::constant::{P2_ISO14229, P2_STAR_ISO14229};
-use error::Error;
 
 #[derive(Debug, Clone, Copy)]
 pub struct P2Context {
@@ -24,20 +21,3 @@ impl Default for P2Context {
         }
     }
 }
-
-/// SecurityAlgo
-///
-/// # Params
-///
-/// #1 level of security
-///
-/// #2 seed
-///
-/// #3 salt or other params
-///
-/// # Return
-///
-/// if all seed is 0x00, return None
-/// else all seed is not 0xFF return algo data,
-/// otherwise return Error
-pub type SecurityAlgo = fn(u8, Vec<u8>, Vec<u8>) -> Result<Option<Vec<u8>>, Error>;

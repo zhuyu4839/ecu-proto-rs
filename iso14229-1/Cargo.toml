@@ -1,0 +1,24 @@
+[package]
+name = "iso14229-1"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+log = { workspace = true }
+thiserror = { workspace = true }
+lazy_static = { workspace = true }
+byteorder = { workspace = true }
+bitflags = { workspace = true }
+bitfield-struct = { workspace = true }
+hex = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+
+[features]
+default = ["std2020"]
+
+std2006 = []
+std2013 = []
+std2020 = []
+session_data_check = []

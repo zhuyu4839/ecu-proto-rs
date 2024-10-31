@@ -1,16 +1,7 @@
-use std::collections::HashMap;
-use std::fmt::{Debug, Display};
-use std::hash::Hash;
-use std::time::Duration;
-use isotp_rs::{ByteOrder, IsoTpEventListener};
-use isotp_rs::can::{Address, frame::Frame, isotp::SyncCanIsoTp};
-use isotp_rs::can::driver::SyncCan;
-use isotp_rs::device::Driver;
-use isotp_rs::error::Error as IsoTpError;
-use crate::docan::client::context::{Context, IsoTpListener};
-use crate::error::Error;
-use crate::{P2Context, utils, SecurityAlgo};
-use crate::service::{response::{self, Response, Code}, request::{self, Request}, *};
+use std::{collections::HashMap, fmt::{Debug, Display}, hash::Hash, time::Duration};
+use isotp_rs::{can::{Address, driver::SyncCan, frame::Frame, isotp::SyncCanIsoTp}, device::Driver, error::Error as IsoTpError, IsoTpEventListener};
+use iso14229_1::{response::{self, Response, Code}, request::{self, Request}, *};
+use crate::{docan::client::context::{Context, IsoTpListener}, Error, P2Context};
 
 #[derive(Clone)]
 pub struct SyncClient<D, C, F>
@@ -121,7 +112,8 @@ where
             if let Some(response) = Self::suppress_positive_sr(ctx, functional, request, suppress_positive)? {
                 Self::sub_func_check(&response, session_type.into(), service)?;
 
-                let timing = response.data::<response::SessionTiming>(&ctx.config)?;
+                let timing = response.data::<response::SessionTiming>(&ctx.config)
+                    .map_err(Error::ISO14229Error)?;
                 ctx.listener.update_p2_ctx(timing.p2_ms(), timing.p2_star_ms());
             }
 
@@ -143,7 +135,8 @@ where
             if let Some(response) = Self::suppress_positive_sr(ctx, functional, request, suppress_positive)? {
                 Self::sub_func_check(&response, reset_type.into(), service)?;
 
-                let pds = response.data::<response::PowerDownSeconds>(&ctx.config)?;
+                let pds = response.data::<response::PowerDownSeconds>(&ctx.config)
+                    .map_err(Error::ISO14229Error)?;
                 if let Some(seconds) = pds.seconds() {
                     std::thread::sleep(Duration::from_secs(seconds as u64));
                 }
@@ -160,7 +153,11 @@ where
     ) -> Result<Vec<u8>, Error> {
         self.context_util(channel, |ctx| {
             let service = Service::SecurityAccess;
-            let sub_func = request::SubFunction::new(SecurityAccessLevel::new(level)?, None);
+            let sub_func = request::SubFunction::new(
+                SecurityAccessLevel::new(level)
+                    .map_err(Error::ISO14229Error)?,
+                None
+            );
             let data = SecurityAccessData(params);
             let request = Request::new(service, Some(sub_func), RequestData::to_vec(data, &ctx.config));
 
@@ -181,7 +178,11 @@ where
         self.context_util(channel, |ctx| {
             if let Some(algo) = ctx.config.security_algo {
                 let service = Service::SecurityAccess;
-                let sub_func = request::SubFunction::new(SecurityAccessLevel::new(level)?, None);
+                let sub_func = request::SubFunction::new(
+                    SecurityAccessLevel::new(level)
+                        .map_err(Error::ISO14229Error)?,
+                    None
+                );
                 let data = SecurityAccessData(params);
                 let request = Request::new(service, Some(sub_func.clone()), RequestData::to_vec(data, &ctx.config));
 
@@ -190,8 +191,11 @@ where
 
                 let seed = response.raw_data().to_vec();
 
-                let sub_func = request::SubFunction::new(SecurityAccessLevel::new(level + 1)?, None);
-                match algo(level, seed, salt)? {
+                let next_level = SecurityAccessLevel::new(level + 1)
+                    .map_err(Error::ISO14229Error)?;
+                let sub_func = request::SubFunction::new(next_level, None);
+                match algo(level, seed, salt)
+                    .map_err(Error::ISO14229Error)? {
                     Some(data) => {
                         let request = Request::new(service, Some(sub_func), RequestData::to_vec(data, &ctx.config));
                         let response = Self::send_and_response::<SecurityAccessLevel>(ctx, false, request)?;
@@ -218,7 +222,8 @@ where
         self.context_util(channel, |ctx| {
             let service = Service::CommunicationCtrl;
             let sub_func = request::SubFunction::new(ctrl_type, Some(suppress_positive));
-            let data = request::CommunicationCtrl::new(ctrl_type, comm_type, node_id)?;
+            let data = request::CommunicationCtrl::new(ctrl_type, comm_type, node_id)
+                .map_err(Error::ISO14229Error)?;
             let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
 
             let response = Self::suppress_positive_sr(ctx, functional, request, suppress_positive)?;
@@ -231,7 +236,7 @@ where
         })
     }
 
-    #[cfg(any(feature = "std2020"))]
+    #[cfg(any(feature = "ISO14229-1-2020"))]
     pub fn authentication(&mut self,
                           channel: C,
                           auth_task: AuthenticationTask,
@@ -246,6 +251,7 @@ where
             Self::sub_func_check(&response, auth_task.into(), service)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -269,7 +275,7 @@ where
         })
     }
 
-    #[cfg(any(feature = "std2006", feature = "std2013"))]
+    #[cfg(any(feature = "ISO14229-1-2006", feature = "ISO14229-1-2013"))]
     pub fn access_timing_parameter(&mut self,
                                    channel: C,
                                    access_type: TimingParameterAccessType,
@@ -306,12 +312,14 @@ where
         self.context_util(channel, |ctx| {
             let data = request::SecuredDataTrans::new(
                 apar, signature, anti_replay_cnt, service, service_data, signature_data
-            )?;
+            )
+                .map_err(Error::ISO14229Error)?;
             let request: Request<Placeholder> = Request::new(Service::SecuredDataTrans, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -378,6 +386,7 @@ where
             let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -406,6 +415,7 @@ where
             let response = Self::send_and_response(ctx, false, request)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -415,12 +425,14 @@ where
                                           did: Vec<u8>,
     ) -> Result<response::ReadByPeriodIdData, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::ReadDataByPeriodId::new(mode, did)?;
+            let data = request::ReadDataByPeriodId::new(mode, did)
+                .map_err(Error::ISO14229Error)?;
             let request: Request<Placeholder> = Request::new(Service::ReadDataByPeriodId, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -440,7 +452,8 @@ where
             match response {
                 Some(v) => {
                     Self::sub_func_check(&v, def_type.into(), service)?;
-                    Ok(Some(v.data(&ctx.config)?))
+                    Ok(Some(v.data(&ctx.config)
+                                .map_err(Error::ISO14229Error)?))
                 },
                 None => Ok(None)
             }
@@ -470,12 +483,14 @@ where
                                    record: Vec<u8>,
     ) -> Result<response::WriteMemByAddr, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::WriteMemByAddr::new(alfi, mem_addr, mem_size, record)?;
+            let data = request::WriteMemByAddr::new(alfi, mem_addr, mem_size, record)
+                .map_err(Error::ISO14229Error)?;
             let request: Request<Placeholder> = Request::new(Service::WriteMemByAddr, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -483,7 +498,7 @@ where
     pub fn clear_dtc_info(&mut self,
                           channel: C,
                           group: utils::U24,
-                          #[cfg(any(feature = "std2020"))]
+                          #[cfg(any(feature = "ISO14229-1-2020"))]
                           mem_sel: Option<u8>,
                           functional: bool,
     ) -> Result<(), Error> {
@@ -511,6 +526,7 @@ where
             Self::sub_func_check(&response, report_type.into(), service)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -523,12 +539,14 @@ where
                       mask: Vec<u8>,
     ) -> Result<response::IOCtrl, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::IOCtrl::new(did, param, state, mask)?;
+            let data = request::IOCtrl::new(did, param, state, mask)
+                .map_err(Error::ISO14229Error)?;
             let request: Request<Placeholder> = Request::new(Service::IOCtrl, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response(ctx, false, request)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -549,6 +567,7 @@ where
             Self::sub_func_check(&response, ctrl_type.into(), service)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -563,13 +582,15 @@ where
         self.context_util(channel, |ctx| {
             let data = request::RequestLoadData {
                 dfi: dfi.unwrap_or_default(),
-                mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)?
+                mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)
+                    .map_err(Error::ISO14229Error)?
             };
             let request: Request<Placeholder> = Request::new(Service::RequestDownload, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -583,13 +604,15 @@ where
         self.context_util(channel, |ctx| {
             let data = request::RequestLoadData {
                 dfi: dfi.unwrap_or_default(),
-                mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)?
+                mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)
+                    .map_err(Error::ISO14229Error)?
             };
             let request: Request<Placeholder> = Request::new(Service::RequestDownload, None, data.to_vec(&ctx.config));
 
             let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -604,7 +627,8 @@ where
 
             let response = Self::send_and_response(ctx, false, request)?;
 
-            let resp = response.data::<TransferData>(&ctx.config)?;
+            let resp = response.data::<TransferData>(&ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             if resp.sequence != sequence {
                 return Err(Error::UnexpectedTransferSequence { expect: sequence, actual: resp.sequence })
@@ -627,7 +651,7 @@ where
         })
     }
 
-    #[cfg(any(feature = "std2013", feature = "std2020"))]
+    #[cfg(any(feature = "ISO14229-1-2013", feature = "ISO14229-1-2020"))]
     pub fn request_file_transfer(&mut self,
                                  channel: C,
                                  operation: ModeOfOperation,
@@ -642,6 +666,7 @@ where
             Self::sub_func_check(&response, operation.into(), service)?;
 
             response.data(&ctx.config)
+                .map_err(Error::ISO14229Error)
         })
     }
 
@@ -658,11 +683,12 @@ where
 
     fn response_service_check<T>(response: &Response<T>, target: Service) -> Result<bool, Error>
     where
-        T: TryFrom<u8, Error = Error> + Copy + Debug
+        T: TryFrom<u8, Error = iso14229_1::Error> + Copy + Debug
     {
         let service = response.service();
         if response.is_negative() {
-            let nrc_code = response.nrc_code()?;
+            let nrc_code = response.nrc_code()
+                .map_err(Error::ISO14229Error)?;
             match nrc_code {
                 Code::RequestCorrectlyReceivedResponsePending => Ok(true),
                 _ => Err(Error::NRCError { service, code: nrc_code }),
@@ -681,8 +707,8 @@ where
                                suppress_positive: bool,
     ) -> Result<Option<Response<T>>, Error>
     where
-        T: TryFrom<u8, Error = Error> + Copy + Debug,
         Request<T>: Into<Vec<u8>>,
+        T: TryFrom<u8, Error = iso14229_1::Error> + Copy + Debug,
     {
         match Self::send_and_response::<T>(ctx, functional, request) {
             Ok(r) => Ok(Some(r)),
@@ -705,8 +731,8 @@ where
                             request: Request<T>,
     ) -> Result<Response<T>, Error>
     where
-        T: TryFrom<u8, Error = Error> + Copy + Debug,
         Request<T>: Into<Vec<u8>>,
+        T: TryFrom<u8, Error = iso14229_1::Error> + Copy + Debug,
     {
         ctx.listener.clear_buffer();
         let service = request.service();
@@ -715,7 +741,8 @@ where
 
         let data = ctx.listener.sync_timer(false)
             .map_err(Error::IsoTpError)?;
-        let mut response: Response<T> = Response::try_from(data)?;
+        let mut response: Response<T> = Response::try_from(data)
+            .map_err(Error::ISO14229Error)?;
         while Self::response_service_check(&response, service)? {
             log::debug!("UDS - tester present when {:?}", Code::RequestCorrectlyReceivedResponsePending);
             let (_, request) =
@@ -726,7 +753,8 @@ where
             let data = ctx.listener.sync_timer(true)
                 .map_err(Error::IsoTpError)?;
 
-            response = Response::try_from(data)?;
+            response = Response::try_from(data)
+                .map_err(Error::ISO14229Error)?;
         }
 
         Ok(response)

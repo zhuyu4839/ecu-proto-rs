@@ -18,6 +18,7 @@ bitflags = { workspace = true }
 bitfield-struct = { workspace = true }
 isotp-rs = { workspace = true }
 hex = { workspace = true }
+iso14229-1 = { workspace = true, default-features = false }
 
 [dependencies.tokio]
 version = "1"
@@ -28,9 +29,8 @@ optional = true
 anyhow = { workspace = true }
 
 [features]
-default = ["std2020"]
+default = ["ISO14229-1-2020"]
 
-std2006 = []
-std2013 = []
-std2020 = []
-session_data_check = []
+ISO14229-1-2006 = ["iso14229-1/std2006"]
+ISO14229-1-2013 = ["iso14229-1/std2013"]
+ISO14229-1-2020 = ["iso14229-1/std2020"]

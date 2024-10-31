@@ -1,0 +1,25 @@
+[package]
+name = "iso13400-2"
+version = "0.0.0"
+edition = "2021"
+license = "GPL-3.0"
+authors = ["zhuyu <zhuyu4839@gmail.com>"]
+description = "A ECU-UDS protocol."
+homepage = "https://github.com/zhuyu4839/ecu-proto-rs"
+repository = "https://github.com/zhuyu4839/ecu-proto-rs"
+
+[dependencies]
+log = { workspace = true }
+thiserror = { workspace = true }
+hex = { workspace = true }
+derive-getters = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+
+[features]
+default = ["std2012"]
+
+std2010 = []
+std2012 = []
+std2019 = []

@@ -1,0 +1,15 @@
+//! response of Service 87
+
+use std::collections::HashSet;
+use lazy_static::lazy_static;
+use crate::response::Code;
+
+lazy_static!(
+    pub static ref LINK_CTRL_NEGATIVES: HashSet<Code> = HashSet::from([
+        Code::SubFunctionNotSupported,
+        Code::IncorrectMessageLengthOrInvalidFormat,
+        Code::ConditionsNotCorrect,
+        Code::RequestSequenceError,
+        Code::RequestOutOfRange,
+    ]);
+);

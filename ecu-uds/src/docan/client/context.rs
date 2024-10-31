@@ -4,8 +4,8 @@
 use std::{sync::{Arc, Mutex}, time::{Duration, Instant}};
 use std::collections::VecDeque;
 use isotp_rs::{can::isotp::SyncCanIsoTp, error::Error as IsoTpError, IsoTpEvent, IsoTpEventListener};
-use crate::{P2Context, utils};
-use crate::service::Configuration;
+use iso14229_1::Configuration;
+use crate::P2Context;
 
 #[derive(Debug, Default, Clone)]
 pub struct IsoTpBuffer {
@@ -87,7 +87,7 @@ impl IsoTpListener {
                         start = Instant::now();
                     },
                     IsoTpEvent::DataReceived(data) => {
-                        log::trace!("UDS - data received: {}", utils::hex_slice_to_string(data.as_slice()));
+                        log::trace!("UDS - data received: {}", hex::encode(&data));
                         return Ok(data);
                     },
                     IsoTpEvent::ErrorOccurred(e) => {
@@ -127,7 +127,7 @@ impl IsoTpListener {
                         start = Instant::now();
                     },
                     IsoTpEvent::DataReceived(data) => {
-                        log::trace!("UDS - data received: {}", utils::hex_slice_to_string(data.as_slice()));
+                        log::trace!("UDS - data received: {}", hex::encode(&data));
                         return Ok(data);
                     },
                     IsoTpEvent::ErrorOccurred(e) => {
