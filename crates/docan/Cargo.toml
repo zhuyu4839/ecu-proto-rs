@@ -1,0 +1,32 @@
+[package]
+name = "docan"
+version = "0.0.0"
+edition = "2021"
+license = "GPL-3.0"
+authors = ["zhuyu <zhuyu4839@gmail.com>"]
+description = "A DoCAN protocol."
+homepage = "https://github.com/zhuyu4839/ecu-proto-rs"
+repository = "https://github.com/zhuyu4839/ecu-proto-rs"
+
+[dependencies]
+log = { workspace = true }
+thiserror = { workspace = true }
+lazy_static = { workspace = true }
+half = { workspace = true }
+bitflags = { workspace = true }
+bitfield-struct = { workspace = true }
+isotp-rs = { workspace = true }
+hex = { workspace = true }
+iso14229-1 = { workspace = true, default-features = false }
+
+[dependencies.tokio]
+version = "1"
+features = ["time", ]
+optional = true
+
+[features]
+default = ["std2020"]
+
+std2006 = ["iso14229-1/std2006"]
+std2013 = ["iso14229-1/std2013"]
+std2020 = ["iso14229-1/std2020"]
