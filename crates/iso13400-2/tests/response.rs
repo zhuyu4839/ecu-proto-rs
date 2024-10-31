@@ -1,4 +1,4 @@
-use iso13400_2::{ActiveCode, DiagnosticNegativeCode, DiagnosticPositiveCode, Entity, FurtherAction, HeaderNegativeCode, LogicAddress, Message, Payload, PowerMode, SyncStatus, Version};
+use iso13400_2::{ActiveCode, DiagnosticNegativeCode, DiagnosticPositiveCode, NodeType, FurtherAction, HeaderNegativeCode, LogicAddress, Message, Payload, PowerMode, SyncStatus, Version};
 use iso13400_2::response::{AliveCheck, DiagnosticNegative, DiagnosticPositive, DiagnosticPowerMode, EntityStatus, HeaderNegative, RoutingActive, VehicleID};
 
 #[test]
@@ -58,7 +58,7 @@ fn test_entity_status() -> anyhow::Result<()> {
     00000007\
     00FF0155AA55AA")?;
     let payload = EntityStatus::new(
-        Entity::Gateway,
+        NodeType::Gateway,
         0xFF,
         0x01,
         Some(0x55aa55aa),

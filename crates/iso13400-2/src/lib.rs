@@ -104,3 +104,7 @@ mod error;
 pub use error::*;
 pub mod request;
 pub mod response;
+
+/// It will be removed in a future version. Use [NodeType] instead
+#[deprecated(since = "0.1.0", note = "It will be removed in a future version. Use 'NodeType` instead")]
+pub type Entity = NodeType;

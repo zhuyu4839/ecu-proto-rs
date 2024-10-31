@@ -1,5 +1,5 @@
 use derive_getters::Getters;
-use crate::{{ActiveCode, DiagnosticNegativeCode, Entity, Error, FurtherAction, HeaderNegativeCode, LogicAddress, PowerMode}, constant::*, SyncStatus, DiagnosticPositiveCode, utils};
+use crate::{{ActiveCode, DiagnosticNegativeCode, NodeType, Error, FurtherAction, HeaderNegativeCode, LogicAddress, PowerMode}, constant::*, SyncStatus, DiagnosticPositiveCode, utils};
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct HeaderNegative {
@@ -134,7 +134,7 @@ impl Into<Vec<u8>> for VehicleID {
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct EntityStatus {   // 0x4002
-    pub(crate) entity: Entity,
+    pub(crate) node_type: NodeType,
     /// 1 ~ 255
     pub(crate) mcts: u8,    // Max. concurrent TCP_DATA sockets
     /// 0 ~ 255
@@ -145,12 +145,12 @@ pub struct EntityStatus {   // 0x4002
 
 impl EntityStatus {
     pub fn new(
-        entity: Entity,
+        node_type: NodeType,
         mcts: u8,
         ncts: u8,
         max_data_size: Option<u32>,
     ) -> Self {
-        Self { entity, mcts, ncts, max_data_size }
+        Self { node_type, mcts, ncts, max_data_size }
     }
 
     /// min length
@@ -164,9 +164,9 @@ impl TryFrom<&[u8]> for EntityStatus {
     type Error = Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (data_len, mut offset) = utils::data_len_check(data, Self::length(), false)?;
-        let entity = data[offset];
+        let node_type = data[offset];
         offset += 1;
-        let entity = Entity::from(entity);
+        let node_type = NodeType::from(node_type);
         let mcts = data[offset];
         offset += 1;
         let ncts = data[offset];
@@ -177,7 +177,7 @@ impl TryFrom<&[u8]> for EntityStatus {
             _ => Err(Error::InvalidLength { actual: data_len, expected: Self::length()+4 }),
         }?;
 
-        Ok(Self { entity, mcts, ncts, max_data_size })
+        Ok(Self { node_type, mcts, ncts, max_data_size })
     }
 }
 
@@ -189,7 +189,7 @@ impl Into<Vec<u8>> for EntityStatus {
             length += 4;
         }
         result.extend(length.to_be_bytes());
-        result.push(self.entity.into());
+        result.push(self.node_type.into());
         result.push(self.mcts);
         result.push(self.ncts);
         if let Some(size) = self.max_data_size {

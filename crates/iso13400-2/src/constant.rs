@@ -1,4 +1,6 @@
-/// Table 17 — Overview of DoIP payload types at line #49(ISO 13400-2-2019)
+//! Table 17 — Overview of DoIP payload types at line #49(ISO 13400-2-2019)
+
+
 pub(crate) const HEADER_NEGATIVE: u16 = 0x0000;
 pub(crate) const UDP_REQ_VEHICLE_IDENTIFIER: u16 = 0x0001;
 pub(crate) const UDP_REQ_VEHICLE_ID_WITH_EID: u16 = 0x0002;

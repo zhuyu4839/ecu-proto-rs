@@ -169,15 +169,16 @@ impl Into<u16> for LogicAddress {
     }
 }
 
+/// Table 11 — DoIP entity status response
 #[repr(u8)]
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Entity {
+pub enum NodeType {
     Gateway = 0x00,
     Node = 0x01,
     Reserved(u8),
 }
 
-impl Into<u8> for Entity {
+impl Into<u8> for NodeType {
     fn into(self) -> u8 {
         match self {
             Self::Gateway => 0x00,
@@ -187,7 +188,7 @@ impl Into<u8> for Entity {
     }
 }
 
-impl From<u8> for Entity {
+impl From<u8> for NodeType {
     fn from(value: u8) -> Self {
         match value {
             0x00 => Self::Gateway,
@@ -235,6 +236,7 @@ impl From<u8> for FurtherAction {
     }
 }
 
+/// Table 7 — Definition of VIN/GID synchronization status code values
 #[repr(u8)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum SyncStatus {
@@ -266,6 +268,7 @@ impl From<u8> for SyncStatus {
     }
 }
 
+/// Table 49 — Routing activation response code values
 #[repr(u8)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ActiveCode {
@@ -325,6 +328,7 @@ impl From<u8> for ActiveCode {
     }
 }
 
+/// Table 9 — Diagnostic power mode information response
 #[repr(u8)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum PowerMode {
@@ -359,6 +363,7 @@ impl From<u8> for PowerMode {
     }
 }
 
+/// Table 47 — Routing activation request activation types
 #[repr(u8)]
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub enum RoutingActiveType {
@@ -397,6 +402,7 @@ impl From<u8> for RoutingActiveType {
     }
 }
 
+/// Table 24 — Diagnostic message positive acknowledge codes
 #[repr(u8)]
 #[derive(Debug, Default, Clone, Eq, PartialEq)]
 pub enum DiagnosticPositiveCode {
@@ -426,6 +432,7 @@ impl From<u8> for DiagnosticPositiveCode {
     }
 }
 
+/// Table 26 — Diagnostic message negative acknowledge codes
 #[repr(u8)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DiagnosticNegativeCode {
@@ -472,6 +479,7 @@ impl From<u8> for DiagnosticNegativeCode {
     }
 }
 
+/// Table 17 — Overview of DoIP payload types at line #49(ISO 13400-2-2019)
 #[derive(Debug, Clone)]
 pub enum Payload {
     /// UDP/TCP 0x0000
@@ -550,9 +558,9 @@ impl TryFrom<&[u8]> for Message {
         }
 
         let mut offset = 0;
-        let version = Version::try_from(&data[..offset+2])?;
+        let version = Version::try_from(&data[..])?;
         offset += SIZE_OF_VERSION;
-        let payload_type = u16::from_be_bytes(data[offset..offset+2].try_into().unwrap());
+        let payload_type = u16::from_be_bytes(data[offset..offset+SIZE_OF_DATA_TYPE].try_into().unwrap());
         offset += SIZE_OF_DATA_TYPE;
         let payload = match payload_type {
             HEADER_NEGATIVE =>
