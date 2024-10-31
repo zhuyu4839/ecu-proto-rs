@@ -33,17 +33,17 @@ impl Into<Vec<u8>> for VehicleID {
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct VehicleIDWithEID {    // 0x0002
-    pub(crate) eid: [u8; LENGTH_OF_ID],
+    pub(crate) eid: [u8; SIZE_OF_ID],
 }
 
 impl VehicleIDWithEID {
-    pub fn new(eid: [u8; LENGTH_OF_ID]) -> Self {
+    pub fn new(eid: [u8; SIZE_OF_ID]) -> Self {
         Self { eid }
     }
 
     #[inline]
     const fn length() -> usize {
-        LENGTH_OF_ID
+        SIZE_OF_ID
     }
 }
 
@@ -51,7 +51,7 @@ impl TryFrom<&[u8]> for VehicleIDWithEID {
     type Error = Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, offset) = utils::data_len_check(data, Self::length(), true)?;
-        let eid: [u8; LENGTH_OF_ID] = data[offset..offset+Self::length()].try_into().unwrap();
+        let eid: [u8; SIZE_OF_ID] = data[offset..offset+Self::length()].try_into().unwrap();
 
         Ok(Self { eid })
     }
@@ -198,7 +198,7 @@ impl RoutingActive {
     /// min length
     #[inline]
     const fn length() -> usize {
-        ADDRESS_SIZE + 1 + 4
+        SIZE_OF_ADDRESS + 1 + 4
     }
 }
 
@@ -206,8 +206,8 @@ impl TryFrom<&[u8]> for RoutingActive {
     type Error = Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (data_len, mut offset) = utils::data_len_check(data, Self::length(), false)?;
-        let src_addr = u16::from_be_bytes(data[offset..offset+ADDRESS_SIZE].try_into().unwrap());
-        offset += ADDRESS_SIZE;
+        let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
         let src_addr = LogicAddress::from(src_addr);
         let active = data[offset];
         offset += 1;
@@ -296,7 +296,7 @@ impl Diagnostic {
     /// min length
     #[inline]
     const fn length() -> usize {
-        ADDRESS_SIZE + ADDRESS_SIZE
+        SIZE_OF_ADDRESS + SIZE_OF_ADDRESS
     }
 }
 
@@ -304,12 +304,12 @@ impl TryFrom<&[u8]> for Diagnostic {
     type Error = Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, mut offset) = utils::data_len_check(data, Self::length(), false)?;
-        let src_addr = u16::from_be_bytes(data[offset..offset+ADDRESS_SIZE].try_into().unwrap());
-        offset += ADDRESS_SIZE;
+        let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
         let src_addr = LogicAddress::from(src_addr);
-        let dst_addr = u16::from_be_bytes(data[offset..offset+ADDRESS_SIZE].try_into().unwrap());
+        let dst_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
         let dst_addr = LogicAddress::from(dst_addr);
-        offset += ADDRESS_SIZE;
+        offset += SIZE_OF_ADDRESS;
         let data = data[offset..].to_vec();
 
         Ok(Self { src_addr, dst_addr, data })

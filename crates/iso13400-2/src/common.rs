@@ -1,5 +1,4 @@
-use crate::{request, response, Error};
-use crate::constant::{HEADER_NEGATIVE, TCP_REQ_ALIVE_CHECK, TCP_REQ_DIAGNOSTIC, TCP_REQ_ROUTING_ACTIVE, TCP_RESP_ALIVE_CHECK, TCP_RESP_DIAGNOSTIC_NEGATIVE, TCP_RESP_DIAGNOSTIC_POSITIVE, TCP_RESP_ROUTING_ACTIVE, UDP_REQ_DIAGNOSTIC_POWER_MODE, UDP_REQ_ENTITY_STATUS, UDP_REQ_VEHICLE_IDENTIFIER, UDP_REQ_VEHICLE_ID_WITH_EID, UDP_REQ_VEHICLE_ID_WITH_VIN, UDP_RESP_DIAGNOSTIC_POWER_MODE, UDP_RESP_ENTITY_STATUS, UDP_RESP_VEHICLE_IDENTIFIER};
+use crate::{constant::*, request, response, Error};
 
 /// Table 16 — Generic DoIP header structure at line #48(ISO 13400-2-2019)
 #[repr(u8)]
@@ -50,8 +49,8 @@ impl TryFrom<&[u8]> for Version {
     type Error = Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
-        if data_len < 2 {
-            return Err(Error::InvalidLength { actual: data_len, expected: 2 });
+        if data_len < SIZE_OF_VERSION {
+            return Err(Error::InvalidLength { actual: data_len, expected: SIZE_OF_VERSION });
         }
 
         let version = data[0];
@@ -277,7 +276,7 @@ pub enum ActiveCode {
     WithoutAuth = 0x04,
     VehicleRefused = 0x05,  // close TCP
     Unsupported = 0x06,     // close TCP
-    /// ISO 14300-2 2019
+    /// ISO 14300-2:2019
     Denied = 0x07,
     Success = 0x10,
     NeedConfirm = 0x11,
@@ -545,15 +544,16 @@ impl TryFrom<&[u8]> for Message {
     type Error = Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
-        if data_len < 4 {   // 2 * version + data type
-            return Err(Error::InvalidLength { actual: data_len, expected: 4 });
+        let expected = SIZE_OF_VERSION + SIZE_OF_DATA_TYPE;
+        if data_len < expected {
+            return Err(Error::InvalidLength { actual: data_len, expected });
         }
 
         let mut offset = 0;
         let version = Version::try_from(&data[..offset+2])?;
-        offset += 2;
+        offset += SIZE_OF_VERSION;
         let payload_type = u16::from_be_bytes(data[offset..offset+2].try_into().unwrap());
-        offset += 2;
+        offset += SIZE_OF_DATA_TYPE;
         let payload = match payload_type {
             HEADER_NEGATIVE =>
                 Ok(Payload::HeaderNegativeAck(response::HeaderNegative::try_from(&data[offset..])?)),

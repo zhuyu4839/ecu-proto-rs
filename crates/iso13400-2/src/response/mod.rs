@@ -48,8 +48,8 @@ impl Into<Vec<u8>> for HeaderNegative {
 pub struct VehicleID {  // 0x0004
     pub(crate) vin: String,
     pub(crate) address: LogicAddress,
-    pub(crate) eid: [u8; LENGTH_OF_ID],
-    pub(crate) gid: [u8; LENGTH_OF_ID],
+    pub(crate) eid: [u8; SIZE_OF_ID],
+    pub(crate) gid: [u8; SIZE_OF_ID],
     pub(crate) further_act: FurtherAction,
     pub(crate) sync_status: Option<SyncStatus>,
 }
@@ -59,8 +59,8 @@ impl VehicleID {
     pub fn new(
         vin: String,
         address: LogicAddress,
-        eid: [u8; LENGTH_OF_ID],
-        gid: [u8; LENGTH_OF_ID],
+        eid: [u8; SIZE_OF_ID],
+        gid: [u8; SIZE_OF_ID],
         further_act: FurtherAction,
         sync_status: Option<SyncStatus>,
     ) -> Result<Self, Error> {
@@ -75,7 +75,7 @@ impl VehicleID {
     /// min length
     #[inline]
     const fn length() -> usize {
-        LENGTH_OF_VIN + ADDRESS_SIZE + 2 * LENGTH_OF_ID + 1
+        LENGTH_OF_VIN + SIZE_OF_ADDRESS + 2 * SIZE_OF_ID + 1
     }
 }
 
@@ -91,13 +91,13 @@ impl TryFrom<&[u8]> for VehicleID {
             }
         };
         offset += LENGTH_OF_VIN;
-        let address = u16::from_be_bytes(data[offset..offset+ADDRESS_SIZE].try_into().unwrap());
-        offset += ADDRESS_SIZE;
+        let address = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
         let address = LogicAddress::from(address);
-        let eid: [u8; LENGTH_OF_ID] = data[offset..offset+LENGTH_OF_ID].try_into().unwrap();
-        offset += LENGTH_OF_ID;
-        let gid: [u8; LENGTH_OF_ID] = data[offset..offset+LENGTH_OF_ID].try_into().unwrap();
-        offset += LENGTH_OF_ID;
+        let eid: [u8; SIZE_OF_ID] = data[offset..offset+ SIZE_OF_ID].try_into().unwrap();
+        offset += SIZE_OF_ID;
+        let gid: [u8; SIZE_OF_ID] = data[offset..offset+ SIZE_OF_ID].try_into().unwrap();
+        offset += SIZE_OF_ID;
         let further_act = FurtherAction::from(data[offset]);
         offset += 1;
         let sync_status = match data_len - offset {
@@ -260,7 +260,7 @@ impl RoutingActive {
     /// min length
     #[inline]
     const fn length() -> usize {
-        ADDRESS_SIZE + ADDRESS_SIZE + 1 + 4
+        SIZE_OF_ADDRESS + SIZE_OF_ADDRESS + 1 + 4
     }
 }
 
@@ -268,11 +268,11 @@ impl TryFrom<&[u8]> for RoutingActive {
     type Error = Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (data_len, mut offset) = utils::data_len_check(data, Self::length(), false)?;
-        let dst_addr = u16::from_be_bytes(data[offset..offset+ADDRESS_SIZE].try_into().unwrap());
-        offset += ADDRESS_SIZE;
+        let dst_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
         let dst_addr = LogicAddress::from(dst_addr);
-        let src_addr = u16::from_be_bytes(data[offset..offset+ADDRESS_SIZE].try_into().unwrap());
-        offset += ADDRESS_SIZE;
+        let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
         let src_addr = LogicAddress::from(src_addr);
         let active = data[offset];
         offset += 1;
@@ -323,7 +323,7 @@ impl AliveCheck {
 
     #[inline]
     const fn length() -> usize {
-        ADDRESS_SIZE
+        SIZE_OF_ADDRESS
     }
 }
 
@@ -369,7 +369,7 @@ impl DiagnosticPositive {
     /// min length
     #[inline]
     const fn length() -> usize {
-        ADDRESS_SIZE + ADDRESS_SIZE + 1
+        SIZE_OF_ADDRESS + SIZE_OF_ADDRESS + 1
     }
 }
 
@@ -377,11 +377,11 @@ impl TryFrom<&[u8]> for DiagnosticPositive {
     type Error = Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, mut offset) = utils::data_len_check(data, Self::length(), false)?;
-        let src_addr = u16::from_be_bytes(data[offset..offset+ADDRESS_SIZE].try_into().unwrap());
-        offset += ADDRESS_SIZE;
+        let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
         let src_addr = LogicAddress::from(src_addr);
-        let dst_addr = u16::from_be_bytes(data[offset..offset+ADDRESS_SIZE].try_into().unwrap());
-        offset += ADDRESS_SIZE;
+        let dst_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
         let dst_addr = LogicAddress::from(dst_addr);
         let code = DiagnosticPositiveCode::from(data[offset]);
         offset += 1;
@@ -428,7 +428,7 @@ impl DiagnosticNegative {
     /// min length
     #[inline]
     const fn length() -> usize {
-        ADDRESS_SIZE + ADDRESS_SIZE + 1
+        SIZE_OF_ADDRESS + SIZE_OF_ADDRESS + 1
     }
 }
 
@@ -436,11 +436,11 @@ impl TryFrom<&[u8]> for DiagnosticNegative {
     type Error = Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, mut offset) = utils::data_len_check(data, Self::length(), false)?;
-        let src_addr = u16::from_be_bytes(data[offset..offset+ADDRESS_SIZE].try_into().unwrap());
-        offset += ADDRESS_SIZE;
+        let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
         let src_addr = LogicAddress::from(src_addr);
-        let dst_addr = u16::from_be_bytes(data[offset..offset+ADDRESS_SIZE].try_into().unwrap());
-        offset += ADDRESS_SIZE;
+        let dst_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
         let dst_addr = LogicAddress::from(dst_addr);
         let code = DiagnosticNegativeCode::from(data[offset]);
         offset += 1;

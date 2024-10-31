@@ -183,7 +183,7 @@ impl<F: Copy> Response<F> {
         }
 
         if self.data.len() != 1 {
-            return Err(Error::OtherError("invalid data length when getting NRC from negative".into()));
+            return Err(Error::OtherError("invalid data length when getting NRC".into()));
         }
 
         Ok(Code::from(self.data[0]))
