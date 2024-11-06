@@ -3,7 +3,7 @@
 #[cfg(any(feature = "std2006", feature = "std2013"))]
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{request, response, Configuration, TimingParameter, TimingParameterAccessType, TryFromWithCfg};
+    use iso14229_1::{request, response, Configuration, Service, TimingParameter, TimingParameterAccessType, TryFromWithCfg};
 
     /// The TimingParameterRequestRecord is only present if timingParameterAccessType = setTimingParametersToGivenValues.
     /// The structure and content of the TimingParameterRequestRecord is data-link-layer-dependent and therefore defined in the
@@ -66,6 +66,26 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function().unwrap();
         assert_eq!(sub_func.function::<TimingParameterAccessType>()?, TimingParameterAccessType::SetTimingParametersToGivenValues);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_nrc() -> anyhow::Result<()> {
+        let cfg = Configuration::default();
+
+        let source = hex::decode("7F8312")?;
+        let response = response::Response::try_from_cfg(source, &cfg)?;
+        assert_eq!(response.service(), Service::AccessTimingParam);
+        assert_eq!(response.sub_function(), None);
+        assert!(response.is_negative());
+        assert_eq!(response.nrc_code()?, response::Code::SubFunctionNotSupported);
+
+        let response = response::Response::new(Service::NRC, None, vec![0x83, 0x12], &cfg)?;
+        assert_eq!(response.service(), Service::AccessTimingParam);
+        assert_eq!(response.sub_function(), None);
+        assert!(response.is_negative());
+        assert_eq!(response.nrc_code()?, response::Code::SubFunctionNotSupported);
 
         Ok(())
     }

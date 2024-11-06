@@ -12,9 +12,10 @@ enum_to_vec!(
         StopSending = 0x04,
     }, u8);
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ReadDataByPeriodId {
-    mode: TransmissionMode,
-    did: Vec<u8>,
+    pub mode: TransmissionMode,
+    pub did: Vec<u8>,
 }
 
 impl ReadDataByPeriodId {
@@ -32,7 +33,12 @@ impl ReadDataByPeriodId {
 
                 Ok(())
             },
-            TransmissionMode::StopSending => Ok(()),
+            TransmissionMode::StopSending => {
+                if !did.is_empty() {
+                    return Err(Error::InvalidParam("not empty period_id".to_string()));
+                }
+                Ok(())
+            },
         }?;
 
         Ok(Self { mode, did })

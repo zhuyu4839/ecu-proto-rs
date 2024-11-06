@@ -15,7 +15,7 @@ lazy_static!(
     ]);
 );
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DynamicallyDefineDID(pub Option<DynamicallyDID>);
 
 impl<'a> TryFrom<&'a [u8]> for DynamicallyDefineDID {

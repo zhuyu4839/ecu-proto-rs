@@ -16,7 +16,7 @@ lazy_static!(
     ]);
 );
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IOCtrl {
     pub did: DataIdentifier,
     pub status: IOCtrlOption,

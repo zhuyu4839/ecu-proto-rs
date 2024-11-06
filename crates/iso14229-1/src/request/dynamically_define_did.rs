@@ -38,10 +38,10 @@ impl RequestData for DynamicallyDefineDID {
 
                         let mut others = Vec::new();
                         while data_len > offset {
-                            utils::data_length_check(data_len, offset + 2, false)?;
+                            utils::data_length_check(data_len, offset + 4, false)?;
 
                             others.push( DynamicallyMemAddr::try_from(&data[offset..])?);
-                            offset += 2;
+                            offset += 4;
                         }
 
                         Ok(Self::DefineByIdentifier { did, source, others })

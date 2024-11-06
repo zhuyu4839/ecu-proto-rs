@@ -35,6 +35,7 @@ impl RequestData for LinkCtrl {
                             ))
                     },
                     LinkCtrlType::TransitionMode => {
+                        utils::data_length_check(data_len, offset, true)?;
                         Ok(Self::TransitionMode)
                     },
                     LinkCtrlType::VehicleManufacturerSpecific(_) => {

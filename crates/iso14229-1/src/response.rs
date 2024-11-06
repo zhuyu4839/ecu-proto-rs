@@ -195,8 +195,15 @@ impl Response {
             Service::ResponseOnEvent => response::response_on_event(service, sub_func, data, cfg),
             Service::LinkCtrl => response::link_ctrl(service, sub_func, data, cfg),
             Service::NRC => {
-                utils::data_length_check(data.len(), 1, true)?;
-                Ok(Self { service, negative: true, sub_func, data })
+                if sub_func.is_some() {
+                    return Err(Error::SubFunctionError(service));
+                }
+
+                utils::data_length_check(data.len(), 2, true)?;
+                let nrc_service = Service::try_from(data[0])?;
+                let data = data[1..].to_vec();
+
+                Ok(Self { service: nrc_service, negative: true, sub_func: None, data })
             },
         }
     }
@@ -354,7 +361,7 @@ impl TryFromWithCfg<Vec<u8>> for Response {
 
                 let data = data[offset..].to_vec();
 
-                Self::new(nrc_service, None, data, cfg)
+                Ok(Self { service: nrc_service, negative: true, sub_func: None, data })
             },
         }
     }

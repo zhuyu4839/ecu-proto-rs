@@ -3,8 +3,7 @@
 #[cfg(any(feature = "2020"))]
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{Configuration, TryFromWithCfg, AuthenticationTask, request, NotNullableData, NullableData, AlgorithmIndicator, response};
-    use iso14229_1::response::AuthReturnValue;
+    use iso14229_1::{Configuration, TryFromWithCfg, AuthenticationTask, request, NotNullableData, NullableData, AlgorithmIndicator, response, Service};
 
     #[test]
     fn test_request() -> anyhow::Result<()> {
@@ -162,7 +161,7 @@ mod tests {
         assert_eq!(sub_func.function::<AuthenticationTask>()?, AuthenticationTask::DeAuthenticate);
         let data: response::Authentication = response.data::<AuthenticationTask, _>(&cfg)?;
         match data {
-            response::Authentication::DeAuthenticate(v) => assert_eq!(v, AuthReturnValue::RequestAccepted),
+            response::Authentication::DeAuthenticate(v) => assert_eq!(v, response::AuthReturnValue::RequestAccepted),
             _ => panic!("Unexpected data"),
         }
 
@@ -177,7 +176,7 @@ mod tests {
                 challenge,
                 ephemeral_public_key,
             } => {
-                assert_eq!(value, AuthReturnValue::RequestAccepted);
+                assert_eq!(value, response::AuthReturnValue::RequestAccepted);
                 assert_eq!(challenge, NotNullableData::new(vec![0x00, ])?);
                 assert_eq!(ephemeral_public_key, NullableData::new(vec![0x00, ])?);
             },
@@ -197,7 +196,7 @@ mod tests {
                 proof_of_ownership,
                 ephemeral_public_key,
             } => {
-                assert_eq!(value, AuthReturnValue::RequestAccepted);
+                assert_eq!(value, response::AuthReturnValue::RequestAccepted);
                 assert_eq!(challenge, NotNullableData::new(vec![0x00, ])?);
                 assert_eq!(certificate, NotNullableData::new(vec![0x00, ])?);
                 assert_eq!(proof_of_ownership, NotNullableData::new(vec![0x00, ])?);
@@ -216,7 +215,7 @@ mod tests {
                 value,
                 session_keyinfo,
             } => {
-                assert_eq!(value, AuthReturnValue::RequestAccepted);
+                assert_eq!(value, response::AuthReturnValue::RequestAccepted);
                 assert_eq!(session_keyinfo, NullableData::new(vec![0x00, ])?);
             },
             _ => panic!("Unexpected data"),
@@ -229,7 +228,7 @@ mod tests {
         let data: response::Authentication = response.data::<AuthenticationTask, _>(&cfg)?;
         match data {
             response::Authentication::TransmitCertificate(value) => {
-                assert_eq!(value, AuthReturnValue::RequestAccepted);
+                assert_eq!(value, response::AuthReturnValue::RequestAccepted);
             },
             _ => panic!("Unexpected data"),
         }
@@ -246,7 +245,7 @@ mod tests {
                 challenge,
                 additional,
             } => {
-                assert_eq!(value, AuthReturnValue::RequestAccepted);
+                assert_eq!(value, response::AuthReturnValue::RequestAccepted);
                 assert_eq!(algo_indicator, AlgorithmIndicator([0x00; 16]));
                 assert_eq!(challenge, NotNullableData::new(vec![0x00, ])?);
                 assert_eq!(additional, NullableData::new(vec![0x00, ])?);
@@ -265,7 +264,7 @@ mod tests {
                 algo_indicator,
                 session_keyinfo,
             } => {
-                assert_eq!(value, AuthReturnValue::RequestAccepted);
+                assert_eq!(value, response::AuthReturnValue::RequestAccepted);
                 assert_eq!(algo_indicator, AlgorithmIndicator([0x00; 16]));
                 assert_eq!(session_keyinfo, NullableData::new(vec![0x00, ])?);
             },
@@ -284,7 +283,7 @@ mod tests {
                 proof_of_ownership,
                 session_keyinfo,
             } => {
-                assert_eq!(value, AuthReturnValue::RequestAccepted);
+                assert_eq!(value, response::AuthReturnValue::RequestAccepted);
                 assert_eq!(algo_indicator, AlgorithmIndicator([0x00; 16]));
                 assert_eq!(proof_of_ownership, NotNullableData::new(vec![0x00, ])?);
                 assert_eq!(session_keyinfo, NullableData::new(vec![0x00, ])?);
@@ -299,10 +298,30 @@ mod tests {
         let data: response::Authentication = response.data::<AuthenticationTask, _>(&cfg)?;
         match data {
             response::Authentication::AuthenticationConfiguration(value) => {
-                assert_eq!(value, AuthReturnValue::RequestAccepted);
+                assert_eq!(value, response::AuthReturnValue::RequestAccepted);
             },
             _ => panic!("Unexpected data"),
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_nrc() -> anyhow::Result<()> {
+        let cfg = Configuration::default();
+
+        let source = hex::decode("7F2912")?;
+        let response = response::Response::try_from_cfg(source, &cfg)?;
+        assert_eq!(response.service(), Service::Authentication);
+        assert_eq!(response.sub_function(), None);
+        assert!(response.is_negative());
+        assert_eq!(response.nrc_code()?, response::Code::SubFunctionNotSupported);
+
+        let response = response::Response::new(Service::NRC, None, vec![0x29, 0x12], &cfg)?;
+        assert_eq!(response.service(), Service::Authentication);
+        assert_eq!(response.sub_function(), None);
+        assert!(response.is_negative());
+        assert_eq!(response.nrc_code()?, response::Code::SubFunctionNotSupported);
 
         Ok(())
     }

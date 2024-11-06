@@ -3,7 +3,7 @@
 
 use crate::{Configuration, Error, IOCtrlParameter, IOCtrlOption, DataIdentifier, request::{Request, SubFunction}, RequestData, Placeholder, utils, Service};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IOCtrl {
     pub did: DataIdentifier,
     pub option: IOCtrlOption,

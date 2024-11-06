@@ -15,7 +15,7 @@ lazy_static!(
     ]);
 );
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ReadByPeriodIdData {
     pub did: u8,
     pub record: Vec<u8>,
