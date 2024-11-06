@@ -2,7 +2,8 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{DataIdentifier, Error, response::Code, Service, utils};
+use crate::{DataIdentifier, Error, response::Code, Service, utils, ResponseData, Placeholder, Configuration};
+use crate::response::{Response, SubFunction};
 
 lazy_static!(
     pub static ref WRITE_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -40,25 +41,33 @@ impl Into<Vec<u8>> for WriteDID {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::DataIdentifier;
-    use super::WriteDID;
+impl ResponseData for WriteDID {
+    type SubFunc = Placeholder;
+    #[inline]
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::WriteDID));
+        }
 
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode("6EF190")?;
-        let response = WriteDID(DataIdentifier::VIN);
-        let result: Vec<_> = response.into();
-        assert_eq!(result, source[1..]);
-
-        let response = WriteDID::try_from(&source[1..])?;
-        assert_eq!(response.0, DataIdentifier::VIN);
-
-        Ok(())
+        Self::try_from(data)
+    }
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self.into()
     }
 }
 
+pub(crate) fn write_did(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Response, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
+    }
+    
+    let _ = WriteDID::try_parse(data.as_slice(), None, cfg)?;
 
-
-
+    Ok(Response { service, negative: false, sub_func, data })
+}

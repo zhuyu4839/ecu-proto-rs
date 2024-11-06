@@ -1,7 +1,7 @@
 //! request of Service 84
 
 
-use crate::{AdministrativeParameter, Configuration, Error, Placeholder, RequestData, SignatureEncryptionCalculation, utils};
+use crate::{AdministrativeParameter, Configuration, Error, Placeholder, request::{Request, SubFunction}, RequestData, SignatureEncryptionCalculation, utils, Service};
 
 #[derive(Debug, Clone)]
 pub struct SecuredDataTrans {
@@ -112,39 +112,17 @@ impl RequestData for SecuredDataTrans {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{AdministrativeParameter, SignatureEncryptionCalculation};
-    use super::SecuredDataTrans;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode("84006100000601242EF123AA55DBD10EDC55AA")?;
-
-        let mut apar = AdministrativeParameter::new();
-        apar.signed_set(true)
-            .signature_on_response_set(true);
-
-        let request = SecuredDataTrans::new(
-            apar,
-            SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00),
-            0x0124,
-            0x2E,
-            hex::decode("F123AA55")?,
-            hex::decode("DBD10EDC55AA")?,
-        )?;
-        let result: Vec<_> = request.into();
-        assert_eq!(result, source[1..].to_vec());
-
-        let request = SecuredDataTrans::try_from(&source[1..])?;
-        assert_eq!(request.apar.is_signed(), true);
-        assert_eq!(request.apar.is_signature_on_response(), true);
-        assert_eq!(request.signature, SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00));
-        assert_eq!(request.anti_replay_cnt, 0x0124);
-        assert_eq!(request.service, 0x2E);
-        assert_eq!(request.service_data, hex::decode("F123AA55")?);
-        assert_eq!(request.signature_data, hex::decode("DBD10EDC55AA")?);
-
-        Ok(())
+pub(crate) fn secured_data_trans(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let _ = SecuredDataTrans::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

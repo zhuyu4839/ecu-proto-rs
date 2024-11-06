@@ -4,6 +4,7 @@
 use std::collections::HashSet;
 use lazy_static::lazy_static;
 use crate::{AdministrativeParameter, Configuration, error::Error, Placeholder, response::Code, ResponseData, Service, SignatureEncryptionCalculation, utils};
+use crate::response::{Response, SubFunction};
 
 lazy_static!(
     pub static ref SECURED_DATA_TRANS_NEGATIVES: HashSet<Code>
@@ -213,7 +214,11 @@ impl ResponseData for SecuredDataTrans {
     type SubFunc = Placeholder;
 
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::SecuredDataTrans));
+        }
+
         Self::try_from(data)
     }
     #[inline]
@@ -222,70 +227,17 @@ impl ResponseData for SecuredDataTrans {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{AdministrativeParameter, SignatureEncryptionCalculation};
-    use super::{SecuredDataTrans, SecuredDataTransNegative, SecuredDataTransPositive};
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode("C4002000000601246EF123FEDB910EDCFF")?;
-        let mut apar = AdministrativeParameter::new();
-        apar.signed_set(true);
-        let response = SecuredDataTrans::Successful(
-                SecuredDataTransPositive::new(
-                    apar,
-                    SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00),
-                    0x0124,
-                    0x6E,
-                    hex::decode("F123")?,
-                    hex::decode("FEDB910EDCFF")?,
-                )?
-            );
-        let result: Vec<_> = response.into();
-        assert_eq!(result, source[1..]);
-
-        let response = SecuredDataTrans::try_from(&source[1..])?;
-        match response {
-            SecuredDataTrans::Successful(v) => {
-                assert_eq!(v.apar.is_signed(), true);
-                assert_eq!(v.signature, SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00));
-                assert_eq!(v.anti_replay_cnt, 0x0124);
-                assert_eq!(v.response, 0x6E);
-                assert_eq!(v.response_params, hex::decode("F123")?);
-                assert_eq!(v.signature_data, hex::decode("FEDB910EDCFF")?);
-            },
-            SecuredDataTrans::Unsuccessful(_) => panic!(),
-        }
-
-        let source = hex::decode("C4002000000601367F2E13FEC9A180ECFF")?;
-        let mut apar = AdministrativeParameter::new();
-        apar.signed_set(true);
-        let response = SecuredDataTrans::Unsuccessful(
-            SecuredDataTransNegative::new(
-                apar,
-                SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00),
-                0x0136,
-                0x2E,
-                0x13,
-                hex::decode("FEC9A180ECFF")?,
-            )?);
-        let result: Vec<_> = response.into();
-        assert_eq!(result, source[1..]);
-
-        let response = SecuredDataTrans::try_from(&source[1..])?;
-        match response {
-            SecuredDataTrans::Successful(_) => panic!(),
-            SecuredDataTrans::Unsuccessful(v) => {
-                assert_eq!(v.apar.is_signed(), true);
-                assert_eq!(v.signature, SignatureEncryptionCalculation::VehicleManufacturerSpecific(0x00));
-                assert_eq!(v.anti_replay_cnt, 0x0136);
-                assert_eq!(v.service, 0x2E);
-                assert_eq!(v.response, 0x13);
-                assert_eq!(v.signature_data, hex::decode("FEC9A180ECFF")?);
-            },
-        }
-
-        Ok(())
+pub(crate) fn secured_data_trans(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Response, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let _ = SecuredDataTrans::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Response { service, negative: false, sub_func, data })
 }

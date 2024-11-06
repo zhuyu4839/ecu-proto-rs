@@ -1,6 +1,6 @@
 //! response of Service 38
 
-use crate::{ByteOrder, Configuration, error::Error, DataFormatIdentifier, ModeOfOperation, RequestData, utils};
+use crate::{ByteOrder, Configuration, error::Error, DataFormatIdentifier, ModeOfOperation, request::{Request, SubFunction}, RequestData, utils, Service};
 
 pub enum RequestFileTransfer {
     AddFile {
@@ -166,35 +166,18 @@ impl Into<Vec<u8>> for RequestFileTransfer {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{Configuration, DataFormatIdentifier, ModeOfOperation, RequestData};
-    use super::RequestFileTransfer;
-
-    #[test]
-    fn add_file() -> anyhow::Result<()> {
-        // D:\mapdata\europe\germany1.yxz
-        let source = hex::decode("3801001E443A5C6D6170646174615C6575726F70655C6765726D616E79312E79787A1102C3507530")?;
-
-        let cfg = Configuration::default();
-        let request = RequestFileTransfer::try_parse(&source[2..], Some(ModeOfOperation::AddFile), &cfg)?;
-        match request {
-            RequestFileTransfer::AddFile {
-                filepath,
-                dfi,
-                filesize_len,
-                uncompressed_size,
-                compressed_size,
-            } => {
-                assert_eq!(filepath, r"D:\mapdata\europe\germany1.yxz".to_string());
-                assert_eq!(dfi, DataFormatIdentifier(0x11));
-                assert_eq!(filesize_len, 0x02);
-                assert_eq!(uncompressed_size, 0xC350);
-                assert_eq!(compressed_size, 0x7530);
-            },
-            _ => panic!(),
-        }
-
-        Ok(())
+pub(crate) fn request_file_transfer(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_none() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let sf = ModeOfOperation::try_from(sub_func.unwrap().function)?;
+    let _ = RequestFileTransfer::try_parse(data.as_slice(), Some(sf), cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

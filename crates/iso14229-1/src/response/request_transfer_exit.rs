@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::response::Code;
+use crate::{Configuration, Error, response::{Code, Response, SubFunction}, Service};
 
 lazy_static!(
     pub static ref REQUEST_TRANSFER_EXIT_NEGATIVES: HashSet<Code>
@@ -14,3 +14,16 @@ lazy_static!(
         Code::GeneralProgrammingFailure,
     ]);
 );
+
+pub(crate) fn request_transfer_exit(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    _: &Configuration,
+) -> Result<Response, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    Ok(Response { service, negative: false, sub_func, data })
+}

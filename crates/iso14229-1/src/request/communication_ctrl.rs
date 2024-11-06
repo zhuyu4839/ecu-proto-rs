@@ -1,7 +1,7 @@
 //! request of Service 28
 
 
-use crate::{CommunicationCtrlType, CommunicationType, Configuration, Error, RequestData, utils};
+use crate::{CommunicationCtrlType, CommunicationType, Configuration, Error, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct NodeId(u16);
@@ -98,34 +98,18 @@ impl Into<Vec<u8>> for CommunicationCtrl {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{CommunicationCtrlType, CommunicationType, Configuration, RequestData};
-    use super::CommunicationCtrl;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode("280203")?;
-
-        let request = CommunicationCtrl::new(
-            CommunicationCtrlType::DisableRxAndEnableTx,
-            CommunicationType::NormalCommunicationMessages |
-                CommunicationType::NetworkManagementCommunicationMessages,
-            None,
-        )?;
-        let result: Vec<_> = request.into();
-        assert_eq!(result, source[2..].to_vec());
-
-        let cfg = Configuration::default();
-        let request = CommunicationCtrl::try_parse(
-            &source[2..],
-            Some(CommunicationCtrlType::DisableRxAndEnableTx),
-            &cfg,
-        )?;
-        
-        assert_eq!(request.comm_type, CommunicationType(0x03));
-        assert_eq!(request.node_id, None);
-
-        Ok(())
+pub(crate) fn communication_ctrl(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_none() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let sf = CommunicationCtrlType::try_from(sub_func.unwrap().function)?;
+    let _ = CommunicationCtrl::try_parse(data.as_slice(), Some(sf), cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

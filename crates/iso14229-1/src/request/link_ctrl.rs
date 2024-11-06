@@ -1,7 +1,7 @@
 //! request of Service 87
 
 
-use crate::{Configuration, Error, LinkCtrlMode, LinkCtrlType, RequestData, utils};
+use crate::{Configuration, Error, LinkCtrlMode, LinkCtrlType, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone)]
 pub enum LinkCtrl {
@@ -81,55 +81,18 @@ impl Into<Vec<u8>> for LinkCtrl {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{Configuration, LinkCtrlMode, LinkCtrlType, RequestData, Service};
-    use crate::utils::U24;
-    use super::LinkCtrl;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode("870113")?;
-        let request = LinkCtrl::VerifyModeTransitionWithFixedParameter(LinkCtrlMode::CAN1MBaud);
-        let result: Vec<_> = request.into();
-        assert_eq!(result, source[2..].to_vec());
-
-        let cfg = Configuration::default();
-        let request = LinkCtrl::try_parse(&source[2..], Some(LinkCtrlType::VerifyModeTransitionWithFixedParameter), &cfg)?;
-        match request {
-            LinkCtrl::VerifyModeTransitionWithFixedParameter(v) => {
-                assert_eq!(v, LinkCtrlMode::CAN1MBaud);
-            },
-            LinkCtrl::VerifyModeTransitionWithSpecificParameter(_) |
-            LinkCtrl::TransitionMode |
-            LinkCtrl::VehicleManufacturerSpecific(_) |
-            LinkCtrl::SystemSupplierSpecific(_) => panic!(),
-        }
-
-        let source = hex::decode("8702112233")?;
-
-        let request = LinkCtrl::try_parse(&source[2..], Some(LinkCtrlType::VerifyModeTransitionWithSpecificParameter), &cfg)?;
-        match request {
-            LinkCtrl::VerifyModeTransitionWithFixedParameter(_) => panic!(),
-            LinkCtrl::VerifyModeTransitionWithSpecificParameter(v) => {
-                assert_eq!(v, U24(0x112233));
-            }
-            LinkCtrl::TransitionMode |
-            LinkCtrl::VehicleManufacturerSpecific(_) |
-            LinkCtrl::SystemSupplierSpecific(_) => panic!(),
-        }
-
-        let source = hex::decode("8703")?;
-
-        let request = LinkCtrl::try_parse(&source[2..], Some(LinkCtrlType::TransitionMode), &cfg)?;
-        match request {
-            LinkCtrl::VerifyModeTransitionWithFixedParameter(_) => panic!(),
-            LinkCtrl::VerifyModeTransitionWithSpecificParameter(_) => panic!(),
-            LinkCtrl::TransitionMode => {},
-            LinkCtrl::VehicleManufacturerSpecific(_) |
-            LinkCtrl::SystemSupplierSpecific(_) => panic!(),
-        }
-
-        Ok(())
+pub(crate) fn link_ctrl(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_none() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let sf = LinkCtrlType::try_from(sub_func.unwrap().function)?;
+    let _ = LinkCtrl::try_parse(data.as_slice(), Some(sf), cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

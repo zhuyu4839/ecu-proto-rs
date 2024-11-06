@@ -2,7 +2,8 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, DataIdentifier, DIDData, error::Error, Placeholder, response::Code, ResponseData, utils};
+use crate::{Configuration, DataIdentifier, DIDData, error::Error, Placeholder, response::Code, ResponseData, utils, Service};
+use crate::response::{Response, SubFunction};
 
 lazy_static!(
     pub static ref READ_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -81,50 +82,17 @@ impl ResponseData for ReadDID {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{DataIdentifier, DIDData, ResponseData, Configuration};
-    use super::ReadDID;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode(
-            "62\
-            f1904441564443313030394e544c5036313338\
-            F187445643374532303030303037"
-        )?;
-        let response = ReadDID {
-            data: DIDData {
-                did: DataIdentifier::VIN,
-                data: hex::decode("4441564443313030394e544c5036313338")?
-            },
-            others: vec![
-                DIDData {
-                did: DataIdentifier::VehicleManufacturerSparePartNumber,
-                data: hex::decode("445643374532303030303037")?
-            },
-        ]};
-
-        let result: Vec<_> = response.into();
-        assert_eq!(result, source[1..]);
-
-        let mut cfg = Configuration::default();
-        cfg.did_cfg.insert(DataIdentifier::VIN, 17);
-        cfg.did_cfg.insert(DataIdentifier::VehicleManufacturerSparePartNumber, 12);
-
-        let response = ReadDID::try_parse(&source[1..], None, &cfg)?;
-        let response1 = response.data;
-        assert_eq!(response1, DIDData {
-            did: DataIdentifier::VIN,
-            data: source[3..20].to_vec()
-        });
-
-        let response2 = response.others;
-        assert_eq!(response2, vec![DIDData {
-            did: DataIdentifier::VehicleManufacturerSparePartNumber,
-            data: source[22..].to_vec()
-        }, ]);
-
-        Ok(())
+pub(crate) fn read_did(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Response, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let _ = ReadDID::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Response { service, negative: false, sub_func, data })
 }

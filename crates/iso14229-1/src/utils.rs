@@ -78,6 +78,10 @@ pub struct U24(pub(crate) u32);
 
 impl U24 {
     #[inline]
+    pub fn new(val: u32) -> Self {
+        Self(val)
+    }
+    #[inline]
     pub fn from_be_bytes(data: [u8; 4]) -> Self {
         U24(u32::from_be_bytes(data))
     }
@@ -151,6 +155,7 @@ fn is_big_endian() -> bool {
     1u16.to_ne_bytes()[0] == 0
 }
 
+#[allow(unused)]
 pub(crate) fn u128_to_vec_fix(value: u128, bo: ByteOrder) -> Vec<u8> {
     let mut result = value.to_le_bytes().to_vec();
     let mut count = result.len();

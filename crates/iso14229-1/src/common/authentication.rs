@@ -17,7 +17,7 @@ enum_to_vec!(
         AuthenticationConfiguration = 0x08,
     }, u8);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NotNullableData(pub(crate) Vec<u8>);
 
 impl NotNullableData {
@@ -44,7 +44,7 @@ impl Into<Vec<u8>> for NotNullableData {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct NullableData(pub(crate) Vec<u8>);
 
 impl NullableData {
@@ -71,7 +71,7 @@ impl Into<Vec<u8>> for NullableData {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct AlgorithmIndicator(pub [u8; ALGORITHM_INDICATOR_LENGTH]);
 
 impl Into<Vec<u8>> for AlgorithmIndicator {

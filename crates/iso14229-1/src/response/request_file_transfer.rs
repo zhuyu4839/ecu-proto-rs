@@ -3,7 +3,8 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{ByteOrder, Configuration, DataFormatIdentifier, error::Error, LengthFormatIdentifier, ModeOfOperation, Placeholder, response::Code, ResponseData, utils};
+use crate::{ByteOrder, Configuration, DataFormatIdentifier, error::Error, LengthFormatIdentifier, ModeOfOperation, Placeholder, response::Code, ResponseData, utils, Service};
+use crate::response::{Response, SubFunction};
 
 lazy_static!(
     pub static ref REQUEST_FILE_TRANSFER_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -304,4 +305,20 @@ impl Into<Vec<u8>> for RequestFileTransferData {
 
         result
     }
+}
+
+pub(crate) fn request_file_transfer(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Response, Error> {
+    if sub_func.is_none() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let sf = ModeOfOperation::try_from(sub_func.unwrap().0)?;
+    let _ = RequestFileTransferData::try_parse(data.as_slice(), Some(sf), cfg)?;
+
+    Ok(Response { service, negative: false, sub_func, data })
 }

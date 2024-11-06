@@ -1,6 +1,6 @@
 //! Commons of Service 83
 
-use crate::{Configuration, enum_to_vec, Error, RequestData, ResponseData};
+use crate::{Configuration, enum_to_vec, Error, RequestData, ResponseData, Service};
 
 enum_to_vec!(
     pub enum TimingParameterAccessType {
@@ -10,27 +10,39 @@ enum_to_vec!(
         SetTimingParametersToGivenValues = 0x04,
     }, u8);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct TimingParameter(pub Vec<u8>);
 
 impl Into<Vec<u8>> for TimingParameter {
+    #[inline]
     fn into(self) -> Vec<u8> {
         self.0
-    }
-}
-
-impl<'a> TryFrom<&'a [u8]> for TimingParameter {
-    type Error = Error;
-    fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
-        Ok(Self(value.to_vec()))
     }
 }
 
 impl ResponseData for TimingParameter {
     type SubFunc = TimingParameterAccessType;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
-        Self::try_from(data)
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        match sub_func {
+            Some(sub_func) => match sub_func {
+                TimingParameterAccessType::ReadExtendedTimingParameterSet => {
+                    if data.is_empty() {
+                        return Err(Error::InvalidData(hex::encode(data)));
+                    }
+
+                    Ok(Self(data.to_vec()))
+                }
+                _ => {
+                    if !data.is_empty() {
+                        return Err(Error::InvalidData(hex::encode(data)));
+                    }
+
+                    Ok(Self(data.to_vec()))
+                }
+            },
+            None => Err(Error::SubFunctionError(Service::AccessTimingParam)),
+        }
     }
     #[inline]
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
@@ -41,8 +53,26 @@ impl ResponseData for TimingParameter {
 impl RequestData for TimingParameter {
     type SubFunc = TimingParameterAccessType;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
-        Self::try_from(data)
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        match sub_func {
+            Some(sub_func) => match sub_func {
+                TimingParameterAccessType::SetTimingParametersToGivenValues => {
+                    if data.is_empty() {
+                        return Err(Error::InvalidData(hex::encode(data)));
+                    }
+
+                    Ok(Self(data.to_vec()))
+                }
+                _ => {
+                    if !data.is_empty() {
+                        return Err(Error::InvalidData(hex::encode(data)));
+                    }
+
+                    Ok(Self(data.to_vec()))
+                }
+            },
+            None => Err(Error::SubFunctionError(Service::AccessTimingParam)),
+        }
     }
     #[inline]
     fn to_vec(self, _: &Configuration) -> Vec<u8> {

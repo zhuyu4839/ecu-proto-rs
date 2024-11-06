@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::{Debug, Display}, hash::Hash, time::Duration};
+use std::{collections::HashMap, fmt::Display, hash::Hash, time::Duration};
 use isotp_rs::{can::{Address, driver::SyncCan, frame::Frame, isotp::SyncCanIsoTp}, device::Driver, error::Error as IsoTpError, IsoTpEventListener};
 use iso14229_1::{response::{self, Response, Code}, request::{self, Request}, *};
 use crate::{client::context::{Context, IsoTpListener}, Error, P2Context};
@@ -106,13 +106,14 @@ where
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
             let service = Service::SessionCtrl;
-            let sub_func = request::SubFunction::new(session_type, Some(suppress_positive));
-            let request = Request::new(service, Some(sub_func), vec![]);
+            let sub_func = request::SubFunction::new(session_type.into(), Some(suppress_positive));
+            let request = Request::new(service, Some(sub_func), vec![], &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             if let Some(response) = Self::suppress_positive_sr(ctx, functional, request, suppress_positive)? {
                 Self::sub_func_check(&response, session_type.into(), service)?;
 
-                let timing = response.data::<response::SessionTiming>(&ctx.config)
+                let timing: response::SessionTiming = response.data::<SessionType, _>(&ctx.config)
                     .map_err(Error::ISO14229Error)?;
                 ctx.listener.update_p2_ctx(timing.p2_ms(), timing.p2_star_ms());
             }
@@ -129,13 +130,14 @@ where
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
             let service = Service::ECUReset;
-            let sub_func = request::SubFunction::new(reset_type, Some(suppress_positive));
-            let request = Request::new(service, Some(sub_func), vec![]);
+            let sub_func = request::SubFunction::new(reset_type.into(), Some(suppress_positive));
+            let request = Request::new(service, Some(sub_func), vec![], &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             if let Some(response) = Self::suppress_positive_sr(ctx, functional, request, suppress_positive)? {
                 Self::sub_func_check(&response, reset_type.into(), service)?;
 
-                let pds = response.data::<response::PowerDownSeconds>(&ctx.config)
+                let pds: response::PowerDownSeconds = response.data::<ECUResetType, _>(&ctx.config)
                     .map_err(Error::ISO14229Error)?;
                 if let Some(seconds) = pds.seconds() {
                     std::thread::sleep(Duration::from_secs(seconds as u64));
@@ -153,15 +155,12 @@ where
     ) -> Result<Vec<u8>, Error> {
         self.context_util(channel, |ctx| {
             let service = Service::SecurityAccess;
-            let sub_func = request::SubFunction::new(
-                SecurityAccessLevel::new(level)
-                    .map_err(Error::ISO14229Error)?,
-                None
-            );
-            let data = SecurityAccessData(params);
-            let request = Request::new(service, Some(sub_func), RequestData::to_vec(data, &ctx.config));
+            let sub_func = request::SubFunction::new(level, None);
+            // let data = SecurityAccessData(params);
+            let request = Request::new(service, Some(sub_func), params, &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
-            let response = Self::send_and_response::<SecurityAccessLevel>(ctx, false, request)?;
+            let response = Self::send_and_response(ctx, false, request)?;
 
             Self::sub_func_check(&response, level, service)?;
 
@@ -178,27 +177,23 @@ where
         self.context_util(channel, |ctx| {
             if let Some(algo) = ctx.config.security_algo {
                 let service = Service::SecurityAccess;
-                let sub_func = request::SubFunction::new(
-                    SecurityAccessLevel::new(level)
-                        .map_err(Error::ISO14229Error)?,
-                    None
-                );
-                let data = SecurityAccessData(params);
-                let request = Request::new(service, Some(sub_func.clone()), RequestData::to_vec(data, &ctx.config));
+                let sub_func = request::SubFunction::new(level, None);
+                // let data = SecurityAccessData(params);
+                let request = Request::new(service, Some(sub_func.clone()), params.clone(), &ctx.config)
+                    .map_err(Error::ISO14229Error)?;
 
-                let response = Self::send_and_response::<SecurityAccessLevel>(ctx, false, request)?;
+                let response = Self::send_and_response(ctx, false, request)?;
                 Self::sub_func_check(&response, level, service)?;
 
                 let seed = response.raw_data().to_vec();
 
-                let next_level = SecurityAccessLevel::new(level + 1)
-                    .map_err(Error::ISO14229Error)?;
-                let sub_func = request::SubFunction::new(next_level, None);
+                let sub_func = request::SubFunction::new(level + 1, None);
                 match algo(level, seed, salt)
                     .map_err(Error::ISO14229Error)? {
                     Some(data) => {
-                        let request = Request::new(service, Some(sub_func), RequestData::to_vec(data, &ctx.config));
-                        let response = Self::send_and_response::<SecurityAccessLevel>(ctx, false, request)?;
+                        let request = Request::new(service, Some(sub_func), data, &ctx.config)
+                            .map_err(Error::ISO14229Error)?;
+                        let response = Self::send_and_response(ctx, false, request)?;
 
                         Self::sub_func_check(&response, level + 1, service)
                     },
@@ -221,10 +216,11 @@ where
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
             let service = Service::CommunicationCtrl;
-            let sub_func = request::SubFunction::new(ctrl_type, Some(suppress_positive));
+            let sub_func = request::SubFunction::new(ctrl_type.into(), Some(suppress_positive));
             let data = request::CommunicationCtrl::new(ctrl_type, comm_type, node_id)
                 .map_err(Error::ISO14229Error)?;
-            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::suppress_positive_sr(ctx, functional, request, suppress_positive)?;
 
@@ -244,13 +240,14 @@ where
     ) -> Result<response::Authentication, Error> {
         self.context_util(channel, |ctx| {
             let service = Service::Authentication;
-            let sub_func = request::SubFunction::new(auth_task, None);
-            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
+            let sub_func = request::SubFunction::new(auth_task.into(), None);
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, false, request)?;
             Self::sub_func_check(&response, auth_task.into(), service)?;
 
-            response.data(&ctx.config)
+            response.data::<AuthenticationTask, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -263,7 +260,7 @@ where
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
             let (service, request) =
-                Self::tester_present_request(test_type, suppress_positive);
+                Self::tester_present_request(ctx, test_type, suppress_positive)?;
 
             let response = Self::suppress_positive_sr(ctx, functional, request, suppress_positive)?;
 
@@ -286,7 +283,8 @@ where
             let service = Service::AccessTimingParam;
             let sub_func = request::SubFunction::new(access_type, Some(suppress_positive));
             let data = TimingParameter(parameter);
-            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config))
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::suppress_positive_sr(ctx, false, request, suppress_positive)?;
 
@@ -314,11 +312,12 @@ where
                 apar, signature, anti_replay_cnt, service, service_data, signature_data
             )
                 .map_err(Error::ISO14229Error)?;
-            let request: Request<Placeholder> = Request::new(Service::SecuredDataTrans, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::SecuredDataTrans, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, false, request)?;
 
-            response.data(&ctx.config)
+            response.data::<Placeholder, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -331,8 +330,9 @@ where
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
             let service = Service::CtrlDTCSetting;
-            let sub_func = request::SubFunction::new(setting_type, Some(suppress_positive));
-            let request = Request::new(service, Some(sub_func), parameter);
+            let sub_func = request::SubFunction::new(setting_type.into(), Some(suppress_positive));
+            let request = Request::new(service, Some(sub_func), parameter, &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::suppress_positive_sr(ctx, false, request, suppress_positive)?;
 
@@ -360,8 +360,9 @@ where
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
             let service = Service::LinkCtrl;
-            let sub_func = request::SubFunction::new(ctrl_type, Some(suppress_positive));
-            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
+            let sub_func = request::SubFunction::new(ctrl_type.into(), Some(suppress_positive));
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::suppress_positive_sr(ctx, false, request, suppress_positive)?;
 
@@ -381,11 +382,12 @@ where
     ) -> Result<response::ReadDID, Error> {
         self.context_util(channel, |ctx| {
             let data = request::ReadDIDD::new(did, others);
-            let request: Request<Placeholder> = Request::new(Service::ReadDID, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::ReadDID, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
-            let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
+            let response = Self::send_and_response(ctx, false, request)?;
 
-            response.data(&ctx.config)
+            response.data::<Placeholder, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -396,9 +398,10 @@ where
     ) -> Result<Vec<u8>, Error> {
         self.context_util(channel, |ctx| {
             let data = request::ReadMemByAddr(mem_loc);
-            let request: Request<Placeholder> = Request::new(Service::ReadMemByAddr, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::ReadMemByAddr, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
-            let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
+            let response = Self::send_and_response(ctx, false, request)?;
 
             Ok(response.raw_data().to_vec())
         })
@@ -410,11 +413,12 @@ where
     ) -> Result<response::ReadScalingDID, Error> {
         self.context_util(channel, |ctx| {
             let data = request::ReadScalingDID(did);
-            let request: Request<Placeholder> = Request::new(Service::ReadScalingDID, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::ReadScalingDID, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, false, request)?;
 
-            response.data(&ctx.config)
+            response.data::<Placeholder, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -427,11 +431,12 @@ where
         self.context_util(channel, |ctx| {
             let data = request::ReadDataByPeriodId::new(mode, did)
                 .map_err(Error::ISO14229Error)?;
-            let request: Request<Placeholder> = Request::new(Service::ReadDataByPeriodId, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::ReadDataByPeriodId, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, false, request)?;
 
-            response.data(&ctx.config)
+            response.data::<Placeholder, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -444,8 +449,9 @@ where
     ) -> Result<Option<response::DynamicallyDefineDID>, Error> {
         self.context_util(channel, |ctx| {
             let service = Service::DynamicalDefineDID;
-            let sub_func = request::SubFunction::new(def_type, Some(suppress_positive));
-            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
+            let sub_func = request::SubFunction::new(def_type.into(), Some(suppress_positive));
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::suppress_positive_sr(ctx, false, request, suppress_positive)?;
 
@@ -467,7 +473,8 @@ where
     ) -> Result<(), Error> {
         self.context_util(channel, |ctx| {
             let data = request::WriteDID(DIDData { did, data });
-            let request: Request<Placeholder> = Request::new(Service::WriteDID, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::WriteDID, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let _ = Self::send_and_response(ctx, false, request)?;
 
@@ -485,11 +492,12 @@ where
         self.context_util(channel, |ctx| {
             let data = request::WriteMemByAddr::new(alfi, mem_addr, mem_size, record)
                 .map_err(Error::ISO14229Error)?;
-            let request: Request<Placeholder> = Request::new(Service::WriteMemByAddr, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::WriteMemByAddr, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, false, request)?;
 
-            response.data(&ctx.config)
+            response.data::<Placeholder, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -507,7 +515,8 @@ where
             let data = request::ClearDiagnosticInfo::new(group, mem_sel);
             #[cfg(any(feature = "std2006", feature = "std2013"))]
             let data = request::ClearDiagnosticInfo::new(group);
-            let request: Request<Placeholder> = Request::new(Service::ClearDiagnosticInfo, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::ClearDiagnosticInfo, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let _ = Self::send_and_response(ctx, functional, request)?;
 
@@ -522,13 +531,14 @@ where
     ) -> Result<response::DTCInfo, Error> {
         self.context_util(channel, |ctx| {
             let service = Service::ReadDTCInfo;
-            let sub_func = request::SubFunction::new(report_type, None);
-            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
+            let sub_func = request::SubFunction::new(report_type.into(), None);
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, false, request)?;
             Self::sub_func_check(&response, report_type.into(), service)?;
 
-            response.data(&ctx.config)
+            response.data::<DTCReportType, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -544,11 +554,12 @@ where
         self.context_util(channel, |ctx| {
             let data = request::IOCtrl::new(did, param, state, mask)
                 .map_err(Error::ISO14229Error)?;
-            let request: Request<Placeholder> = Request::new(Service::IOCtrl, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::IOCtrl, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, false, request)?;
 
-            response.data(&ctx.config)
+            response.data::<Placeholder, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -562,14 +573,15 @@ where
     ) -> Result<response::RoutineCtrl, Error> {
         self.context_util(channel, |ctx| {
             let service = Service::RoutineCtrl;
-            let sub_func = request::SubFunction::new(ctrl_type, None);
+            let sub_func = request::SubFunction::new(ctrl_type.into(), None);
             let data = request::RoutineCtrl { routine_id: RoutineId(routine_id), option_record };
-            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, false, request)?;
             Self::sub_func_check(&response, ctrl_type.into(), service)?;
 
-            response.data(&ctx.config)
+            response.data::<RoutineCtrlType, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -588,11 +600,12 @@ where
                 mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)
                     .map_err(Error::ISO14229Error)?
             };
-            let request: Request<Placeholder> = Request::new(Service::RequestDownload, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::RequestDownload, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
-            let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
+            let response = Self::send_and_response(ctx, false, request)?;
 
-            response.data(&ctx.config)
+            response.data::<Placeholder, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -610,11 +623,12 @@ where
                 mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)
                     .map_err(Error::ISO14229Error)?
             };
-            let request: Request<Placeholder> = Request::new(Service::RequestDownload, None, data.to_vec(&ctx.config));
+            let request = Request::new(Service::RequestDownload, None, data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
-            let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
+            let response = Self::send_and_response(ctx, false, request)?;
 
-            response.data(&ctx.config)
+            response.data::<Placeholder, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -626,11 +640,12 @@ where
     ) -> Result<TransferData, Error> {
         self.context_util(channel, |ctx| {
             let data = TransferData { sequence, data };
-            let request: Request<Placeholder> = Request::new(Service::TransferData, None, RequestData::to_vec(data, &ctx.config));
+            let request = Request::new(Service::TransferData, None, RequestData::to_vec(data, &ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, false, request)?;
 
-            let resp = response.data::<TransferData>(&ctx.config)
+            let resp: TransferData = response.data::<Placeholder, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)?;
 
             if resp.sequence != sequence {
@@ -646,15 +661,16 @@ where
                                  parameter: Vec<u8>,
     ) -> Result<Vec<u8>, Error> {
         self.context_util(channel, |ctx| {
-            let request: Request<Placeholder> = Request::new(Service::RequestTransferExit, None, parameter);
+            let request = Request::new(Service::RequestTransferExit, None, parameter, &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
-            let response = Self::send_and_response::<Placeholder>(ctx, false, request)?;
+            let response = Self::send_and_response(ctx, false, request)?;
 
             Ok(response.raw_data().to_vec())
         })
     }
 
-    #[cfg(any(feature = "std2013", feature = "std2020"))]
+    // #[cfg(any(feature = "std2013", feature = "std2020"))]
     pub fn request_file_transfer(&mut self,
                                  channel: C,
                                  operation: ModeOfOperation,
@@ -662,13 +678,14 @@ where
     ) -> Result<response::RequestFileTransferData, Error> {
         self.context_util(channel, |ctx| {
             let service = Service::RequestFileTransfer;
-            let sub_func = request::SubFunction::new(operation, None);
-            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config));
+            let sub_func = request::SubFunction::new(operation.into(), None);
+            let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
+                .map_err(Error::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, false, request)?;
             Self::sub_func_check(&response, operation.into(), service)?;
 
-            response.data(&ctx.config)
+            response.data::<ModeOfOperation, _>(&ctx.config)
                 .map_err(Error::ISO14229Error)
         })
     }
@@ -684,10 +701,7 @@ where
         }
     }
 
-    fn response_service_check<T>(response: &Response<T>, target: Service) -> Result<bool, Error>
-    where
-        T: TryFrom<u8, Error = iso14229_1::Error> + Copy + Debug
-    {
+    fn response_service_check(response: &Response, target: Service) -> Result<bool, Error> {
         let service = response.service();
         if response.is_negative() {
             let nrc_code = response.nrc_code()
@@ -704,16 +718,12 @@ where
         }
     }
 
-    fn suppress_positive_sr<T>(ctx: &mut Context<C, F>,
+    fn suppress_positive_sr(ctx: &mut Context<C, F>,
                                functional: bool,
-                               request: Request<T>,
+                               request: Request,
                                suppress_positive: bool,
-    ) -> Result<Option<Response<T>>, Error>
-    where
-        Request<T>: Into<Vec<u8>>,
-        T: TryFrom<u8, Error = iso14229_1::Error> + Copy + Debug,
-    {
-        match Self::send_and_response::<T>(ctx, functional, request) {
+    ) -> Result<Option<Response>, Error> {
+        match Self::send_and_response(ctx, functional, request) {
             Ok(r) => Ok(Some(r)),
             Err(e) => match e {
                 Error::IsoTpError(e) => match e {
@@ -729,14 +739,10 @@ where
         }
     }
 
-    fn send_and_response<T>(ctx: &mut Context<C, F>,
-                            functional: bool,
-                            request: Request<T>,
-    ) -> Result<Response<T>, Error>
-    where
-        Request<T>: Into<Vec<u8>>,
-        T: TryFrom<u8, Error = iso14229_1::Error> + Copy + Debug,
-    {
+    fn send_and_response(ctx: &mut Context<C, F>,
+                         functional: bool,
+                         request: Request,
+    ) -> Result<Response, Error>  {
         ctx.listener.clear_buffer();
         let service = request.service();
         ctx.iso_tp.write(functional, request.into())
@@ -744,33 +750,30 @@ where
 
         let data = ctx.listener.sync_timer(false)
             .map_err(Error::IsoTpError)?;
-        let mut response: Response<T> = Response::try_from(data)
+        let mut response = Response::try_from_cfg(data, &ctx.config)
             .map_err(Error::ISO14229Error)?;
         while Self::response_service_check(&response, service)? {
             log::debug!("UDS - tester present when {:?}", Code::RequestCorrectlyReceivedResponsePending);
             let (_, request) =
-                Self::tester_present_request(TesterPresentType::Zero, true);
+                Self::tester_present_request(ctx, TesterPresentType::Zero, true)?;
             ctx.iso_tp.write(functional, request.into())
                 .map_err(Error::IsoTpError)?;
 
             let data = ctx.listener.sync_timer(true)
                 .map_err(Error::IsoTpError)?;
 
-            response = Response::try_from(data)
+            response = Response::try_from_cfg(data, &ctx.config)
                 .map_err(Error::ISO14229Error)?;
         }
 
         Ok(response)
     }
 
-    fn sub_func_check<T>(response: &Response<T>, source: u8, service: Service) -> Result<(), Error>
-    where
-        T: Copy + Into<u8>
-    {
+    fn sub_func_check(response: &Response, source: u8, service: Service) -> Result<(), Error> {
         match response.sub_function() {
             Some(v) => {
                 // let source: u8 = session_type.into();
-                let target: u8 = v.function().into();
+                let target = v.origin();
                 if target != source {
                     Err(Error::UnexpectedSubFunction { service, expect: source, actual: target })
                 }
@@ -784,14 +787,16 @@ where
 
     #[inline]
     fn tester_present_request(
+        ctx: &mut Context<C, F>,
         test_type: TesterPresentType,
         suppress_positive: bool,
-    ) -> (Service, Request<TesterPresentType>) {
+    ) -> Result<(Service, Request), Error> {
         let service = Service::TesterPresent;
-        let sub_func = request::SubFunction::new(test_type, Some(suppress_positive));
-        let request = Request::new(service, Some(sub_func), vec![]);
+        let sub_func = request::SubFunction::new(test_type.into(), Some(suppress_positive));
+        let request = Request::new(service, Some(sub_func), vec![], &ctx.config)
+            .map_err(Error::ISO14229Error)?;
 
-        (service, request)
+        Ok((service, request))
     }
 }
 

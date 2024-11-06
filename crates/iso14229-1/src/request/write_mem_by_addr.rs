@@ -1,12 +1,12 @@
 //! request of Service 3D
 
 
-use crate::{AddressAndLengthFormatIdentifier, Configuration, Error, MemoryLocation, Placeholder, RequestData, utils};
+use crate::{AddressAndLengthFormatIdentifier, Configuration, Error, MemoryLocation, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone)]
 pub struct WriteMemByAddr {
-    pub(crate) mem_loc: MemoryLocation,
-    pub(crate) data: Vec<u8>,
+    pub mem_loc: MemoryLocation,
+    pub data: Vec<u8>,
 }
 
 impl WriteMemByAddr {
@@ -58,30 +58,17 @@ impl RequestData for WriteMemByAddr {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{AddressAndLengthFormatIdentifier, Configuration, RequestData};
-    use super::WriteMemByAddr;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let cfg = Configuration::default();
-
-        let source = hex::decode("3D4420481213000000051122334455")?;
-        let request = WriteMemByAddr::new(
-            AddressAndLengthFormatIdentifier::new(4, 4)?,
-            0x20481213,
-            0x05,
-            hex::decode("1122334455")?,
-        )?;
-        let result: Vec<_> = request.to_vec(&cfg);
-        assert_eq!(result, source[1..].to_vec());
-
-        let request = WriteMemByAddr::try_parse(&source[1..], None, &cfg)?;
-        assert_eq!(request.mem_loc.memory_address(), 0x20481213);
-        assert_eq!(request.mem_loc.memory_size(), 0x05);
-        assert_eq!(request.data, hex::decode("1122334455")?);
-
-        Ok(())
+pub(crate) fn write_mem_by_addr(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let _ = WriteMemByAddr::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

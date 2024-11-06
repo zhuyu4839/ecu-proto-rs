@@ -1,7 +1,7 @@
 //! request of Service 31
 
 
-use crate::{Configuration,Error, Placeholder, RequestData, RoutineCtrlType, RoutineId, Service, utils};
+use crate::{Configuration,Error, Placeholder, request::{Request, SubFunction}, RequestData, RoutineCtrlType, RoutineId, Service, utils};
 
 #[derive(Debug, Clone)]
 pub struct RoutineCtrl {
@@ -47,28 +47,17 @@ impl RequestData for RoutineCtrl {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{CheckProgrammingDependencies, RoutineCtrlType};
-    use super::RoutineCtrl;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode("3101FF01")?;
-        let request = RoutineCtrl {
-            routine_id: CheckProgrammingDependencies,
-            option_record: vec![],
-        };
-        let result: Vec<_> = request.into();
-        assert_eq!(result, source[2..].to_vec());
-
-        let source = hex::decode("3101FF01112233445566")?;
-        let request = RoutineCtrl::try_from(&source[2..])?;
-
-        assert_eq!(request.routine_id, CheckProgrammingDependencies);
-        assert_eq!(request.option_record, hex::decode("112233445566")?);
-
-        Ok(())
+pub(crate) fn routine_ctrl(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
     }
-}
 
+    let _ = RoutineCtrl::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
+}

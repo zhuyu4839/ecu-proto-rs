@@ -1,4 +1,4 @@
-use crate::DataIdentifier;
+use crate::{DataIdentifier, Service};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -22,6 +22,9 @@ pub enum Error {
 
     #[error("ISO 14229-1 - ISO/SAEReserved: {0}")]
     ReservedError(String),
+
+    #[error("ISO 14229-1 - the sub-function is required/unnecessary on service `{0}`")]
+    SubFunctionError(Service),
 
     // #[error("ISO 14229-1 - service `{service}` got an unexpected sub-function(expect: {expect}, actual: {actual})")]
     // UnexpectedSubFunction { service: Service, expect: u8, actual: u8 },

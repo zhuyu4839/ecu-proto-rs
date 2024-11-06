@@ -1,7 +1,7 @@
 //! request of Service 22
 
 
-use crate::{Configuration, Error, DataIdentifier, Placeholder, RequestData, utils};
+use crate::{Configuration, Error, DataIdentifier, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone)]
 pub struct ReadDIDD {
@@ -71,59 +71,18 @@ impl RequestData for ReadDIDD {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::DataIdentifier;
-    use super::ReadDIDD;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode("22F190F180")?;
-        let request = ReadDIDD::new(
-            DataIdentifier::VIN,
-            vec![
-                DataIdentifier::BootSoftwareIdentification,
-            ]
-        );
-        let result: Vec<_> = request.into();
-        assert_eq!(result, source[1..].to_vec());
-
-        let source = hex::decode("22F190F180\
-        F181F182F183F184F185F186F187F188F189")?;
-        let request = ReadDIDD::new(
-            DataIdentifier::VIN,
-            vec![
-                DataIdentifier::BootSoftwareIdentification,
-                DataIdentifier::ApplicationSoftwareIdentification,
-                DataIdentifier::ApplicationDataIdentification,
-                DataIdentifier::BootSoftwareFingerprint,
-                DataIdentifier::ApplicationSoftwareFingerprint,
-                DataIdentifier::ApplicationDataFingerprint,
-                DataIdentifier::ActiveDiagnosticSession,
-                DataIdentifier::VehicleManufacturerSparePartNumber,
-                DataIdentifier::VehicleManufacturerECUSoftwareNumber,
-                DataIdentifier::VehicleManufacturerECUSoftwareVersionNumber,
-            ]
-        ); // 22 bytes + 1
-        let result: Vec<_> = request.into();
-        assert_eq!(result, source[1..].to_vec());
-
-        let request = ReadDIDD::try_from(&source[1..])?;
-        assert_eq!(request.did, DataIdentifier::VIN);
-        assert_eq!(request.others, vec![
-            DataIdentifier::BootSoftwareIdentification,
-            DataIdentifier::ApplicationSoftwareIdentification,
-            DataIdentifier::ApplicationDataIdentification,
-            DataIdentifier::BootSoftwareFingerprint,
-            DataIdentifier::ApplicationSoftwareFingerprint,
-            DataIdentifier::ApplicationDataFingerprint,
-            DataIdentifier::ActiveDiagnosticSession,
-            DataIdentifier::VehicleManufacturerSparePartNumber,
-            DataIdentifier::VehicleManufacturerECUSoftwareNumber,
-            DataIdentifier::VehicleManufacturerECUSoftwareVersionNumber,
-        ]);
-
-        Ok(())
+pub(crate) fn read_did(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let _ = ReadDIDD::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }
 

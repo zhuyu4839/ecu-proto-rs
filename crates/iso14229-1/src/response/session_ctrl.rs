@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, constant::{P2_MAX, P2_STAR_MAX, P2_STAR_MAX_MS}, error::Error, response::Code, ResponseData, SessionType, utils};
+use crate::{Configuration, constant::{P2_MAX, P2_STAR_MAX, P2_STAR_MAX_MS}, error::Error, response::{Code, Response, SubFunction}, ResponseData, SessionType, utils, Service};
 
 lazy_static!(
     pub static ref SESSION_CTRL_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -89,4 +89,20 @@ impl ResponseData for SessionTiming {
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
         self.into()
     }
+}
+
+pub(crate) fn session_ctrl(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Response, Error> {
+    if sub_func.is_none() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let sf = SessionType::try_from(sub_func.unwrap().0)?;
+    let _ = SessionTiming::try_parse(data.as_slice(), Some(sf), cfg)?;
+
+    Ok(Response { service, negative: false, sub_func, data })
 }

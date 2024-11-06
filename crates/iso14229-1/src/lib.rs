@@ -191,3 +191,9 @@ impl ResponseData for Vec<u8> {
     }
 }
 
+pub trait TryFromWithCfg<T> {
+    type Error;
+    fn try_from_cfg(data: T, cfg: &Configuration) -> Result<Self, Self::Error>
+    where
+        Self: Sized;
+}

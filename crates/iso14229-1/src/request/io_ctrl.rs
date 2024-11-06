@@ -1,13 +1,13 @@
 //! request of Service 2F
 
 
-use crate::{Configuration, Error, IOCtrlParameter, IOCtrlOption, DataIdentifier, RequestData, Placeholder, utils};
+use crate::{Configuration, Error, IOCtrlParameter, IOCtrlOption, DataIdentifier, request::{Request, SubFunction}, RequestData, Placeholder, utils, Service};
 
 #[derive(Debug, Clone)]
 pub struct IOCtrl {
-    did: DataIdentifier,
-    option: IOCtrlOption,
-    mask: Vec<u8>,
+    pub did: DataIdentifier,
+    pub option: IOCtrlOption,
+    pub mask: Vec<u8>,
 }
 
 impl IOCtrl {
@@ -110,35 +110,18 @@ impl RequestData for IOCtrl {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{Configuration, DataIdentifier, IOCtrlParameter, RequestData};
-    use super::IOCtrl;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let did = DataIdentifier::from(0x4101);
-
-        let mut cfg = Configuration::default();
-        cfg.did_cfg.insert(did, 2);
-
-        let source = hex::decode("2f4101030040ffff")?;
-        let request = IOCtrl::new(
-            did,
-            IOCtrlParameter::ShortTermAdjustment,
-            hex::decode("0040")?,
-            hex::decode("ffff")?,
-        )?;
-        let result: Vec<_> = request.to_vec(&cfg);
-        assert_eq!(result, source[1..].to_vec());
-
-        let request = IOCtrl::try_parse(&source[1..], None, &cfg)?;
-        assert_eq!(request.did, did);
-        assert_eq!(request.option.param, IOCtrlParameter::ShortTermAdjustment);
-        assert_eq!(request.option.state, hex::decode("0040")?);
-        assert_eq!(request.mask, hex::decode("ffff")?);
-
-        Ok(())
+pub(crate) fn io_ctrl(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let _ = IOCtrl::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }
 

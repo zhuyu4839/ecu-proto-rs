@@ -2,7 +2,7 @@
 
 
 use bitfield_struct::bitfield;
-use crate::{Configuration, Error, enum_to_vec, EventType, RequestData, ResponseOnEventType, Service, Placeholder};
+use crate::{Configuration, Error, enum_to_vec, EventType, request::{Request, SubFunction}, RequestData, ResponseOnEventType, Service, Placeholder};
 
 enum_to_vec!(
     /// Table 142 — Comparison logic parameter definition
@@ -136,5 +136,20 @@ impl RequestData for ResponseOnEvent {
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
         self.into()
     }
+}
+
+pub(crate) fn response_on_event(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let _ = ResponseOnEvent::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }
 

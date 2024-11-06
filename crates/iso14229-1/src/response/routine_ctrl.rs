@@ -3,7 +3,8 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, error::Error, response::Code, ResponseData, RoutineCtrlType, RoutineId, utils};
+use crate::{Configuration, error::Error, response::Code, ResponseData, RoutineCtrlType, RoutineId, utils, Service};
+use crate::response::{Response, SubFunction};
 
 lazy_static!(
     pub static ref ROUTINE_CTRL_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -81,7 +82,11 @@ impl Into<Vec<u8>> for RoutineCtrl {
 impl ResponseData for RoutineCtrl {
     type SubFunc = RoutineCtrlType;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::RoutineCtrl));
+        }
+
         Self::try_from(data)
     }
     #[inline]
@@ -90,29 +95,18 @@ impl ResponseData for RoutineCtrl {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::CheckProgrammingDependencies;
-    use super::RoutineCtrl;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode("7101FF01")?;
-        let response = RoutineCtrl::new(
-            CheckProgrammingDependencies,
-            None,
-            vec![]
-        )?;
-        let result: Vec<_> = response.into();
-        assert_eq!(result, source[2..].to_vec());
-
-        let source = hex::decode("7101FF01112233445566")?;
-        let response = RoutineCtrl::try_from(&source[2..])?;
-
-        assert_eq!(response.routine_id, CheckProgrammingDependencies);
-        assert_eq!(response.routine_info, Some(0x11));
-        assert_eq!(response.routine_status, hex::decode("2233445566")?);
-
-        Ok(())
+pub(crate) fn routine_ctrl(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Response, Error> {
+    if sub_func.is_none() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let sf = RoutineCtrlType::try_from(sub_func.unwrap().0)?;
+    let _ = RoutineCtrl::try_parse(data.as_slice(), Some(sf), cfg)?;
+
+    Ok(Response { service, negative: false, sub_func, data })
 }

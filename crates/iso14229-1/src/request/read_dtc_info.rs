@@ -1,7 +1,7 @@
 //! request of Service 19
 
 
-use crate::{Configuration, DTCReportType, Error, Placeholder, RequestData, Service, utils};
+use crate::{Configuration, DTCReportType, Error, Placeholder, request::{Request, SubFunction}, RequestData, Service, utils};
 
 #[derive(Debug, Clone)]
 pub struct DTCExtDataRecord {
@@ -13,14 +13,6 @@ pub struct DTCExtDataRecord {
 pub enum DTCInfo {
     ReportNumberOfDTCByStatusMask(u8),      // 0x01
     ReportDTCByStatusMask(u8),              // 0x02
-    #[cfg(any(feature = "std2006", feature = "std2013"))]
-    ReportMirrorMemoryDTCByStatusMask(u8),          // 0x0F
-    #[cfg(any(feature = "std2006", feature = "std2013"))]
-    ReportNumberOfMirrorMemoryDTCByStatusMask(u8),  // 0x11
-    #[cfg(any(feature = "std2006", feature = "std2013"))]
-    ReportNumberOfEmissionsOBDDTCByStatusMask(u8),  // 0x12
-    #[cfg(any(feature = "std2006", feature = "std2013"))]
-    ReportEmissionsOBDDTCByStatusMask(u8),          // 0x13
     ReportDTCSnapshotIdentification,       // 0x03
     ReportDTCSnapshotRecordByDTCNumber {    // 0x04
         mask_record: utils::U24,
@@ -29,13 +21,7 @@ pub enum DTCInfo {
     ReportDTCStoredDataByRecordNumber {     // 0x05
         stored_num: u8,
     },
-    // #[cfg(any(feature = "std2006", feature = "std2020"))]
     ReportDTCExtDataRecordByDTCNumber {     // 0x06
-        mask_record: utils::U24,
-        extra_num: u8,
-    },
-    #[cfg(any(feature = "std2006", feature = "std2013"))]
-    ReportMirrorMemoryDTCExtDataRecordByDTCNumber { // 0x10
         mask_record: utils::U24,
         extra_num: u8,
     },
@@ -55,6 +41,19 @@ pub enum DTCInfo {
     ReportFirstConfirmedDTC,                // 0x0C
     ReportMostRecentTestFailedDTC,          // 0x0D
     ReportMostRecentConfirmedDTC,           // 0x0E
+    #[cfg(any(feature = "std2006", feature = "std2013"))]
+    ReportMirrorMemoryDTCByStatusMask(u8),          // 0x0F
+    #[cfg(any(feature = "std2006", feature = "std2013"))]
+    ReportMirrorMemoryDTCExtDataRecordByDTCNumber { // 0x10
+        mask_record: utils::U24,
+        extra_num: u8,
+    },
+    #[cfg(any(feature = "std2006", feature = "std2013"))]
+    ReportNumberOfMirrorMemoryDTCByStatusMask(u8),  // 0x11
+    #[cfg(any(feature = "std2006", feature = "std2013"))]
+    ReportNumberOfEmissionsOBDDTCByStatusMask(u8),  // 0x12
+    #[cfg(any(feature = "std2006", feature = "std2013"))]
+    ReportEmissionsOBDDTCByStatusMask(u8),          // 0x13
     ReportDTCFaultDetectionCounter,         // 0x14
     ReportDTCWithPermanentStatus,           // 0x15
     #[cfg(any(feature = "std2013", feature = "std2020"))]
@@ -163,7 +162,6 @@ impl RequestData for DTCInfo {
                             stored_num: data[offset],
                         })
                     },
-                    // #[cfg(any(feature = "std2006", feature = "std2020"))]
                     DTCReportType::ReportDTCExtDataRecordByDTCNumber => {
                         utils::data_length_check(data_len, offset + 4, true)?;
 
@@ -466,5 +464,21 @@ impl Into<Vec<u8>> for DTCInfo {
 
         result
     }
+}
+
+pub(crate) fn read_dtc_info(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_none() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let sf = DTCReportType::try_from(sub_func.unwrap().function)?;
+    let _ = DTCInfo::try_parse(data.as_slice(), Some(sf), cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }
 

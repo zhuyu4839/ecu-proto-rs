@@ -1,7 +1,7 @@
 //! request of Service 23
 
 
-use crate::{Configuration, Error, MemoryLocation, Placeholder, RequestData, Service};
+use crate::{Configuration, Error, MemoryLocation, Placeholder, request::{Request, SubFunction}, RequestData, Service};
 
 #[derive(Debug, Clone)]
 pub struct ReadMemByAddr(pub MemoryLocation);
@@ -18,36 +18,17 @@ impl RequestData for ReadMemByAddr {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{AddressAndLengthFormatIdentifier, Configuration, MemoryLocation, RequestData};
-    use super::ReadMemByAddr;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode("2312481305")?;
-        let cfg = Configuration::default();
-        let request = ReadMemByAddr(
-            MemoryLocation::new(AddressAndLengthFormatIdentifier::new(2, 1)?, 0x4813,0x05,)?);
-        let result: Vec<_> = request.to_vec(&cfg);
-        assert_eq!(result, source[1..].to_vec());
-
-        let cfg = Configuration::default();
-        let request = ReadMemByAddr::try_parse(&source[1..], None, &cfg)?;
-        assert_eq!(request.0.memory_address(), 0x4813);
-        assert_eq!(request.0.memory_size(), 0x05);
-
-        let source = hex::decode("2324204813920103")?;
-        let request = ReadMemByAddr(
-            MemoryLocation::new(AddressAndLengthFormatIdentifier::new(4, 2)?,0x20481392,0x0103,)?);
-        let result: Vec<_> = request.to_vec(&cfg);
-        assert_eq!(result, source[1..].to_vec());
-
-        let request = ReadMemByAddr::try_parse(&source[1..], None, &cfg)?;
-        assert_eq!(request.0.memory_address(), 0x20481392);
-        assert_eq!(request.0.memory_size(), 0x0103);
-
-        Ok(())
+pub(crate) fn read_mem_by_addr(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
     }
-}
 
+    let _ = ReadMemByAddr::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
+}

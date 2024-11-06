@@ -1,7 +1,7 @@
 //! request of Service 2E
 
 
-use crate::{Configuration, DataIdentifier, DIDData, Error, Placeholder, RequestData, Service, utils};
+use crate::{Configuration, DataIdentifier, DIDData, Error, Placeholder, request::{Request, SubFunction}, RequestData, Service, utils};
 
 /// Service 2E
 pub struct WriteDID(pub DIDData);
@@ -39,27 +39,17 @@ impl RequestData for WriteDID {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{DataIdentifier, DIDData};
-    use super::WriteDID;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let source = hex::decode("2ef1904441564443313030394e544c5036313338")?;
-        let request = WriteDID(
-            DIDData {
-                did: DataIdentifier::VIN,
-                data: source[3..].to_vec(),  // 17 bytes
-            }
-        );
-        let result: Vec<_> = request.into();
-        assert_eq!(result, source[1..].to_vec());
-
-        let request = WriteDID::try_from(&source[1..])?;
-        assert_eq!(request.0.did, DataIdentifier::VIN);
-        assert_eq!(request.0.data, hex::decode("4441564443313030394e544c5036313338")?);
-
-        Ok(())
+pub(crate) fn write_did(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let _ = WriteDID::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

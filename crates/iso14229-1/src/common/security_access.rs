@@ -18,6 +18,7 @@ impl SecurityAccessLevel {
 
 impl TryFrom<u8> for SecurityAccessLevel {
     type Error = Error;
+    #[inline]
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         Self::new(value)
     }

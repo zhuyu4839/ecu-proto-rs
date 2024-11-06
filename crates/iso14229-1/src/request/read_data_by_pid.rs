@@ -1,7 +1,7 @@
 //! request of Service 2A
 
 
-use crate::{Configuration, enum_to_vec, Error, Placeholder, RequestData, utils};
+use crate::{Configuration, enum_to_vec, Error, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
 enum_to_vec!(
     /// Table C.10 — transmissionMode parameter definitions
@@ -83,4 +83,19 @@ impl RequestData for ReadDataByPeriodId {
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
         self.into()
     }
+}
+
+pub(crate) fn read_data_by_pid(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let _ = ReadDataByPeriodId::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

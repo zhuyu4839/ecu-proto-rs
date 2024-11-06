@@ -104,7 +104,7 @@ pub use code::Code;
 // pub(crate) use crate:response::WriteDID::WRITE_DID_NEGATIVES;
 // pub(crate) use crate:response::WriteMemByAddr::WRITE_MEM_BY_ADDR_NEGATIVES;
 
-use crate::{Configuration, constant::POSITIVE_OFFSET, Error, ResponseData, Service, utils};
+use crate::{Configuration, constant::POSITIVE_OFFSET, Error, ResponseData, Service, utils, ECUResetType, response, TryFromWithCfg};
 
 // enum_to_vec! (
 //     /// Defined by ISO-15764. Offset of 0x38 is defined within UDS standard (ISO-14229)
@@ -121,44 +121,84 @@ use crate::{Configuration, constant::POSITIVE_OFFSET, Error, ResponseData, Servi
 //     }, u8, Error, InvalidParam
 // );
 
-#[derive(Debug, Copy, Clone)]
-pub struct SubFunction<T>(T);
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct SubFunction(u8);
 
-impl<F: Copy> SubFunction<F> {
+impl SubFunction {
     pub fn new(
-        function: F,
+        function: u8,
     ) -> Self {
         Self(function)
     }
 
     #[inline]
-    pub fn function(&self) -> F {
+    pub fn origin(&self) -> u8 {
+        self.0
+    }
+
+    #[inline]
+    pub fn function<T: TryFrom<u8, Error = Error>>(&self) -> Result<T, Error> {
+        T::try_from(self.0)
+    }
+}
+
+impl Into<u8> for SubFunction {
+    fn into(self) -> u8 {
         self.0
     }
 }
 
-impl<T: Into<u8>> Into<u8> for SubFunction<T> {
-    fn into(self) -> u8 {
-        self.0.into()
-    }
-}
-
 #[derive(Debug, Clone)]
-pub struct Response<F> {
+pub struct Response {
     service: Service,
     negative: bool,
-    sub_func: Option<SubFunction<F>>,
+    sub_func: Option<SubFunction>,
     data: Vec<u8>,  // the NRC code when negative is true
 }
 
-impl<F: Copy> Response<F> {
+impl Response {
     pub fn new(
         service: Service,
-        negative: bool,
-        sub_func: Option<SubFunction<F>>,
+        sub_func: Option<SubFunction>,
         data: Vec<u8>,
-    ) -> Self {
-        Self { service, negative, sub_func, data, }
+        cfg: &Configuration,
+    ) -> Result<Self, Error> {
+        match service {
+            Service::SessionCtrl => response::session_ctrl(service, sub_func, data, cfg),
+            Service::ECUReset => response::ecu_reset(service, sub_func, data, cfg),
+            Service::ClearDiagnosticInfo => response::clear_diag_info(service, sub_func, data, cfg),
+            Service::ReadDTCInfo => response::read_dtc_info(service, sub_func, data, cfg),
+            Service::ReadDID => response::read_did(service, sub_func, data, cfg),
+            Service::ReadMemByAddr => response::read_mem_by_addr(service, sub_func, data, cfg),
+            Service::ReadScalingDID => response::read_scaling_did(service, sub_func, data, cfg),
+            Service::SecurityAccess => response::security_access(service, sub_func, data, cfg),
+            Service::CommunicationCtrl => response::communication_ctrl(service, sub_func, data, cfg),
+            #[cfg(any(feature = "std2020"))]
+            Service::Authentication => response::authentication(service, sub_func, data, cfg),
+            Service::ReadDataByPeriodId => response::read_data_by_pid(service, sub_func, data, cfg),
+            Service::DynamicalDefineDID => response::dyn_define_did(service, sub_func, data, cfg),
+            Service::WriteDID => response::write_did(service, sub_func, data, cfg),
+            Service::IOCtrl => response::io_ctrl(service, sub_func, data, cfg),
+            Service::RoutineCtrl => response::routine_ctrl(service, sub_func, data, cfg),
+            Service::RequestDownload => response::request_download(service, sub_func, data, cfg),
+            Service::RequestUpload => response::request_upload(service, sub_func, data, cfg),
+            Service::TransferData => response::transfer_data(service, sub_func, data, cfg),
+            Service::RequestTransferExit => response::request_transfer_exit(service, sub_func, data, cfg),
+            #[cfg(any(feature = "std2013", feature = "std2020"))]
+            Service::RequestFileTransfer => response::request_file_transfer(service, sub_func, data, cfg),
+            Service::WriteMemByAddr => response::write_mem_by_addr(service, sub_func, data, cfg),
+            Service::TesterPresent => response::tester_present(service, sub_func, data, cfg),
+            #[cfg(any(feature = "std2006", feature = "std2013"))]
+            Service::AccessTimingParam => response::access_timing_param(service, sub_func, data, cfg),
+            Service::SecuredDataTrans => response::secured_data_trans(service, sub_func, data, cfg),
+            Service::CtrlDTCSetting => response::ctrl_dtc_setting(service, sub_func, data, cfg),
+            Service::ResponseOnEvent => response::response_on_event(service, sub_func, data, cfg),
+            Service::LinkCtrl => response::link_ctrl(service, sub_func, data, cfg),
+            Service::NRC => {
+                utils::data_length_check(data.len(), 1, true)?;
+                Ok(Self { service, negative: true, sub_func, data })
+            },
+        }
     }
 
     #[inline]
@@ -167,7 +207,7 @@ impl<F: Copy> Response<F> {
     }
 
     #[inline]
-    pub fn sub_function(&self) -> Option<SubFunction<F>> {
+    pub fn sub_function(&self) -> Option<SubFunction> {
         self.sub_func
     }
 
@@ -195,15 +235,19 @@ impl<F: Copy> Response<F> {
     }
 
     #[inline]
-    pub fn data<T: ResponseData<SubFunc = F>>(&self, cfg: &Configuration) -> Result<T, Error> {
+    pub fn data<F, T>(&self, cfg: &Configuration) -> Result<T, Error>
+    where
+        F: TryFrom<u8, Error = Error>,
+        T: ResponseData<SubFunc = F>,
+    {
         T::try_parse(self.data.as_slice(), match self.sub_func {
-            Some(v) => Some(v.0),
+            Some(v) => Some(F::try_from(v.0)?),
             None => None,
         }, cfg)
     }
 }
 
-impl<F: Into<u8>> Into<Vec<u8>> for Response<F> {
+impl Into<Vec<u8>> for Response {
     fn into(mut self) -> Vec<u8> {
         let mut result = if self.negative {
             vec![Service::NRC.into(), ]
@@ -225,9 +269,9 @@ impl<F: Into<u8>> Into<Vec<u8>> for Response<F> {
     }
 }
 
-impl<F: TryFrom<u8, Error = Error> + Copy> TryFrom<Vec<u8>> for Response<F> {
+impl TryFromWithCfg<Vec<u8>> for Response {
     type Error = Error;
-    fn try_from(data: Vec<u8>) -> Result<Self, Self::Error> {
+    fn try_from_cfg(data: Vec<u8>, cfg: &Configuration) -> Result<Self, Self::Error> {
         let data_len = data.len();
         utils::data_length_check(data_len, 1, false)?;
 
@@ -253,11 +297,41 @@ impl<F: TryFrom<u8, Error = Error> + Copy> TryFrom<Vec<u8>> for Response<F> {
             Service::DynamicalDefineDID => {
                 utils::data_length_check(data_len, offset + 1, false)?;
 
-                let sub_func = F::try_from(data[offset])?;
+                let sub_func = data[offset];
                 offset += 1;
                 let data = data[offset..].to_vec();
 
-                Ok(Self::new(service, false, Some(SubFunction::new(sub_func)), data))
+                Self::new(service, Some(SubFunction::new(sub_func)), data, cfg)
+            },
+            #[cfg(any(feature = "std2006", feature = "std2013"))]
+            Service::AccessTimingParam => {
+                utils::data_length_check(data_len, offset + 1, false)?;
+
+                let sub_func = data[offset];
+                offset += 1;
+                let data = data[offset..].to_vec();
+
+                Self::new(service, Some(SubFunction::new(sub_func)), data, cfg)
+            },
+            #[cfg(any(feature = "std2020"))]
+            Service::Authentication => {
+                utils::data_length_check(data_len, offset + 1, false)?;
+
+                let sub_func = data[offset];
+                offset += 1;
+                let data = data[offset..].to_vec();
+
+                Self::new(service, Some(SubFunction::new(sub_func)), data, cfg)
+            },
+            #[cfg(any(feature = "std2013", feature = "std2020"))]
+            Service::RequestFileTransfer => {
+                utils::data_length_check(data_len, offset + 1, false)?;
+
+                let sub_func = data[offset];
+                offset += 1;
+                let data = data[offset..].to_vec();
+
+                Self::new(service, Some(SubFunction::new(sub_func)), data, cfg)
             },
             Service::ClearDiagnosticInfo |
             Service::ReadDID |
@@ -272,39 +346,7 @@ impl<F: TryFrom<u8, Error = Error> + Copy> TryFrom<Vec<u8>> for Response<F> {
             Service::RequestTransferExit |
             Service::WriteMemByAddr |
             Service::SecuredDataTrans |
-            Service::ResponseOnEvent => {
-                Ok(Self::new(service, false, None, data[offset..].to_vec()))
-            },
-            #[cfg(any(feature = "std2020"))]
-            Service::Authentication => {
-                utils::data_length_check(data_len, offset + 1, false)?;
-
-                let sub_func = F::try_from(data[offset])?;
-                offset += 1;
-                let data = data[offset..].to_vec();
-
-                Ok(Self::new(service, false, Some(SubFunction::new(sub_func)), data))
-            },
-            #[cfg(any(feature = "std2013", feature = "std2020"))]
-            Service::RequestFileTransfer => {
-                utils::data_length_check(data_len, offset + 1, false)?;
-
-                let sub_func = F::try_from(data[offset])?;
-                offset += 1;
-                let data = data[offset..].to_vec();
-
-                Ok(Self::new(service, false, Some(SubFunction::new(sub_func)), data))
-            },
-            #[cfg(any(feature = "std2006", feature = "std2013"))]
-            Service::AccessTimingParam => {
-                utils::data_length_check(data_len, offset + 1, false)?;
-
-                let sub_func = F::try_from(data[offset])?;
-                offset += 1;
-                let data = data[offset..].to_vec();
-
-                Ok(Self::new(service, false, Some(SubFunction::new(sub_func)), data))
-            },
+            Service::ResponseOnEvent => Self::new(service, None, data[offset..].to_vec(), cfg),
             Service::NRC => {
                 utils::data_length_check(data_len, offset + 2, true)?;
                 let nrc_service = Service::try_from(data[offset])?;
@@ -312,7 +354,7 @@ impl<F: TryFrom<u8, Error = Error> + Copy> TryFrom<Vec<u8>> for Response<F> {
 
                 let data = data[offset..].to_vec();
 
-                Ok(Self::new(nrc_service, true, None, data))
+                Self::new(nrc_service, None, data, cfg)
             },
         }
     }

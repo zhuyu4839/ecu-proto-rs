@@ -1,7 +1,7 @@
 //! request of Service 24
 
 
-use crate::{Configuration, DataIdentifier, Error, Placeholder, RequestData, utils};
+use crate::{Configuration, DataIdentifier, Error, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct ReadScalingDID(pub DataIdentifier);
@@ -39,4 +39,19 @@ impl RequestData for ReadScalingDID {
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
         self.into()
     }
+}
+
+pub(crate) fn read_scaling_did(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let _ = ReadScalingDID::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

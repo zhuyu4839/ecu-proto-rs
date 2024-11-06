@@ -2,20 +2,23 @@
 
 #[cfg(test)]
 mod tests {
-    use iso14229_1::request;
+    use iso14229_1::{request, response, Configuration, Placeholder, TryFromWithCfg};
     use iso14229_1::utils::U24;
 
     #[cfg(any(feature = "std2006", feature = "std2013"))]
     #[test]
     fn test_request() -> anyhow::Result<()> {
-        let source = hex::decode("14FFFF33")?;
-        let request = request::ClearDiagnosticInfo::new(
-            U24::from_be_bytes([0x00, 0xFF, 0xFF, 0x33]),
-        );
-        let result: Vec<_> = request.clone().into();
-        assert_eq!(result, source[1..].to_vec());
+        let cfg = Configuration::default();
 
-        assert_eq!(request, request::ClearDiagnosticInfo::try_from(&source[1..])?);
+        let source = hex::decode("14FFFF33")?;
+        let request = request::Request::try_from_cfg(source, &cfg)?;
+        let sub_func = request.sub_function();
+        assert_eq!(sub_func, None);
+
+        let data: request::ClearDiagnosticInfo = request.data::<Placeholder, _>(&cfg)?;
+        assert_eq!(data, request::ClearDiagnosticInfo::new(
+            U24::from_be_bytes([0x00, 0xFF, 0xFF, 0x33]),
+        ));
 
         Ok(())
     }
@@ -23,23 +26,30 @@ mod tests {
     #[cfg(any(feature = "std2020"))]
     #[test]
     fn test_request() -> anyhow::Result<()> {
-        let source = hex::decode("14FFFF3301")?;
+        let cfg = Configuration::default();
 
-        let request = request::ClearDiagnosticInfo::new(
+        let source = hex::decode("14FFFF3301")?;
+        let request = request::Request::try_from_cfg(source, &cfg)?;
+        let sub_func = request.sub_function();
+        assert_eq!(sub_func, None);
+
+        let data: request::ClearDiagnosticInfo = request.data::<Placeholder, _>(&cfg)?;
+        assert_eq!(data, request::ClearDiagnosticInfo::new(
             U24::from_be_bytes([0x00, 0xFF, 0xFF, 0x33]),
-            Some(0x01),
-        );
-        assert_eq!(request, request::ClearDiagnosticInfo::try_from(&source[1..])?);
-        let result: Vec<_> = request.into();
-        assert_eq!(result, source[1..].to_vec());
+            Some(0x01)
+        ));
 
         Ok(())
     }
 
     #[test]
     fn test_response() -> anyhow::Result<()> {
-        // let source = hex::decode("24")?;
-        // let response = response::Response<>()
+        let cfg = Configuration::default();
+
+        let source = hex::decode("54")?;
+        let response = response::Response::try_from_cfg(source, &cfg)?;
+        let sub_func = response.sub_function();
+        assert_eq!(sub_func, None);
 
         Ok(())
     }

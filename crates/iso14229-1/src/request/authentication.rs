@@ -2,6 +2,7 @@
 
 
 use crate::{AlgorithmIndicator, AuthenticationTask, Configuration, Error, NotNullableData, NullableData, parse_algo_indicator, parse_not_nullable, parse_nullable, RequestData, Service, utils};
+use crate::request::{Request, SubFunction};
 
 #[derive(Debug, Clone)]
 pub enum Authentication {
@@ -118,7 +119,6 @@ impl RequestData for Authentication {
                         utils::data_length_check(data_len, 19, false)?;
 
                         let algo_indicator = parse_algo_indicator(data, &mut offset);
-                        offset +=  16;
                         let proof_of_ownership = parse_not_nullable(data, data_len, &mut offset)?;
                         let challenge = parse_nullable(data, data_len, &mut offset)?;
                         let additional = parse_nullable(data, data_len, &mut offset)?;
@@ -132,10 +132,9 @@ impl RequestData for Authentication {
                         })
                     },
                     AuthenticationTask::VerifyProofOfOwnershipBidirectional => {
-                        utils::data_length_check(data_len, 19, false)?;
+                        utils::data_length_check(data_len, 24, false)?;
 
                         let algo_indicator = parse_algo_indicator(data, &mut offset);
-                        offset +=  16;
                         let proof_of_ownership = parse_not_nullable(data, data_len, &mut offset)?;
                         let challenge = parse_not_nullable(data, data_len, &mut offset)?;
                         let additional = parse_nullable(data, data_len, &mut offset)?;
@@ -147,8 +146,11 @@ impl RequestData for Authentication {
                             additional,
                         })
                     },
-                    AuthenticationTask::AuthenticationConfiguration =>
-                        Ok(Self::AuthenticationConfiguration),
+                    AuthenticationTask::AuthenticationConfiguration => {
+                        utils::data_length_check(data_len, 0, true)?;
+
+                        Ok(Self::AuthenticationConfiguration)
+                    },
                 }
             },
             None => panic!("Sub-function required"),
@@ -231,4 +233,20 @@ impl Into<Vec<u8>> for Authentication {
 
         result
     }
+}
+
+pub(crate) fn authentication(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_none() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let sf = AuthenticationTask::try_from(sub_func.unwrap().function)?;
+    let _ = Authentication::try_parse(data.as_slice(), Some(sf), cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

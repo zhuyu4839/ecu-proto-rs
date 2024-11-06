@@ -4,6 +4,7 @@
 use std::collections::HashSet;
 use lazy_static::lazy_static;
 use crate::{Configuration, DataIdentifier, Error, IOCtrlOption, IOCtrlParameter, Placeholder, response::Code, ResponseData, Service, utils};
+use crate::response::{Response, SubFunction};
 
 lazy_static!(
     pub static ref IO_CTRL_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -48,7 +49,11 @@ impl Into<Vec<u8>> for IOCtrl {
 
 impl ResponseData for IOCtrl {
     type SubFunc = Placeholder;
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::IOCtrl));
+        }
+
         let data_len = data.len();
         utils::data_length_check(data_len, 2, false)?;
         let mut offset = 0;
@@ -73,33 +78,13 @@ impl ResponseData for IOCtrl {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{Configuration, DataIdentifier, IOCtrlParameter, ResponseData};
-    use super::IOCtrl;
+pub(crate) fn io_ctrl(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Response, Error> {
+    let _ = IOCtrl::try_parse(data.as_slice(), None, cfg)?;
 
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let did = DataIdentifier::from(0x4101);
-
-        let mut cfg = Configuration::default();
-        cfg.did_cfg.insert(did, 2);
-
-        let source = hex::decode("6f4101030040")?;
-        let response = IOCtrl::new(
-            did,
-            IOCtrlParameter::ShortTermAdjustment,
-            hex::decode("0040")?,
-        );
-        let result: Vec<_> = response.into();
-        assert_eq!(result, source[1..]);
-
-        let response = IOCtrl::try_parse(&source[1..], None, &cfg)?;
-        assert_eq!(response.did, did);
-        assert_eq!(response.status.param, IOCtrlParameter::ShortTermAdjustment);
-        assert_eq!(response.status.state, hex::decode("0040")?);
-
-        Ok(())
-    }
+    Ok(Response { service, negative: false, sub_func, data })
 }
-

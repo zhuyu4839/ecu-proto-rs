@@ -1,7 +1,7 @@
 //! request of Service 34|35
 
 
-use crate::{Configuration, DataFormatIdentifier, Error, MemoryLocation, Placeholder, RequestData, utils};
+use crate::{Configuration, DataFormatIdentifier, Error, MemoryLocation, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone)]
 pub struct RequestLoadData {
@@ -30,5 +30,35 @@ impl RequestData for RequestLoadData {
 
         result
     }
+}
+
+pub(crate) fn request_download(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let _ = RequestLoadData::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
+}
+
+pub(crate) fn request_upload(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let _ = RequestLoadData::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }
 

@@ -1,7 +1,7 @@
 //! request of Service 2C
 
 
-use crate::{DynamicallyDID, DefinitionType, DynamicallyMemAddr, Error, RequestData, Configuration, utils};
+use crate::{DynamicallyDID, DefinitionType, DynamicallyMemAddr, Error, request::{Request, SubFunction}, RequestData, Configuration, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DynamicallyDefineDID {
@@ -162,51 +162,18 @@ impl RequestData for DynamicallyDefineDID {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use crate::{Configuration, DynamicallyDID, DynamicallyMemAddr, RequestData};
-    use super::DynamicallyDefineDID;
-
-    #[test]
-    fn new() -> anyhow::Result<()> {
-        let cfg = Configuration::default();
-        let source = hex::decode("2C01F30112340102567801019ABC0104")?;
-        let request = DynamicallyDefineDID::DefineByIdentifier {
-                did: DynamicallyDID::try_from(0xF301)?,
-                source: DynamicallyMemAddr {
-                            did: 0x1234,
-                            position: 1,
-                            mem_size: 2,
-                        },
-                others: vec![
-                    DynamicallyMemAddr {
-                        did: 0x5678,
-                        position: 1,
-                        mem_size: 1,
-                    },
-                    DynamicallyMemAddr {
-                        did: 0x9ABC,
-                        position: 1,
-                        mem_size: 4,
-                    }
-                ]
-            };
-        let result: Vec<_> = request.to_vec(&cfg);
-        assert_eq!(result, source[2..].to_vec());
-
-        let source = hex::decode("2C02F302240009196900012109196900012109196b0102131019950001")?;
-        let request = DynamicallyDefineDID::DefineByMemoryAddress {
-                did: DynamicallyDID::try_from(0xF302)?,
-                memory: (0x00091969, 1),
-                others: vec![
-                    (0x21091969, 1),
-                    (0x2109196B, 0x0102),
-                    (0x13101995, 1),
-                ],
-            };
-        let result: Vec<_> = request.to_vec(&cfg);
-        assert_eq!(result, source[2..].to_vec());
-
-        Ok(())
+pub(crate) fn dyn_define_did(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_none() {
+        return Err(Error::SubFunctionError(service));
     }
+
+    let sf = DefinitionType::try_from(sub_func.unwrap().function)?;
+    let _ = DynamicallyDefineDID::try_parse(data.as_slice(), Some(sf), cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

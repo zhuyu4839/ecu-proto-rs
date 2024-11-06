@@ -2,7 +2,8 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{AlgorithmIndicator, ALGORITHM_INDICATOR_LENGTH, AuthenticationTask, Configuration, Error, NotNullableData, NullableData, parse_not_nullable, parse_nullable, parse_algo_indicator, ResponseData, response::Code, utils};
+use crate::{AlgorithmIndicator, ALGORITHM_INDICATOR_LENGTH, AuthenticationTask, Configuration, Error, NotNullableData, NullableData, parse_not_nullable, parse_nullable, parse_algo_indicator, ResponseData, response::Code, utils, Service};
+use crate::response::{Response, SubFunction};
 
 lazy_static!(
     pub static ref AUTH_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -134,10 +135,14 @@ impl ResponseData for Authentication {
         utils::data_length_check(data_len, 1, false)?;
         let mut offset = 0;
         let value = AuthReturnValue::from(data[offset]);
+        offset += 1;
 
         match sub_func {
             Some(v) => match v {
-                AuthenticationTask::DeAuthenticate => Ok(Self::DeAuthenticate(value)),
+                AuthenticationTask::DeAuthenticate => {
+                    utils::data_length_check(data_len, 1, true)?;
+                    Ok(Self::DeAuthenticate(value))
+                },
                 AuthenticationTask::VerifyCertificateUnidirectional => {
                     let challenge = parse_not_nullable(data, data_len, &mut offset)?;
                     let ephemeral_public_key = parse_nullable(data, data_len, &mut offset)?;
@@ -170,7 +175,10 @@ impl ResponseData for Authentication {
                         session_keyinfo,
                     })
                 },
-                AuthenticationTask::TransmitCertificate => Ok(Self::TransmitCertificate(value)),
+                AuthenticationTask::TransmitCertificate => {
+                    utils::data_length_check(data_len, 1, true)?;
+                    Ok(Self::TransmitCertificate(value))
+                },
                 AuthenticationTask::RequestChallengeForAuthentication => {
                     utils::data_length_check(data_len, offset + ALGORITHM_INDICATOR_LENGTH, false)?;
 
@@ -212,8 +220,10 @@ impl ResponseData for Authentication {
                         session_keyinfo,
                     })
                 },
-                AuthenticationTask::AuthenticationConfiguration =>
-                    Ok(Self::AuthenticationConfiguration(value)),
+                AuthenticationTask::AuthenticationConfiguration => {
+                    utils::data_length_check(data_len, 1, true)?;
+                    Ok(Self::AuthenticationConfiguration(value))
+                },
             },
             None => panic!("Sub-function required"),
         }
@@ -296,4 +306,20 @@ impl Into<Vec<u8>> for Authentication {
 
         result
     }
+}
+
+pub(crate) fn authentication(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Response, Error> {
+    if sub_func.is_none() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let sf = AuthenticationTask::try_from(sub_func.unwrap().0)?;
+    let _ = Authentication::try_parse(data.as_slice(), Some(sf), cfg)?;
+
+    Ok(Response { service, negative: false, sub_func, data })
 }

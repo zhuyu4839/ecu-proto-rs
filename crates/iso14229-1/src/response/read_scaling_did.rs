@@ -4,8 +4,9 @@
 use std::collections::HashSet;
 use bitfield_struct::bitfield;
 use lazy_static::lazy_static;
-use crate::enum_to_vec;
+use crate::{enum_to_vec, Service};
 use crate::{Configuration, DataIdentifier, error::Error, Placeholder, response::Code, ResponseData, utils};
+use crate::response::{Response, SubFunction};
 
 lazy_static!(
     pub static ref READ_SCALING_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -205,5 +206,20 @@ impl ResponseData for ReadScalingDID {
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
         self.into()
     }
+}
+
+pub(crate) fn read_scaling_did(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Response, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let _ = ReadScalingDID::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Response { service, negative: false, sub_func, data })
 }
 

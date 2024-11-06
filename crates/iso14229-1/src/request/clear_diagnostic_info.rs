@@ -1,7 +1,7 @@
 //! request of Service 14
 
 
-use crate::{Configuration, Error, Placeholder, RequestData, utils};
+use crate::{Configuration, Error, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ClearDiagnosticInfo {
@@ -48,6 +48,7 @@ impl<'a> TryFrom<&'a [u8]> for ClearDiagnosticInfo {
         offset += 3;
 
         let mem_selection = if data_len > offset {
+            utils::data_length_check(data_len, 4, true)?;
             Some(data[offset])
         }
         else {
@@ -60,7 +61,7 @@ impl<'a> TryFrom<&'a [u8]> for ClearDiagnosticInfo {
     #[cfg(any(feature = "std2006", feature = "std2013"))]
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
-        utils::data_length_check(data_len, 3, false)?;
+        utils::data_length_check(data_len, 3, true)?;
         let offset = 0;
 
         let group = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
@@ -92,4 +93,19 @@ impl RequestData for ClearDiagnosticInfo {
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
         self.into()
     }
+}
+
+pub(crate) fn clear_diag_info(
+    service: Service,
+    sub_func: Option<SubFunction>,
+    data: Vec<u8>,
+    cfg: &Configuration,
+) -> Result<Request, Error> {
+    if sub_func.is_some() {
+        return Err(Error::SubFunctionError(service));
+    }
+
+    let _ = ClearDiagnosticInfo::try_parse(data.as_slice(), None, cfg)?;
+
+    Ok(Request { service, sub_func, data })
 }

@@ -22,20 +22,10 @@ enum_to_vec!(
     pub enum DTCReportType {
         ReportNumberOfDTCByStatusMask = 0x01,
         ReportDTCByStatusMask = 0x02,
-        #[cfg(any(feature = "std2006", feature = "std2013"))]
-        ReportMirrorMemoryDTCByStatusMask = 0x0F,
-        #[cfg(any(feature = "std2006", feature = "std2013"))]
-        ReportNumberOfMirrorMemoryDTCByStatusMask = 0x11,
-        #[cfg(any(feature = "std2006", feature = "std2013"))]
-        ReportNumberOfEmissionsOBDDTCByStatusMask = 0x12,
-        #[cfg(any(feature = "std2006", feature = "std2013"))]
-        ReportEmissionsOBDDTCByStatusMask = 0x13,
         ReportDTCSnapshotIdentification = 0x03,
         ReportDTCSnapshotRecordByDTCNumber = 0x04,
         ReportDTCStoredDataByRecordNumber = 0x05,
         ReportDTCExtDataRecordByDTCNumber = 0x06,
-        #[cfg(any(feature = "std2006", feature = "std2013"))]
-        ReportMirrorMemoryDTCExtDataRecordByDTCNumber = 0x10,
         ReportNumberOfDTCBySeverityMaskRecord = 0x07,  // (((statusOfDTC & DTCStatusMask) != 0) && ((severity & DTCSeverityMask) != 0)) == TRUE
         ReportDTCBySeverityMaskRecord = 0x08,  // (((statusOfDTC & DTCStatusMask) !=0) && ((severity & DTCSeverityMask) != 0)) == TRUE
         ReportSeverityInformationOfDTC = 0x09,
@@ -44,6 +34,16 @@ enum_to_vec!(
         ReportFirstConfirmedDTC = 0x0C,
         ReportMostRecentTestFailedDTC = 0x0D,
         ReportMostRecentConfirmedDTC = 0x0E,
+        #[cfg(any(feature = "std2006", feature = "std2013"))]
+        ReportMirrorMemoryDTCByStatusMask = 0x0F,
+        #[cfg(any(feature = "std2006", feature = "std2013"))]
+        ReportMirrorMemoryDTCExtDataRecordByDTCNumber = 0x10,
+        #[cfg(any(feature = "std2006", feature = "std2013"))]
+        ReportNumberOfMirrorMemoryDTCByStatusMask = 0x11,
+        #[cfg(any(feature = "std2006", feature = "std2013"))]
+        ReportNumberOfEmissionsOBDDTCByStatusMask = 0x12,
+        #[cfg(any(feature = "std2006", feature = "std2013"))]
+        ReportEmissionsOBDDTCByStatusMask = 0x13,
         ReportDTCFaultDetectionCounter = 0x14,
         ReportDTCWithPermanentStatus = 0x15,
         #[cfg(any(feature = "std2013", feature = "std2020"))]
