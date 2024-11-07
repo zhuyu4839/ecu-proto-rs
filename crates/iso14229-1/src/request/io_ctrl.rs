@@ -30,7 +30,7 @@ impl IOCtrl {
                 let &did_len = cfg.did_cfg.get(&did)
                     .ok_or(Error::DidNotSupported(did))?;
 
-                utils::data_length_check(state.len(), did_len, true)?;
+                utils::data_length_check(state.len(), did_len, false)?;
             },
         }
 
@@ -87,9 +87,14 @@ impl RequestData for IOCtrl {
 
         let param = IOCtrlParameter::try_from(data[offset])?;
         offset += 1;
+        let &did_len = cfg.did_cfg.get(&did)
+            .ok_or(Error::DidNotSupported(did))?;
+        utils::data_length_check(data_len, offset + did_len, false)?;
+        let state = data[offset..offset + did_len].to_vec();
+        offset += did_len;
 
         let mask = data[offset..].to_vec();
-        Self::new(did, param, vec![], mask, cfg)
+        Self::new(did, param, state, mask, cfg)
     }
     #[inline]
     fn to_vec(self, _: &Configuration) -> Vec<u8> {

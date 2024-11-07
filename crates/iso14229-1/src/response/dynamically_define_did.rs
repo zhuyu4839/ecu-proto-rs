@@ -49,7 +49,7 @@ impl ResponseData for DynamicallyDefineDID {
     type SubFunc = DefinitionType;
     #[inline]
     fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
-        if sub_func.is_some() {
+        if sub_func.is_none() {
             return Err(Error::SubFunctionError(Service::DynamicalDefineDID));
         }
 

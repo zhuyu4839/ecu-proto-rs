@@ -20,6 +20,7 @@ mod tests {
             IOCtrlParameter::ShortTermAdjustment,
             hex::decode("0040")?,
             hex::decode("ffff")?,
+            &cfg
         )?);
 
         Ok(())
