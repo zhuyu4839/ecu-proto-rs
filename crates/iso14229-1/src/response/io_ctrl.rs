@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, DataIdentifier, Error, IOCtrlOption, IOCtrlParameter, Placeholder, response::Code, ResponseData, Service, utils};
+use crate::{Configuration, DataIdentifier, UdsError, IOCtrlOption, IOCtrlParameter, Placeholder, response::Code, ResponseData, Service, utils};
 use crate::response::{Response, SubFunction};
 
 lazy_static!(
@@ -49,9 +49,9 @@ impl Into<Vec<u8>> for IOCtrl {
 
 impl ResponseData for IOCtrl {
     type SubFunc = Placeholder;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::IOCtrl));
+            return Err(UdsError::SubFunctionError(Service::IOCtrl));
         }
 
         let data_len = data.len();
@@ -65,7 +65,7 @@ impl ResponseData for IOCtrl {
         let ctrl_type = IOCtrlParameter::try_from(data[offset])?;
         offset += 1;
         let &record_len = cfg.did_cfg.get(&did)
-            .ok_or(Error::DidNotSupported(did))?;
+            .ok_or(UdsError::DidNotSupported(did))?;
 
         utils::data_length_check(data_len, offset + record_len, true)?;
 
@@ -83,7 +83,7 @@ pub(crate) fn io_ctrl(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     let _ = IOCtrl::try_parse(data.as_slice(), None, cfg)?;
 
     Ok(Response { service, negative: false, sub_func, data })

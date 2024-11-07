@@ -1,16 +1,20 @@
 mod constant;
 pub use constant::*;
 
-pub mod driver;
+mod driver;
+pub use driver::*;
 
-pub mod frame;
-pub mod identifier;
+mod frame;
+pub use frame::*;
+mod identifier;
+pub use identifier::*;
 
-pub mod isotp;
+mod isotp;
+pub use isotp::*;
 
 mod utils;
 
-use crate::{Error, FlowControlContext, FlowControlState, FrameType, IsoTpFrame};
+use crate::{IsoTpError, FlowControlContext, FlowControlState, FrameType, IsoTpFrame};
 
 /// ISO-TP address format.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -72,12 +76,12 @@ impl<'a> From<&'a CanIsoTpFrame> for FrameType {
 unsafe impl Send for CanIsoTpFrame {}
 
 impl IsoTpFrame for CanIsoTpFrame {
-    fn decode<T: AsRef<[u8]>>(data: T) -> Result<Self, Error> {
+    fn decode<T: AsRef<[u8]>>(data: T) -> Result<Self, IsoTpError> {
         let data = data.as_ref();
         let length = data.len();
         match length {
-            0 => Err(Error::EmptyPdu),
-            1..=2 => Err(Error::InvalidPdu(data.to_vec())),
+            0 => Err(IsoTpError::EmptyPdu),
+            1..=2 => Err(IsoTpError::InvalidPdu(data.to_vec())),
             3.. => {
                 let byte0 = data[0];
                 match FrameType::try_from(byte0)? {
@@ -131,18 +135,18 @@ impl IsoTpFrame for CanIsoTpFrame {
         }
     }
 
-    fn from_data<T: AsRef<[u8]>>(data: T) -> Result<Vec<Self>, Error> {
+    fn from_data<T: AsRef<[u8]>>(data: T) -> Result<Vec<Self>, IsoTpError> {
         utils::from_data(data.as_ref())
     }
 
-    fn single_frame<T: AsRef<[u8]>>(data: T) -> Result<Self, Error> {
+    fn single_frame<T: AsRef<[u8]>>(data: T) -> Result<Self, IsoTpError> {
         utils::new_single(data)
     }
 
     fn flow_ctrl_frame(state: FlowControlState,
                        block_size: u8,
                        st_min: u8,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, IsoTpError> {
         Ok(Self::FlowControlFrame(
             FlowControlContext::new(state, block_size, st_min)?
         ))

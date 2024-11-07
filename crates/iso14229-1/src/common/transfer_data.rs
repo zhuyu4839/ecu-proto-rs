@@ -1,7 +1,7 @@
 //! Commons of Service 36
 
 
-use crate::{Configuration, Error, Placeholder, RequestData, ResponseData, utils, Service};
+use crate::{Configuration, UdsError, Placeholder, RequestData, ResponseData, utils, Service};
 
 #[derive(Debug, Clone)]
 pub struct TransferData {
@@ -10,7 +10,7 @@ pub struct TransferData {
 }
 
 impl<'a> TryFrom<&'a [u8]> for TransferData {
-    type Error = Error;
+    type Error = UdsError;
     #[inline]
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         utils::data_length_check(data.len(), 1, false)?;
@@ -34,9 +34,9 @@ impl Into<Vec<u8>> for TransferData {
 impl RequestData for TransferData {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::TransferData));
+            return Err(UdsError::SubFunctionError(Service::TransferData));
         }
 
         Self::try_from(data)
@@ -50,9 +50,9 @@ impl RequestData for TransferData {
 impl ResponseData for TransferData {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::TransferData));
+            return Err(UdsError::SubFunctionError(Service::TransferData));
         }
 
         Self::try_from(data)

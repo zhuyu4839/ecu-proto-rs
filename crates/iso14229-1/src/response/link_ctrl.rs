@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{utils, Configuration, Error, LinkCtrlType, response::{Code, Response, SubFunction}, Service};
+use crate::{utils, Configuration, UdsError, LinkCtrlType, response::{Code, Response, SubFunction}, Service};
 
 lazy_static!(
     pub static ref LINK_CTRL_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -19,9 +19,9 @@ pub(crate) fn link_ctrl(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     _: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = LinkCtrlType::try_from(sub_func.unwrap().0)?;

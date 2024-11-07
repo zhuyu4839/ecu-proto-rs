@@ -1,7 +1,7 @@
 //! request of Service 31
 
 
-use crate::{Configuration,Error, request::{Request, SubFunction}, RequestData, RoutineCtrlType, RoutineId, Service, utils};
+use crate::{Configuration, UdsError, request::{Request, SubFunction}, RequestData, RoutineCtrlType, RoutineId, Service, utils};
 
 #[derive(Debug, Clone)]
 pub struct RoutineCtrl {
@@ -10,7 +10,7 @@ pub struct RoutineCtrl {
 }
 
 impl<'a> TryFrom<&'a [u8]> for RoutineCtrl {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         utils::data_length_check(data.len(), 2, false)?;
 
@@ -37,9 +37,9 @@ impl RequestData for RoutineCtrl {
     type SubFunc = RoutineCtrlType;
 
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_none() {
-            return Err(Error::SubFunctionError(Service::RoutineCtrl));
+            return Err(UdsError::SubFunctionError(Service::RoutineCtrl));
         }
 
         Self::try_from(data)
@@ -56,9 +56,9 @@ pub(crate) fn routine_ctrl(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = RoutineCtrlType::try_from(sub_func.unwrap().function)?;

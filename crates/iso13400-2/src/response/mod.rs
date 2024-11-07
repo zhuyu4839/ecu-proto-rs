@@ -1,5 +1,5 @@
 use derive_getters::Getters;
-use crate::{{ActiveCode, DiagnosticNegativeCode, NodeType, Error, FurtherAction, HeaderNegativeCode, LogicAddress, PowerMode}, constant::*, SyncStatus, DiagnosticPositiveCode, utils};
+use crate::{{ActiveCode, DiagnosticNegativeCode, NodeType, DoIpError, FurtherAction, HeaderNegativeCode, LogicAddress, PowerMode}, constant::*, SyncStatus, DiagnosticPositiveCode, utils};
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct HeaderNegative {
@@ -18,7 +18,7 @@ impl HeaderNegative {
 }
 
 impl TryFrom<&[u8]> for HeaderNegative {
-    type Error = Error;
+    type Error = DoIpError;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, offset) = utils::data_len_check(data, Self::length(), true)?;
         let code = data[offset];
@@ -63,10 +63,10 @@ impl VehicleID {
         gid: [u8; SIZE_OF_ID],
         further_act: FurtherAction,
         sync_status: Option<SyncStatus>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, DoIpError> {
         let vin_len = vin.as_bytes().len();
         if vin_len != LENGTH_OF_VIN {
-            return Err(Error::InvalidLength { actual: vin_len, expected: LENGTH_OF_VIN });
+            return Err(DoIpError::InvalidLength { actual: vin_len, expected: LENGTH_OF_VIN });
         }
 
         Ok(Self { vin, address, eid, gid, further_act, sync_status })
@@ -80,7 +80,7 @@ impl VehicleID {
 }
 
 impl TryFrom<&[u8]> for VehicleID {
-    type Error = Error;
+    type Error = DoIpError;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (data_len, mut offset) = utils::data_len_check(data, Self::length(), false)?;
         let vin = match String::from_utf8(data[offset..offset+LENGTH_OF_VIN].to_vec()) {
@@ -103,7 +103,7 @@ impl TryFrom<&[u8]> for VehicleID {
         let sync_status = match data_len - offset {
             0 => Ok(None),
             1 => Ok(Some(SyncStatus::from(data[offset]))),
-            _ => Err(Error::InvalidLength { actual: data_len, expected: Self::length()+1 })
+            _ => Err(DoIpError::InvalidLength { actual: data_len, expected: Self::length()+1 })
         }?;
 
         Ok(Self { vin, address, eid, gid, further_act, sync_status })
@@ -161,7 +161,7 @@ impl EntityStatus {
 }
 
 impl TryFrom<&[u8]> for EntityStatus {
-    type Error = Error;
+    type Error = DoIpError;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (data_len, mut offset) = utils::data_len_check(data, Self::length(), false)?;
         let node_type = data[offset];
@@ -174,7 +174,7 @@ impl TryFrom<&[u8]> for EntityStatus {
         let max_data_size = match data_len - offset {
             0 => Ok(None),
             4 => Ok(Some(u32::from_be_bytes(data[offset..offset+4].try_into().unwrap()))),
-            _ => Err(Error::InvalidLength { actual: data_len, expected: Self::length()+4 }),
+            _ => Err(DoIpError::InvalidLength { actual: data_len, expected: Self::length()+4 }),
         }?;
 
         Ok(Self { node_type, mcts, ncts, max_data_size })
@@ -217,7 +217,7 @@ impl DiagnosticPowerMode {
 }
 
 impl TryFrom<&[u8]> for DiagnosticPowerMode {
-    type Error = Error;
+    type Error = DoIpError;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, offset) = utils::data_len_check(data, Self::length(), true)?;
         let mode = data[offset];
@@ -265,7 +265,7 @@ impl RoutingActive {
 }
 
 impl TryFrom<&[u8]> for RoutingActive {
-    type Error = Error;
+    type Error = DoIpError;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (data_len, mut offset) = utils::data_len_check(data, Self::length(), false)?;
         let dst_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
@@ -282,7 +282,7 @@ impl TryFrom<&[u8]> for RoutingActive {
         let user_def = match data_len - offset {
             0 => Ok(None),
             4 => Ok(Some(u32::from_be_bytes(data[offset..offset+4].try_into().unwrap()))),
-            _ => Err(Error::InvalidLength { actual: data_len, expected: Self::length()+4 }),
+            _ => Err(DoIpError::InvalidLength { actual: data_len, expected: Self::length()+4 }),
         }?;
 
         Ok(Self { dst_addr, src_addr, active_code, reserved, user_def })
@@ -328,7 +328,7 @@ impl AliveCheck {
 }
 
 impl TryFrom<&[u8]> for AliveCheck {
-    type Error = Error;
+    type Error = DoIpError;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, offset) = utils::data_len_check(data, Self::length(), true)?;
         let src_addr = u16::from_be_bytes(data[offset..].try_into().unwrap());
@@ -374,7 +374,7 @@ impl DiagnosticPositive {
 }
 
 impl TryFrom<&[u8]> for DiagnosticPositive {
-    type Error = Error;
+    type Error = DoIpError;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, mut offset) = utils::data_len_check(data, Self::length(), false)?;
         let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
@@ -433,7 +433,7 @@ impl DiagnosticNegative {
 }
 
 impl TryFrom<&[u8]> for DiagnosticNegative {
-    type Error = Error;
+    type Error = DoIpError;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, mut offset) = utils::data_len_check(data, Self::length(), false)?;
         let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());

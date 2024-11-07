@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{DTCSettingType, Error, response::{Code, Response, SubFunction}, Service, utils, Configuration};
+use crate::{DTCSettingType, UdsError, response::{Code, Response, SubFunction}, Service, utils, Configuration};
 
 lazy_static!(
     pub static ref CTRL_DTC_SETTING_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -18,9 +18,9 @@ pub(crate) fn ctrl_dtc_setting(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     _: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = DTCSettingType::try_from(sub_func.unwrap().0)?;

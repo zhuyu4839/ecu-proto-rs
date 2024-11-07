@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, constant::{P2_MAX, P2_STAR_MAX, P2_STAR_MAX_MS}, error::Error, response::{Code, Response, SubFunction}, ResponseData, SessionType, utils, Service};
+use crate::{Configuration, constant::{P2_MAX, P2_STAR_MAX, P2_STAR_MAX_MS}, error::UdsError, response::{Code, Response, SubFunction}, ResponseData, SessionType, utils, Service};
 
 lazy_static!(
     pub static ref SESSION_CTRL_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -24,9 +24,9 @@ impl SessionTiming {
     pub fn new(
         p2_ms: u16,
         p2_star_ms: u32,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         if p2_ms > P2_MAX || p2_star_ms > P2_STAR_MAX_MS {
-            return Err(Error::InvalidData(format!("P2: {} or P2*: {}", p2_ms, p2_star_ms)));
+            return Err(UdsError::InvalidData(format!("P2: {} or P2*: {}", p2_ms, p2_star_ms)));
         }
         let p2_star = (p2_star_ms / 10) as u16;
         Ok(Self { p2: p2_ms, p2_star })
@@ -44,7 +44,7 @@ impl SessionTiming {
 }
 
 impl<'a> TryFrom<&'a [u8]> for SessionTiming {
-    type Error = Error;
+    type Error = UdsError;
     #[allow(unused_mut)]
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
@@ -64,7 +64,7 @@ impl<'a> TryFrom<&'a [u8]> for SessionTiming {
         }
         #[cfg(feature = "session_data_check")]
         if p2 > P2_MAX || p2_star > P2_STAR_MAX {
-            return Err(Error::InvalidSessionData(format!("P2: {}, P2*: {}", p2, p2_star)));
+            return Err(UdsError::InvalidSessionData(format!("P2: {}, P2*: {}", p2, p2_star)));
         }
 
         Ok(Self { p2, p2_star })
@@ -82,9 +82,9 @@ impl Into<Vec<u8>> for SessionTiming {
 impl ResponseData for SessionTiming {
     type SubFunc = SessionType;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_none() {
-            return Err(Error::SubFunctionError(Service::SessionCtrl));
+            return Err(UdsError::SubFunctionError(Service::SessionCtrl));
         }
 
         Self::try_from(data)
@@ -100,9 +100,9 @@ pub(crate) fn session_ctrl(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = SessionType::try_from(sub_func.unwrap().0)?;

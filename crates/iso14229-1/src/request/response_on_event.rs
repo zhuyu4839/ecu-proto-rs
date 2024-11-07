@@ -2,7 +2,7 @@
 
 
 use bitfield_struct::bitfield;
-use crate::{Configuration, Error, enum_extend, EventType, request::{Request, SubFunction}, RequestData, ResponseOnEventType, Service, Placeholder};
+use crate::{Configuration, UdsError, enum_extend, EventType, request::{Request, SubFunction}, RequestData, ResponseOnEventType, Service, Placeholder};
 
 enum_extend!(
     /// Table 142 — Comparison logic parameter definition
@@ -114,9 +114,9 @@ pub struct ResponseOnEvent {
 
 #[allow(unused_variables)]
 impl<'a> TryFrom<&'a [u8]> for ResponseOnEvent {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
-        return Err(Error::OtherError("This library does not yet support".to_string()))
+        return Err(UdsError::OtherError("This library does not yet support".to_string()))
     }
 }
 
@@ -129,9 +129,9 @@ impl Into<Vec<u8>> for ResponseOnEvent {
 impl RequestData for ResponseOnEvent {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::ResponseOnEvent));
+            return Err(UdsError::SubFunctionError(Service::ResponseOnEvent));
         }
 
         Self::try_from(data)
@@ -147,9 +147,9 @@ pub(crate) fn response_on_event(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = ResponseOnEvent::try_parse(data.as_slice(), None, cfg)?;

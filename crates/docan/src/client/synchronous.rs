@@ -1,5 +1,5 @@
 use std::{collections::HashMap, fmt::Display, hash::Hash, time::Duration};
-use iso15765_2::{can::{Address, driver::SyncCan, frame::Frame, isotp::SyncCanIsoTp}, device::Driver, error::Error as IsoTpError, IsoTpEventListener};
+use iso15765_2::{can::{Address, SyncCan, Frame, SyncCanIsoTp}, Driver, IsoTpError, IsoTpEventListener};
 use iso14229_1::{response::{self, Response, Code}, request::{self, Request}, *};
 use crate::{client::context::{Context, IsoTpListener}, Error, P2Context};
 

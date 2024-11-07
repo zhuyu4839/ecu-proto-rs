@@ -1,6 +1,6 @@
 //! Commons of Service 29
 
-use crate::{enum_extend, Error, utils};
+use crate::{enum_extend, UdsError, utils};
 
 pub(crate) const ALGORITHM_INDICATOR_LENGTH: usize = 16;
 
@@ -24,9 +24,9 @@ impl NotNullableData {
     #[inline]
     pub fn new(
         data: Vec<u8>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         if data.is_empty() || data.len() > u16::MAX as usize {
-            return Err(Error::InvalidParam("Data must not be empty, and the length of the data must be less than or equal to 0xFFFF".to_string()));
+            return Err(UdsError::InvalidParam("Data must not be empty, and the length of the data must be less than or equal to 0xFFFF".to_string()));
         }
 
         Ok(Self(data))
@@ -51,9 +51,9 @@ impl NullableData {
     #[inline]
     pub fn new(
         data: Vec<u8>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         if data.len() > u16::MAX as usize {
-            return Err(Error::InvalidParam("the length of data must be less than or equal to 0xFFFF!".to_string()));
+            return Err(UdsError::InvalidParam("the length of data must be less than or equal to 0xFFFF!".to_string()));
         }
 
         Ok(Self(data))
@@ -86,7 +86,7 @@ pub(crate) fn parse_nullable(
     data: &[u8],
     data_len: usize,
     offset: &mut usize,
-) -> Result<NullableData, Error> {
+) -> Result<NullableData, UdsError> {
     utils::data_length_check(data_len, *offset + 2, false)?;
 
     let len = u16::from_be_bytes([data[*offset], data[*offset + 1]]) as usize;
@@ -104,13 +104,13 @@ pub(crate) fn parse_not_nullable(
     data: &[u8],
     data_len: usize,
     offset: &mut usize,
-) -> Result<NotNullableData, Error> {
+) -> Result<NotNullableData, UdsError> {
     utils::data_length_check(data_len, *offset + 2, false)?;
 
     let len = u16::from_be_bytes([data[*offset], data[*offset + 1]]) as usize;
     *offset += 2;
     if len == 0 {
-        return Err(Error::InvalidData(hex::encode(data)));
+        return Err(UdsError::InvalidData(hex::encode(data)));
     }
     utils::data_length_check(data_len, *offset + len, false)?;
 

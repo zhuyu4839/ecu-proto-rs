@@ -1,15 +1,15 @@
 //! Commons of Service 27
 
 
-use crate::{Configuration, Error, Placeholder, RequestData, ResponseData, utils, Service};
+use crate::{Configuration, UdsError, Placeholder, RequestData, ResponseData, utils, Service};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SecurityAccessLevel(pub(crate) u8);
 
 impl SecurityAccessLevel {
-    pub fn new(level: u8) -> Result<Self, Error> {
+    pub fn new(level: u8) -> Result<Self, UdsError> {
         if level < 1 || level > 0x7D {
-            return Err(Error::InvalidParam(format!("access level: {}", level)));
+            return Err(UdsError::InvalidParam(format!("access level: {}", level)));
         }
 
         Ok(Self(level))
@@ -17,7 +17,7 @@ impl SecurityAccessLevel {
 }
 
 impl TryFrom<u8> for SecurityAccessLevel {
-    type Error = Error;
+    type Error = UdsError;
     #[inline]
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         Self::new(value)
@@ -35,7 +35,7 @@ impl Into<u8> for SecurityAccessLevel {
 pub struct SecurityAccessData(pub Vec<u8>);
 
 impl<'a> TryFrom<&'a [u8]> for SecurityAccessData {
-    type Error = Error;
+    type Error = UdsError;
 
     fn try_from(value: &'a [u8]) -> Result<Self, Self::Error> {
         Ok(Self(value.to_vec()))
@@ -50,9 +50,9 @@ impl Into<Vec<u8>> for SecurityAccessData {
 
 impl RequestData for SecurityAccessData {
     type SubFunc = SecurityAccessLevel;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::SecurityAccess));
+            return Err(UdsError::SubFunctionError(Service::SecurityAccess));
         }
 
         Self::try_from(data)
@@ -65,9 +65,9 @@ impl RequestData for SecurityAccessData {
 impl ResponseData for SecurityAccessData {
     type SubFunc = SecurityAccessLevel;
 
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::SecurityAccess));
+            return Err(UdsError::SubFunctionError(Service::SecurityAccess));
         }
 
         Self::try_from(data)

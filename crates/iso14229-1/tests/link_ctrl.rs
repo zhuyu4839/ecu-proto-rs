@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{request, response, Configuration, Error, LinkCtrlMode, LinkCtrlType, Service, TryFromWithCfg};
+    use iso14229_1::{request, response, Configuration, UdsError, LinkCtrlMode, LinkCtrlType, Service, TryFromWithCfg};
     use iso14229_1::utils::U24;
 
     #[test]
@@ -58,7 +58,7 @@ mod tests {
         let source = hex::decode("C70100")?;
         let err = response::Response::try_from_cfg(source, &cfg).unwrap_err();
         match err {
-            Error::InvalidDataLength { expect, actual } => {
+            UdsError::InvalidDataLength { expect, actual } => {
                 assert_eq!(expect, 0);
                 assert_eq!(actual, 1);
             },

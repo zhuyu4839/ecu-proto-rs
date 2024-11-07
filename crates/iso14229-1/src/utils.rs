@@ -1,5 +1,5 @@
 use std::fmt::{Display, LowerHex};
-use crate::{ByteOrder, Error};
+use crate::{ByteOrder, UdsError};
 
 /// Add to_vector function and
 /// implement `Debug`, `Copy`, `Clone`, `Eq`, `PartialEq`,
@@ -7,7 +7,7 @@ use crate::{ByteOrder, Error};
 ///
 /// Example:
 /// ```rust
-/// use iso14229_1::{enum_extend, Error};
+/// use iso14229_1::{enum_extend, UdsError};
 ///
 /// enum_extend!(
 ///     pub enum AccessType {
@@ -58,7 +58,7 @@ macro_rules! enum_extend {
         }
 
         impl TryFrom<$value_type> for $enum_name {
-            type Error = Error;
+            type Error = UdsError;
             #[inline]
             fn try_from(value: $value_type) -> Result<Self, Self::Error> {
                match value {
@@ -98,7 +98,7 @@ impl U24 {
 }
 
 impl<'a> TryFrom<&'a [u8]> for U24 {
-    type Error = Error;
+    type Error = UdsError;
 
     #[inline]
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
@@ -135,15 +135,15 @@ impl Into<u32> for U24 {
 }
 
 #[inline]
-pub(crate) fn data_length_check(actual: usize, expect: usize, equal: bool) -> Result<(), Error> {
+pub(crate) fn data_length_check(actual: usize, expect: usize, equal: bool) -> Result<(), UdsError> {
     if equal {
         if actual != expect {
-            return Err(Error::InvalidDataLength { expect, actual });
+            return Err(UdsError::InvalidDataLength { expect, actual });
         }
     }
     else {
         if actual < expect {
-            return Err(Error::InvalidDataLength { expect, actual });
+            return Err(UdsError::InvalidDataLength { expect, actual });
         }
     }
 

@@ -1,7 +1,7 @@
 //! request of Service 34|35
 
 
-use crate::{Configuration, DataFormatIdentifier, Error, MemoryLocation, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, DataFormatIdentifier, UdsError, MemoryLocation, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RequestLoadData {
@@ -12,9 +12,9 @@ pub struct RequestLoadData {
 impl RequestData for RequestLoadData {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::RequestDownload));  // TODO Service::RequestUpload
+            return Err(UdsError::SubFunctionError(Service::RequestDownload));  // TODO Service::RequestUpload
         }
 
         utils::data_length_check(data.len(), 2, false)?;
@@ -41,9 +41,9 @@ pub(crate) fn request_download(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = RequestLoadData::try_parse(data.as_slice(), None, cfg)?;
@@ -56,9 +56,9 @@ pub(crate) fn request_upload(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = RequestLoadData::try_parse(data.as_slice(), None, cfg)?;

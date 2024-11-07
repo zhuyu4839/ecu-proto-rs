@@ -1,6 +1,6 @@
 //! Commons of Service 83
 
-use crate::{Configuration, enum_extend, Error, RequestData, ResponseData, Service};
+use crate::{Configuration, enum_extend, UdsError, RequestData, ResponseData, Service};
 
 enum_extend!(
     pub enum TimingParameterAccessType {
@@ -23,25 +23,25 @@ impl Into<Vec<u8>> for TimingParameter {
 impl ResponseData for TimingParameter {
     type SubFunc = TimingParameterAccessType;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         match sub_func {
             Some(sub_func) => match sub_func {
                 TimingParameterAccessType::ReadExtendedTimingParameterSet => {
                     if data.is_empty() {
-                        return Err(Error::InvalidData(hex::encode(data)));
+                        return Err(UdsError::InvalidData(hex::encode(data)));
                     }
 
                     Ok(Self(data.to_vec()))
                 }
                 _ => {
                     if !data.is_empty() {
-                        return Err(Error::InvalidData(hex::encode(data)));
+                        return Err(UdsError::InvalidData(hex::encode(data)));
                     }
 
                     Ok(Self(data.to_vec()))
                 }
             },
-            None => Err(Error::SubFunctionError(Service::AccessTimingParam)),
+            None => Err(UdsError::SubFunctionError(Service::AccessTimingParam)),
         }
     }
     #[inline]
@@ -53,25 +53,25 @@ impl ResponseData for TimingParameter {
 impl RequestData for TimingParameter {
     type SubFunc = TimingParameterAccessType;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         match sub_func {
             Some(sub_func) => match sub_func {
                 TimingParameterAccessType::SetTimingParametersToGivenValues => {
                     if data.is_empty() {
-                        return Err(Error::InvalidData(hex::encode(data)));
+                        return Err(UdsError::InvalidData(hex::encode(data)));
                     }
 
                     Ok(Self(data.to_vec()))
                 }
                 _ => {
                     if !data.is_empty() {
-                        return Err(Error::InvalidData(hex::encode(data)));
+                        return Err(UdsError::InvalidData(hex::encode(data)));
                     }
 
                     Ok(Self(data.to_vec()))
                 }
             },
-            None => Err(Error::SubFunctionError(Service::AccessTimingParam)),
+            None => Err(UdsError::SubFunctionError(Service::AccessTimingParam)),
         }
     }
     #[inline]

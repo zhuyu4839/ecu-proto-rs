@@ -1,13 +1,13 @@
 //! request of Service 2E
 
 
-use crate::{Configuration, DataIdentifier, DIDData, Error, Placeholder, request::{Request, SubFunction}, RequestData, Service, utils};
+use crate::{Configuration, DataIdentifier, DIDData, UdsError, Placeholder, request::{Request, SubFunction}, RequestData, Service, utils};
 
 /// Service 2E
 pub struct WriteDID(pub DIDData);
 
 impl<'a> TryFrom<&'a [u8]> for WriteDID {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         utils::data_length_check(data.len(), 3, false)?;
         let mut offset = 0;
@@ -30,9 +30,9 @@ impl Into<Vec<u8>> for WriteDID {
 impl RequestData for WriteDID {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::WriteDID));
+            return Err(UdsError::SubFunctionError(Service::WriteDID));
         }
 
         Self::try_from(data)
@@ -48,9 +48,9 @@ pub(crate) fn write_did(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = WriteDID::try_parse(data.as_slice(), None, cfg)?;

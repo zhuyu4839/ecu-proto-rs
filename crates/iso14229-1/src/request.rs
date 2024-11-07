@@ -70,7 +70,7 @@ mod request_file_transfer;  // 0x38
 #[cfg(any(feature = "std2013", feature = "std2020"))]
 pub use request_file_transfer::*;
 
-use crate::{Configuration, error::Error, RequestData, Service, utils, request, TryFromWithCfg};
+use crate::{Configuration, error::UdsError, RequestData, Service, utils, request, TryFromWithCfg};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SubFunction {
@@ -90,7 +90,7 @@ impl SubFunction {
     }
 
     #[inline]
-    pub fn function<T: TryFrom<u8, Error = Error>>(&self) -> Result<T, Error> {
+    pub fn function<T: TryFrom<u8, Error =UdsError>>(&self) -> Result<T, UdsError> {
         T::try_from(self.function)
     }
 
@@ -126,7 +126,7 @@ impl Request {
         sub_func: Option<SubFunction>,
         data: Vec<u8>,
         cfg: &Configuration,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         match service {
             Service::SessionCtrl => request::session_ctrl(service, sub_func, data, cfg),
             Service::ECUReset => request::ecu_reset(service, sub_func, data, cfg),
@@ -158,7 +158,7 @@ impl Request {
             Service::CtrlDTCSetting => request::ctrl_dtc_setting(service, sub_func, data, cfg),
             Service::ResponseOnEvent => request::response_on_event(service, sub_func, data, cfg),
             Service::LinkCtrl => request::link_ctrl(service, sub_func, data, cfg),
-            Service::NRC => Err(Error::OtherError("got an NRC service from request".into())),
+            Service::NRC => Err(UdsError::OtherError("got an NRC service from request".into())),
         }
     }
 
@@ -178,9 +178,9 @@ impl Request {
     }
 
     #[inline]
-    pub fn data<F, T>(&self, cfg: &Configuration) -> Result<T, Error>
+    pub fn data<F, T>(&self, cfg: &Configuration) -> Result<T, UdsError>
     where
-        F: TryFrom<u8, Error = Error>,
+        F: TryFrom<u8, Error =UdsError>,
         T: RequestData<SubFunc = F>,
     {
         T::try_parse(self.data.as_slice(), match self.sub_func {
@@ -204,7 +204,7 @@ impl Into<Vec<u8>> for Request {
 }
 
 impl TryFromWithCfg<Vec<u8>> for Request {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from_cfg(data: Vec<u8>, cfg: &Configuration) -> Result<Self, Self::Error> {
         let data_len = data.len();
         utils::data_length_check(data_len, 1, false)?;
@@ -279,7 +279,7 @@ impl TryFromWithCfg<Vec<u8>> for Request {
             Service::WriteMemByAddr |
             Service::SecuredDataTrans |
             Service::ResponseOnEvent => Self::new(service, None, data[offset..].to_vec(), cfg),
-            Service::NRC => Err(Error::OtherError("got an NRC service from request".into())),
+            Service::NRC => Err(UdsError::OtherError("got an NRC service from request".into())),
         }
     }
 }

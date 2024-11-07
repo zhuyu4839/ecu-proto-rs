@@ -1,17 +1,17 @@
 //! request of Service 28
 
 
-use crate::{CommunicationCtrlType, CommunicationType, Configuration, Error, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{CommunicationCtrlType, CommunicationType, Configuration, UdsError, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct NodeId(u16);
 
 impl TryFrom<u16> for NodeId {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             0x0001..=0xFFFF => Ok(Self(value)),
-            v => Err(Error::InvalidParam(utils::err_msg(v))),
+            v => Err(UdsError::InvalidParam(utils::err_msg(v))),
         }
     }
 }
@@ -33,13 +33,13 @@ impl CommunicationCtrl {
         ctrl_type: CommunicationCtrlType,
         comm_type: CommunicationType,
         node_id: Option<NodeId>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         match ctrl_type {
             CommunicationCtrlType::EnableRxAndDisableTxWithEnhancedAddressInformation |
             CommunicationCtrlType::EnableRxAndTxWithEnhancedAddressInformation => {
                 match node_id {
                     Some(v) => Ok(Self { comm_type, node_id: Some(v), }),
-                    None => Err(Error::InvalidParam("`nodeIdentificationNumber` is required".to_string())),
+                    None => Err(UdsError::InvalidParam("`nodeIdentificationNumber` is required".to_string())),
                 }
             },
             _ => Ok(Self {  comm_type, node_id: None, })
@@ -49,7 +49,7 @@ impl CommunicationCtrl {
 
 impl RequestData for CommunicationCtrl {
     type SubFunc = CommunicationCtrlType;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         match sub_func {
             Some(v) => {
                 let data_len = data.len();
@@ -103,9 +103,9 @@ pub(crate) fn communication_ctrl(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = CommunicationCtrlType::try_from(sub_func.unwrap().function)?;

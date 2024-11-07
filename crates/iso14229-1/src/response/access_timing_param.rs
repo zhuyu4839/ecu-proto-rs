@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Error, response::{Code, Response, SubFunction}, Service, TimingParameterAccessType, Configuration, TimingParameter, ResponseData};
+use crate::{UdsError, response::{Code, Response, SubFunction}, Service, TimingParameterAccessType, Configuration, TimingParameter, ResponseData};
 
 lazy_static!(
     pub static ref ACCESS_TIMING_PARAM_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -18,9 +18,9 @@ pub(crate) fn access_timing_param(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = TimingParameterAccessType::try_from(sub_func.unwrap().0)?;

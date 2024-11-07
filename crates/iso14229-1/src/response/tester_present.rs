@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{utils, Error, response::{Code, Response, SubFunction}, Service, TesterPresentType, Configuration};
+use crate::{utils, UdsError, response::{Code, Response, SubFunction}, Service, TesterPresentType, Configuration};
 
 lazy_static!(
     pub static ref TESTER_PRESENT_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -17,9 +17,9 @@ pub(crate) fn tester_present(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     _: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = TesterPresentType::try_from(sub_func.unwrap().0)?;

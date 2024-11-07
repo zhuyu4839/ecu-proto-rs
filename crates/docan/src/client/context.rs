@@ -1,5 +1,5 @@
 use std::{collections::VecDeque, sync::{Arc, Mutex}, time::{Duration, Instant}};
-use iso15765_2::{can::isotp::SyncCanIsoTp, error::Error as IsoTpError, IsoTpEvent, IsoTpEventListener};
+use iso15765_2::{can::SyncCanIsoTp, IsoTpError, IsoTpEvent, IsoTpEventListener};
 use iso14229_1::Configuration;
 use crate::P2Context;
 

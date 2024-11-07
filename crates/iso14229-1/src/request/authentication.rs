@@ -1,7 +1,7 @@
 //! request of Service 29
 
 
-use crate::{AlgorithmIndicator, AuthenticationTask, Configuration, Error, NotNullableData, NullableData, parse_algo_indicator, parse_not_nullable, parse_nullable, RequestData, Service, utils};
+use crate::{AlgorithmIndicator, AuthenticationTask, Configuration, UdsError, NotNullableData, NullableData, parse_algo_indicator, parse_not_nullable, parse_nullable, RequestData, Service, utils};
 use crate::request::{Request, SubFunction};
 
 #[derive(Debug, Clone)]
@@ -46,7 +46,7 @@ pub enum Authentication {
 
 impl RequestData for Authentication {
     type SubFunc = AuthenticationTask;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         match sub_func {
             Some(v) => {
                 let data_len = data.len();
@@ -240,9 +240,9 @@ pub(crate) fn authentication(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = AuthenticationTask::try_from(sub_func.unwrap().function)?;

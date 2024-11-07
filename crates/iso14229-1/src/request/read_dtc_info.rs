@@ -1,7 +1,7 @@
 //! request of Service 19
 
 
-use crate::{Configuration, DTCReportType, Error, Placeholder, request::{Request, SubFunction}, RequestData, Service, utils};
+use crate::{Configuration, DTCReportType, UdsError, Placeholder, request::{Request, SubFunction}, RequestData, Service, utils};
 
 #[derive(Debug, Clone)]
 pub struct DTCExtDataRecord {
@@ -100,7 +100,7 @@ pub enum DTCInfo {
 
 impl RequestData for DTCInfo {
     type SubFunc = DTCReportType;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         match sub_func {
             Some(v) => {
                 let data_len = data.len();
@@ -256,7 +256,7 @@ impl RequestData for DTCInfo {
 
                         let extra_num = data[offset];
                         if extra_num > 0xEF {
-                            return Err(Error::InvalidData(hex::encode(data)));
+                            return Err(UdsError::InvalidData(hex::encode(data)));
                         }
 
                         Ok(Self::ReportDTCExtDataRecordByRecordNumber {
@@ -304,7 +304,7 @@ impl RequestData for DTCInfo {
 
                         let extra_num = data[offset];
                         if extra_num < 1 || extra_num > 0xFD {
-                            return Err(Error::InvalidData(hex::encode(data)));
+                            return Err(UdsError::InvalidData(hex::encode(data)));
                         }
 
                         Ok(Self::ReportSupportedDTCExtDataRecord {
@@ -318,7 +318,7 @@ impl RequestData for DTCInfo {
                         let func_gid = data[offset];
                         offset += 1;
                         if func_gid > 0xFE {
-                            return Err(Error::InvalidData(hex::encode(data)));
+                            return Err(UdsError::InvalidData(hex::encode(data)));
                         }
 
                         Ok(Self::ReportWWHOBDDTCByMaskRecord {
@@ -333,7 +333,7 @@ impl RequestData for DTCInfo {
 
                         let func_gid = data[offset];
                         if func_gid > 0xFE {
-                            return Err(Error::InvalidData(hex::encode(data)));
+                            return Err(UdsError::InvalidData(hex::encode(data)));
                         }
 
                         Ok(Self::ReportWWHOBDDTCWithPermanentStatus {
@@ -347,12 +347,12 @@ impl RequestData for DTCInfo {
                         let func_gid = data[offset];
                         offset += 1;
                         if func_gid > 0xFE {
-                            return Err(Error::InvalidData(hex::encode(data)));
+                            return Err(UdsError::InvalidData(hex::encode(data)));
                         }
 
                         let readiness_gid = data[offset];
                         if readiness_gid > 0xFE {
-                            return Err(Error::InvalidData(hex::encode(data)));
+                            return Err(UdsError::InvalidData(hex::encode(data)));
                         }
 
                         Ok(Self::ReportDTCInformationByDTCReadinessGroupIdentifier {
@@ -487,9 +487,9 @@ pub(crate) fn read_dtc_info(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = DTCReportType::try_from(sub_func.unwrap().function)?;

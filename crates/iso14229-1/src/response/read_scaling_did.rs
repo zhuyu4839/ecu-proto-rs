@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use bitfield_struct::bitfield;
 use lazy_static::lazy_static;
 use crate::{enum_extend, Service};
-use crate::{Configuration, DataIdentifier, error::Error, Placeholder, response::Code, ResponseData, utils};
+use crate::{Configuration, DataIdentifier, error::UdsError, Placeholder, response::Code, ResponseData, utils};
 use crate::response::{Response, SubFunction};
 
 lazy_static!(
@@ -121,7 +121,7 @@ pub struct ReadScalingDID {
 }
 
 impl<'a> TryFrom<&'a [u8]> for ReadScalingDID {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
         utils::data_length_check(data_len, 2, false)?;
@@ -199,9 +199,9 @@ impl Into<Vec<u8>> for ReadScalingDID {
 impl ResponseData for ReadScalingDID {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::ReadScalingDID));
+            return Err(UdsError::SubFunctionError(Service::ReadScalingDID));
         }
 
         Self::try_from(data)
@@ -217,9 +217,9 @@ pub(crate) fn read_scaling_did(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = ReadScalingDID::try_parse(data.as_slice(), None, cfg)?;

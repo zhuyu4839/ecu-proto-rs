@@ -1,7 +1,7 @@
 //! request of Service 14
 
 
-use crate::{Configuration, Error, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, UdsError, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ClearDiagnosticInfo {
@@ -37,7 +37,7 @@ impl ClearDiagnosticInfo {
 }
 
 impl<'a> TryFrom<&'a [u8]> for ClearDiagnosticInfo {
-    type Error = Error;
+    type Error = UdsError;
 
     #[cfg(any(feature = "std2020"))]
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
@@ -86,9 +86,9 @@ impl Into<Vec<u8>> for ClearDiagnosticInfo {
 impl RequestData for ClearDiagnosticInfo {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::ClearDiagnosticInfo));
+            return Err(UdsError::SubFunctionError(Service::ClearDiagnosticInfo));
         }
 
         Self::try_from(data)
@@ -104,9 +104,9 @@ pub(crate) fn clear_diag_info(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = ClearDiagnosticInfo::try_parse(data.as_slice(), None, cfg)?;

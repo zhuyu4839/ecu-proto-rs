@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use lazy_static::lazy_static;
 use crate::response::{Code, Response, SubFunction};
-use crate::{utils, CommunicationCtrlType, Configuration, Error, Service};
+use crate::{utils, CommunicationCtrlType, Configuration, UdsError, Service};
 
 lazy_static!(
     pub static ref COMMUNICATION_CTRL_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -19,9 +19,9 @@ pub(crate) fn communication_ctrl(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     _: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = CommunicationCtrlType::try_from(sub_func.unwrap().0)?;

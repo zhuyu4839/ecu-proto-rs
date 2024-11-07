@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, DefinitionType, DynamicallyDID, Error, Placeholder, response::Code, ResponseData, Service};
+use crate::{Configuration, DefinitionType, DynamicallyDID, UdsError, Placeholder, response::Code, ResponseData, Service};
 use crate::response::{Response, SubFunction};
 
 lazy_static!(
@@ -19,7 +19,7 @@ lazy_static!(
 pub struct DynamicallyDefineDID(pub Option<DynamicallyDID>);
 
 impl<'a> TryFrom<&'a [u8]> for DynamicallyDefineDID {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
         let offset = 0;
@@ -29,7 +29,7 @@ impl<'a> TryFrom<&'a [u8]> for DynamicallyDefineDID {
             2 => Ok(Some(DynamicallyDID::try_from(
                 u16::from_be_bytes([data[offset], data[offset + 1]])
             )?)),
-            v => Err(Error::InvalidDataLength { expect: 2, actual: v })
+            v => Err(UdsError::InvalidDataLength { expect: 2, actual: v })
         }?;
 
         Ok(Self(dynamic))
@@ -48,9 +48,9 @@ impl Into<Vec<u8>> for DynamicallyDefineDID {
 impl ResponseData for DynamicallyDefineDID {
     type SubFunc = DefinitionType;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_none() {
-            return Err(Error::SubFunctionError(Service::DynamicalDefineDID));
+            return Err(UdsError::SubFunctionError(Service::DynamicalDefineDID));
         }
 
         Self::try_from(data)
@@ -66,9 +66,9 @@ pub(crate) fn dyn_define_did(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = DefinitionType::try_from(sub_func.unwrap().0)?;

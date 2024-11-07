@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{AdministrativeParameter, Configuration, error::Error, Placeholder, response::Code, ResponseData, Service, SignatureEncryptionCalculation, utils};
+use crate::{AdministrativeParameter, Configuration, error::UdsError, Placeholder, response::Code, ResponseData, Service, SignatureEncryptionCalculation, utils};
 use crate::response::{Response, SubFunction};
 
 lazy_static!(
@@ -47,9 +47,9 @@ impl SecuredDataTransPositive {
         response: u8,
         response_params: Vec<u8>,
         signature_data: Vec<u8>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         if signature_data.len() > u16::MAX as usize {
-            return Err(Error::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
+            return Err(UdsError::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
         }
 
         if apar.is_request() {
@@ -90,9 +90,9 @@ impl SecuredDataTransNegative {
         service: u8,
         response: u8,
         signature_data: Vec<u8>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         if signature_data.len() > u16::MAX as usize {
-            return Err(Error::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
+            return Err(UdsError::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
         }
 
         if apar.is_request() {
@@ -117,7 +117,7 @@ pub enum SecuredDataTrans {
 }
 
 impl<'a> TryFrom<&'a [u8]> for SecuredDataTrans {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
         utils::data_length_check(data_len, 8, false)?;
@@ -125,7 +125,7 @@ impl<'a> TryFrom<&'a [u8]> for SecuredDataTrans {
         let apar = AdministrativeParameter::from(u16::from_be_bytes([data[offset], data[offset + 1]]));
         offset += 2;
         if apar.is_request() {
-            return Err(Error::InvalidData(hex::encode(data)));
+            return Err(UdsError::InvalidData(hex::encode(data)));
         }
         let signature = SignatureEncryptionCalculation::try_from(data[offset])?;
         offset += 1;
@@ -214,9 +214,9 @@ impl ResponseData for SecuredDataTrans {
     type SubFunc = Placeholder;
 
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::SecuredDataTrans));
+            return Err(UdsError::SubFunctionError(Service::SecuredDataTrans));
         }
 
         Self::try_from(data)
@@ -232,9 +232,9 @@ pub(crate) fn secured_data_trans(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = SecuredDataTrans::try_parse(data.as_slice(), None, cfg)?;

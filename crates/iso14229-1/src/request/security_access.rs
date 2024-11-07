@@ -1,6 +1,6 @@
 //! request of Service 27
 
-use crate::{Configuration, Error, request::{Request, SubFunction}, Service, SecurityAccessLevel, RequestData};
+use crate::{Configuration, UdsError, request::{Request, SubFunction}, Service, SecurityAccessLevel, RequestData};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SecurityAccess {
@@ -10,17 +10,17 @@ pub struct SecurityAccess {
 impl RequestData for SecurityAccess {
     type SubFunc = SecurityAccessLevel;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error>
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError>
     where
         Self: Sized,
     {
         if sub_func.is_none() {
-            return Err(Error::SubFunctionError(Service::SecurityAccess));
+            return Err(UdsError::SubFunctionError(Service::SecurityAccess));
         }
 
         let level = sub_func.unwrap().0;
         if level % 2 != 1 {
-            return Err(Error::InvalidParam(format!("Security access level: {}", level)));
+            return Err(UdsError::InvalidParam(format!("Security access level: {}", level)));
         }
 
         Ok(Self { data: data.to_vec() })
@@ -37,9 +37,9 @@ pub(crate) fn security_access(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     _: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let level = sub_func.unwrap().function;

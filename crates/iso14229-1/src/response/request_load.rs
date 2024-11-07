@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{ByteOrder, Configuration, error::Error, LengthFormatIdentifier, Placeholder, ResponseData, utils, Service};
+use crate::{ByteOrder, Configuration, error::UdsError, LengthFormatIdentifier, Placeholder, ResponseData, utils, Service};
 
 use super::{Code, Response, SubFunction};
 
@@ -27,9 +27,9 @@ pub struct RequestLoad {
 impl RequestLoad {
     pub fn new(
         max_num_of_block_len: u128
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         if max_num_of_block_len == 0 {
-            return Err(Error::InvalidParam("`maxNumberOfBlockLength` must be rather than 0".to_string()));
+            return Err(UdsError::InvalidParam("`maxNumberOfBlockLength` must be rather than 0".to_string()));
         }
 
         let lfi = utils::length_of_u_type(max_num_of_block_len) as u8;
@@ -42,7 +42,7 @@ impl RequestLoad {
 }
 
 impl<'a> TryFrom<&'a [u8]> for RequestLoad {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         let mut offset = 0;
         utils::data_length_check(data.len(), 1, false)?;
@@ -54,7 +54,7 @@ impl<'a> TryFrom<&'a [u8]> for RequestLoad {
 
         let max_num_of_block_len = utils::slice_to_u128(remain, ByteOrder::Big);
         if max_num_of_block_len == 0 {
-            return Err(Error::InvalidParam("`maxNumberOfBlockLength` must be rather than 0".to_string()));
+            return Err(UdsError::InvalidParam("`maxNumberOfBlockLength` must be rather than 0".to_string()));
         }
 
         Ok(Self {
@@ -80,9 +80,9 @@ impl Into<Vec<u8>> for RequestLoad {
 impl ResponseData for RequestLoad {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::RequestDownload));  // TODO Service::RequestUpload
+            return Err(UdsError::SubFunctionError(Service::RequestDownload));  // TODO Service::RequestUpload
         }
 
         Self::try_from(data)
@@ -98,9 +98,9 @@ pub(crate) fn request_download(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = RequestLoad::try_parse(data.as_slice(), None, cfg)?;
@@ -113,9 +113,9 @@ pub(crate) fn request_upload(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = RequestLoad::try_parse(data.as_slice(), None, cfg)?;

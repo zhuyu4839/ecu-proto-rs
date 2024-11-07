@@ -1,15 +1,15 @@
 //! request of Service 3E
 
-use crate::{Error, request::{Request, SubFunction}, Service, TesterPresentType, utils, Configuration};
+use crate::{UdsError, request::{Request, SubFunction}, Service, TesterPresentType, utils, Configuration};
 
 pub(crate) fn tester_present(
     service: Service,
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     _: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = TesterPresentType::try_from(sub_func.unwrap().function)?;

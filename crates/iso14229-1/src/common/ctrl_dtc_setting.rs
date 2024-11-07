@@ -1,6 +1,6 @@
 //! Commons of Service 85
 
-use crate::{Error, utils};
+use crate::{UdsError, utils};
 
 #[repr(u8)]
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -13,7 +13,7 @@ pub enum DTCSettingType {
 }
 
 impl TryFrom<u8> for DTCSettingType {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0x01 => Ok(Self::On),
@@ -22,7 +22,7 @@ impl TryFrom<u8> for DTCSettingType {
             0x40..=0x5F => Ok(Self::VehicleManufacturerSpecific(value)),            // vehicleManufacturerSpecific
             0x60..=0x7E => Ok(Self::SystemSupplierSpecific(value)),                 // systemSupplierSpecific
             0x7F => Ok(Self::Reserved(value)),
-            v => Err(Error::InvalidParam(utils::err_msg(v))),
+            v => Err(UdsError::InvalidParam(utils::err_msg(v))),
         }
     }
 }

@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{AlgorithmIndicator, ALGORITHM_INDICATOR_LENGTH, AuthenticationTask, Configuration, Error, NotNullableData, NullableData, parse_not_nullable, parse_nullable, parse_algo_indicator, ResponseData, response::Code, utils, Service};
+use crate::{AlgorithmIndicator, ALGORITHM_INDICATOR_LENGTH, AuthenticationTask, Configuration, UdsError, NotNullableData, NullableData, parse_not_nullable, parse_nullable, parse_algo_indicator, ResponseData, response::Code, utils, Service};
 use crate::response::{Response, SubFunction};
 
 lazy_static!(
@@ -130,7 +130,7 @@ pub enum Authentication {
 
 impl ResponseData for Authentication {
     type SubFunc = AuthenticationTask;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         let data_len = data.len();
         utils::data_length_check(data_len, 1, false)?;
         let mut offset = 0;
@@ -198,7 +198,7 @@ impl ResponseData for Authentication {
 
                     let algo_indicator = parse_algo_indicator(data, &mut offset);
                     let session_keyinfo = parse_nullable(data, data_len, &mut offset)
-                        .map_err(|_| Error::InvalidData(hex::encode(data)))?;
+                        .map_err(|_| UdsError::InvalidData(hex::encode(data)))?;
 
                     Ok(Self::VerifyProofOfOwnershipUnidirectional {
                         value,
@@ -313,9 +313,9 @@ pub(crate) fn authentication(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = AuthenticationTask::try_from(sub_func.unwrap().0)?;

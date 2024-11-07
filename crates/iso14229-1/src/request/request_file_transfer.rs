@@ -1,6 +1,6 @@
 //! response of Service 38
 
-use crate::{ByteOrder, Configuration, error::Error, DataFormatIdentifier, ModeOfOperation, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{ByteOrder, Configuration, error::UdsError, DataFormatIdentifier, ModeOfOperation, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RequestFileTransfer {
@@ -39,7 +39,7 @@ pub enum RequestFileTransfer {
 
 impl RequestData for RequestFileTransfer {
     type SubFunc = ModeOfOperation;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         match sub_func {
             Some(v) => {
                 let data_len = data.len();
@@ -52,7 +52,7 @@ impl RequestData for RequestFileTransfer {
 
                 let filepath = String::from_utf8(
                     data[offset..offset + len].to_vec()
-                ).map_err(|_| Error::InvalidData(hex::encode(data)))?;
+                ).map_err(|_| UdsError::InvalidData(hex::encode(data)))?;
                 offset += len;
 
                 match v {
@@ -172,9 +172,9 @@ pub(crate) fn request_file_transfer(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = ModeOfOperation::try_from(sub_func.unwrap().function)?;

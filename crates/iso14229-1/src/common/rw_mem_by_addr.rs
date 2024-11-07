@@ -1,6 +1,6 @@
 //! Commons of Service 23|3D
 
-use crate::{AddressAndLengthFormatIdentifier, Configuration, Error, utils};
+use crate::{AddressAndLengthFormatIdentifier, Configuration, UdsError, utils};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MemoryLocation {
@@ -22,9 +22,9 @@ impl MemoryLocation {
         alfi: AddressAndLengthFormatIdentifier,
         mem_addr: u128,
         mem_size: u128,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         if mem_addr == 0 || mem_size == 0 {
-            return Err(Error::InvalidParam("invalid memory address or size".into()));
+            return Err(UdsError::InvalidParam("invalid memory address or size".into()));
         }
 
         Ok(Self { alfi, mem_addr, mem_size })
@@ -34,7 +34,7 @@ impl MemoryLocation {
     #[inline]
     pub fn memory_size(&self) -> u128 {self.mem_size}
 
-    pub fn from_slice(data: &[u8], cfg: &Configuration) -> Result<Self, Error> {
+    pub fn from_slice(data: &[u8], cfg: &Configuration) -> Result<Self, UdsError> {
         let data_len = data.len();
         utils::data_length_check(data_len, 3, false)?;
 

@@ -1,7 +1,7 @@
 //! request of Service 2A
 
 
-use crate::{Configuration, enum_extend, Error, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, enum_extend, UdsError, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
 enum_extend!(
     /// Table C.10 — transmissionMode parameter definitions
@@ -22,20 +22,20 @@ impl ReadDataByPeriodId {
     pub fn new(
         mode: TransmissionMode,
         did: Vec<u8>
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         match mode {
             TransmissionMode::SendAtSlowRate |
             TransmissionMode::SendAtMediumRate |
             TransmissionMode::SendAtFastRate => {
                 if did.is_empty() {
-                    return Err(Error::InvalidParam("empty period_id".to_string()));
+                    return Err(UdsError::InvalidParam("empty period_id".to_string()));
                 }
 
                 Ok(())
             },
             TransmissionMode::StopSending => {
                 if !did.is_empty() {
-                    return Err(Error::InvalidParam("not empty period_id".to_string()));
+                    return Err(UdsError::InvalidParam("not empty period_id".to_string()));
                 }
                 Ok(())
             },
@@ -56,7 +56,7 @@ impl ReadDataByPeriodId {
 }
 
 impl<'a> TryFrom<&'a [u8]> for ReadDataByPeriodId {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         utils::data_length_check(data.len(), 1, false)?;
 
@@ -82,9 +82,9 @@ impl Into<Vec<u8>> for ReadDataByPeriodId {
 impl RequestData for ReadDataByPeriodId {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::ReadDataByPeriodId));
+            return Err(UdsError::SubFunctionError(Service::ReadDataByPeriodId));
         }
 
         Self::try_from(data)
@@ -100,9 +100,9 @@ pub(crate) fn read_data_by_pid(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = ReadDataByPeriodId::try_parse(data.as_slice(), None, cfg)?;

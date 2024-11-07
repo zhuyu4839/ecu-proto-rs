@@ -1,7 +1,7 @@
 //! request of Service 2F
 
 
-use crate::{Configuration, Error, IOCtrlParameter, IOCtrlOption, DataIdentifier, request::{Request, SubFunction}, RequestData, Placeholder, utils, Service};
+use crate::{Configuration, UdsError, IOCtrlParameter, IOCtrlOption, DataIdentifier, request::{Request, SubFunction}, RequestData, Placeholder, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IOCtrl {
@@ -17,18 +17,18 @@ impl IOCtrl {
         state: Vec<u8>,
         mask: Vec<u8>,
         cfg: &Configuration,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         match param {
             IOCtrlParameter::ReturnControlToEcu |
             IOCtrlParameter::ResetToDefault |
             IOCtrlParameter::FreezeCurrentState => {
                 if !state.is_empty() {
-                    return Err(Error::InvalidParam("expected empty `controlState`".to_string()));
+                    return Err(UdsError::InvalidParam("expected empty `controlState`".to_string()));
                 }
             }
             IOCtrlParameter::ShortTermAdjustment => {
                 let &did_len = cfg.did_cfg.get(&did)
-                    .ok_or(Error::DidNotSupported(did))?;
+                    .ok_or(UdsError::DidNotSupported(did))?;
 
                 utils::data_length_check(state.len(), did_len, false)?;
             },
@@ -71,9 +71,9 @@ impl Into<Vec<u8>> for IOCtrl {
 
 impl RequestData for IOCtrl {
     type SubFunc = Placeholder;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::IOCtrl));
+            return Err(UdsError::SubFunctionError(Service::IOCtrl));
         }
 
         let data_len = data.len();
@@ -88,7 +88,7 @@ impl RequestData for IOCtrl {
         let param = IOCtrlParameter::try_from(data[offset])?;
         offset += 1;
         let &did_len = cfg.did_cfg.get(&did)
-            .ok_or(Error::DidNotSupported(did))?;
+            .ok_or(UdsError::DidNotSupported(did))?;
         utils::data_length_check(data_len, offset + did_len, false)?;
         let state = data[offset..offset + did_len].to_vec();
         offset += did_len;
@@ -107,9 +107,9 @@ pub(crate) fn io_ctrl(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = IOCtrl::try_parse(data.as_slice(), None, cfg)?;

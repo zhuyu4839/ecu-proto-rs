@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, error::Error, Placeholder, response::Code, ResponseData, utils, Service};
+use crate::{Configuration, error::UdsError, Placeholder, response::Code, ResponseData, utils, Service};
 use crate::response::{Response, SubFunction};
 
 lazy_static!(
@@ -22,7 +22,7 @@ pub struct ReadByPeriodIdData {
 }
 
 impl<'a> TryFrom<&'a [u8]> for ReadByPeriodIdData {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
         utils::data_length_check(data_len, 2, false)?;
@@ -48,9 +48,9 @@ impl Into<Vec<u8>> for ReadByPeriodIdData {
 impl ResponseData for ReadByPeriodIdData {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::ReadDataByPeriodId));
+            return Err(UdsError::SubFunctionError(Service::ReadDataByPeriodId));
         }
 
         Self::try_from(data)
@@ -66,9 +66,9 @@ pub(crate) fn read_data_by_pid(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = ReadByPeriodIdData::try_parse(data.as_slice(), None, cfg)?;

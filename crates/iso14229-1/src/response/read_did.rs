@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, DataIdentifier, DIDData, error::Error, Placeholder, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
+use crate::{Configuration, DataIdentifier, DIDData, error::UdsError, Placeholder, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
 
 lazy_static!(
     pub static ref READ_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -35,9 +35,9 @@ impl Into<Vec<u8>> for ReadDID {
 
 impl ResponseData for ReadDID {
     type SubFunc = Placeholder;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_some() {
-            return Err(Error::SubFunctionError(Service::ReadDID));
+            return Err(UdsError::SubFunctionError(Service::ReadDID));
         }
 
         let data_len = data.len();
@@ -49,7 +49,7 @@ impl ResponseData for ReadDID {
         );
         offset += 2;
         let &did_len = cfg.did_cfg.get(&did)
-            .ok_or(Error::DidNotSupported(did))?;
+            .ok_or(UdsError::DidNotSupported(did))?;
         utils::data_length_check(data_len, offset + did_len, false)?;
 
         let context = DIDData {
@@ -67,7 +67,7 @@ impl ResponseData for ReadDID {
             );
             offset += 2;
             let &did_len = cfg.did_cfg.get(&did)
-                .ok_or(Error::DidNotSupported(did))?;
+                .ok_or(UdsError::DidNotSupported(did))?;
             utils::data_length_check(data_len, offset + did_len, false)?;
 
             others.push(DIDData {
@@ -90,9 +90,9 @@ pub(crate) fn read_did(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_some() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = ReadDID::try_parse(data.as_slice(), None, cfg)?;

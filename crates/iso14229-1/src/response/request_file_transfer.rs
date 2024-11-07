@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{ByteOrder, Configuration, DataFormatIdentifier, error::Error, LengthFormatIdentifier, ModeOfOperation, Placeholder, response::Code, ResponseData, utils, Service};
+use crate::{ByteOrder, Configuration, DataFormatIdentifier, error::UdsError, LengthFormatIdentifier, ModeOfOperation, Placeholder, response::Code, ResponseData, utils, Service};
 use crate::response::{Response, SubFunction};
 
 lazy_static!(
@@ -117,7 +117,7 @@ pub enum RequestFileTransferData {
 
 impl ResponseData for RequestFileTransferData {
     type SubFunc = ModeOfOperation;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         match sub_func {
             Some(mode) => {
                 let data_len = data.len();
@@ -199,7 +199,7 @@ impl ResponseData for RequestFileTransferData {
                         let dfi = data[offset];
                         offset += 1;
                         if dfi != 0x00 {
-                            return Err(Error::InvalidData(hex::encode(data)));
+                            return Err(UdsError::InvalidData(hex::encode(data)));
                         }
                         let dfi = DataFormatIdentifier(dfi);
 
@@ -227,7 +227,7 @@ impl ResponseData for RequestFileTransferData {
                         let dfi = DataFormatIdentifier::from(data[offset]);
                         offset += 1;
                         let file_pos = <[u8; 8]>::try_from(&data[offset..])
-                            .map_err(|_| Error::InvalidData(hex::encode(data)))?;
+                            .map_err(|_| UdsError::InvalidData(hex::encode(data)))?;
 
                         Ok(Self::ResumeFile {
                             lfi,
@@ -312,9 +312,9 @@ pub(crate) fn request_file_transfer(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = ModeOfOperation::try_from(sub_func.unwrap().0)?;

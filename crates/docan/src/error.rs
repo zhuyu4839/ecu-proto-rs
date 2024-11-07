@@ -1,10 +1,10 @@
-use iso15765_2::error::Error as IsoTpError;
+use iso15765_2::IsoTpError;
 use iso14229_1::{Service, response::Code};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("{0}")]
-    ISO14229Error(iso14229_1::Error),
+    ISO14229Error(iso14229_1::UdsError),
 
     #[error("UDS - service `{service}` got an unexpected sub-function(expect: {expect}, actual: {actual})")]
     UnexpectedSubFunction { service: Service, expect: u8, actual: u8 },
@@ -17,9 +17,6 @@ pub enum Error {
 
     #[error("UDS - service `{service}` got a NRC({code:?})")]
     NRCError { service: Service, code: Code },
-
-    #[error("UDS - security algorithm error: {0}")]
-    SecurityAlgoError(String),
 
     #[error("{0}")]
     IsoTpError(IsoTpError),

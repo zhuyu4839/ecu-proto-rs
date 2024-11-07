@@ -1,7 +1,7 @@
 //! Commons of Service 22|2E
 
 
-use crate::{error::Error, Service, utils, Configuration};
+use crate::{error::UdsError, Service, utils, Configuration};
 
 /// Table C.1 — DID data-parameter definitions
 #[repr(u16)]
@@ -195,9 +195,9 @@ impl DIDData {
         did: DataIdentifier,
         data: Vec<u8>,
         cfg: &Configuration,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         let &did_len = cfg.did_cfg.get(&did)
-            .ok_or(Error::DidNotSupported(did))?;
+            .ok_or(UdsError::DidNotSupported(did))?;
         utils::data_length_check(data.len(), did_len, true)?;
 
         Ok(Self { did, data })

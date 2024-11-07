@@ -3,7 +3,7 @@ pub use error::*;
 pub mod client;
 pub mod server;
 
-use iso15765_2::constant::{P2_ISO14229, P2_STAR_ISO14229};
+use iso15765_2::{P2_ISO14229, P2_STAR_ISO14229};
 
 #[derive(Debug, Clone, Copy)]
 pub struct P2Context {

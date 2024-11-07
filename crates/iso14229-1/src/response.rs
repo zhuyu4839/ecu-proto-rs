@@ -104,7 +104,7 @@ pub use code::Code;
 // pub(crate) use crate:response::WriteDID::WRITE_DID_NEGATIVES;
 // pub(crate) use crate:response::WriteMemByAddr::WRITE_MEM_BY_ADDR_NEGATIVES;
 
-use crate::{Configuration, constant::POSITIVE_OFFSET, Error, ResponseData, Service, utils, ECUResetType, response, TryFromWithCfg};
+use crate::{Configuration, constant::POSITIVE_OFFSET, UdsError, ResponseData, Service, utils, ECUResetType, response, TryFromWithCfg};
 
 // enum_to_vec! (
 //     /// Defined by ISO-15764. Offset of 0x38 is defined within UDS standard (ISO-14229)
@@ -137,7 +137,7 @@ impl SubFunction {
     }
 
     #[inline]
-    pub fn function<T: TryFrom<u8, Error = Error>>(&self) -> Result<T, Error> {
+    pub fn function<T: TryFrom<u8, Error =UdsError>>(&self) -> Result<T, UdsError> {
         T::try_from(self.0)
     }
 }
@@ -162,7 +162,7 @@ impl Response {
         sub_func: Option<SubFunction>,
         data: Vec<u8>,
         cfg: &Configuration,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         match service {
             Service::SessionCtrl => response::session_ctrl(service, sub_func, data, cfg),
             Service::ECUReset => response::ecu_reset(service, sub_func, data, cfg),
@@ -196,7 +196,7 @@ impl Response {
             Service::LinkCtrl => response::link_ctrl(service, sub_func, data, cfg),
             Service::NRC => {
                 if sub_func.is_some() {
-                    return Err(Error::SubFunctionError(service));
+                    return Err(UdsError::SubFunctionError(service));
                 }
 
                 utils::data_length_check(data.len(), 2, true)?;
@@ -224,13 +224,13 @@ impl Response {
     }
 
     #[inline]
-    pub fn nrc_code(&self) -> Result<Code, Error> {
+    pub fn nrc_code(&self) -> Result<Code, UdsError> {
         if !self.negative {
-            return Err(Error::OtherError("get NRC from positive".into()));
+            return Err(UdsError::OtherError("get NRC from positive".into()));
         }
 
         if self.data.len() != 1 {
-            return Err(Error::OtherError("invalid data length when getting NRC".into()));
+            return Err(UdsError::OtherError("invalid data length when getting NRC".into()));
         }
 
         Ok(Code::from(self.data[0]))
@@ -242,9 +242,9 @@ impl Response {
     }
 
     #[inline]
-    pub fn data<F, T>(&self, cfg: &Configuration) -> Result<T, Error>
+    pub fn data<F, T>(&self, cfg: &Configuration) -> Result<T, UdsError>
     where
-        F: TryFrom<u8, Error = Error>,
+        F: TryFrom<u8, Error =UdsError>,
         T: ResponseData<SubFunc = F>,
     {
         T::try_parse(self.data.as_slice(), match self.sub_func {
@@ -277,7 +277,7 @@ impl Into<Vec<u8>> for Response {
 }
 
 impl TryFromWithCfg<Vec<u8>> for Response {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from_cfg(data: Vec<u8>, cfg: &Configuration) -> Result<Self, Self::Error> {
         let data_len = data.len();
         utils::data_length_check(data_len, 1, false)?;

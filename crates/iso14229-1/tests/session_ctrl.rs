@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{request, response, Configuration, Error, Service, SessionType, TryFromWithCfg};
+    use iso14229_1::{request, response, Configuration, UdsError, Service, SessionType, TryFromWithCfg};
 
     #[test]
     fn test_request() -> anyhow::Result<()> {
@@ -24,7 +24,7 @@ mod tests {
         let source = hex::decode("100100")?;
         let err = request::Request::try_from_cfg(source, &cfg).unwrap_err();
         match err {
-            Error::InvalidData(v) => assert_eq!(v, "00"),
+            UdsError::InvalidData(v) => assert_eq!(v, "00"),
             _ => panic!("Expected Error::InvalidData"),
         }
 

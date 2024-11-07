@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{request, response, Configuration, Error, Service, TryFromWithCfg};
+    use iso14229_1::{request, response, Configuration, UdsError, Service, TryFromWithCfg};
     use iso14229_1::request::TransmissionMode;
 
     #[test]
@@ -52,7 +52,7 @@ mod tests {
         let source = hex::decode("2A0400")?;
         let err = request::Request::try_from_cfg(source, &cfg).unwrap_err();
         match err {
-            Error::InvalidParam(v) => {
+            UdsError::InvalidParam(v) => {
                 assert_eq!(v, "not empty period_id");
             },
             _ => panic!("unexpected error: {:?}", err),
@@ -78,7 +78,7 @@ mod tests {
         let source = hex::decode("6A")?;
         let err = response::Response::try_from_cfg(source, &cfg).unwrap_err();
         match err {
-            Error::InvalidDataLength { expect, actual } => {
+            UdsError::InvalidDataLength { expect, actual } => {
                 assert_eq!(expect, 2);
                 assert_eq!(actual, 0);
             },

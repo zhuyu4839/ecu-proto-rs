@@ -1,15 +1,15 @@
 //! request of Service 85
 
-use crate::{Error, request::{Request, SubFunction}, Service, Configuration, DTCSettingType};
+use crate::{UdsError, request::{Request, SubFunction}, Service, Configuration, DTCSettingType};
 
 pub(crate) fn ctrl_dtc_setting(
     service: Service,
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     _: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let _ = DTCSettingType::try_from(sub_func.unwrap().function)?;

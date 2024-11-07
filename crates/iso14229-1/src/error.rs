@@ -1,7 +1,7 @@
 use crate::{DataIdentifier, Service};
 
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum UdsError {
     #[error("ISO 14229-1 - invalid parameter `{0}`")]
     InvalidParam(String),
 
@@ -38,8 +38,8 @@ pub enum Error {
     // #[error("ISO 14229-1 - service `{service}` got a NRC({code:?})")]
     // NRCError { service: Service, code: Code },
 
-    // #[error("ISO 14229-1 - security algorithm error: {0}")]
-    // SecurityAlgoError(String),
+    #[error("ISO 14229-1 - security algorithm error: {0}")]
+    SecurityAlgoError(String),
 
     // #[error("{0}")]
     // IsoTpError(IsoTpError),

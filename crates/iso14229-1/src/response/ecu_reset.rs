@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, ECUResetType, Error, response::{Code, Response, SubFunction}, ResponseData, Service, utils};
+use crate::{Configuration, ECUResetType, UdsError, response::{Code, Response, SubFunction}, ResponseData, Service, utils};
 
 lazy_static!(
     pub static ref ECU_RESET_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -31,12 +31,12 @@ impl PowerDownSeconds {
 }
 
 impl<'a> TryFrom<&'a [u8]> for PowerDownSeconds {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         match data.len() {
             0 => Ok(Self(None)),
             1 => Ok(Self(Some(data[0]))),
-            actual => Err(Error::InvalidDataLength { expect: 1, actual }),
+            actual => Err(UdsError::InvalidDataLength { expect: 1, actual }),
         }
     }
 }
@@ -53,7 +53,7 @@ impl Into<Vec<u8>> for PowerDownSeconds {
 impl ResponseData for PowerDownSeconds {
     type SubFunc = ECUResetType;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         let data_len = data.len();
         match sub_func {
             Some(sub_func) => match sub_func {
@@ -63,7 +63,7 @@ impl ResponseData for PowerDownSeconds {
                 ECUResetType::Reserved(_) => {},
                 _ => utils::data_length_check(data_len, 0, true)?,
             },
-            None => Err(Error::SubFunctionError(Service::ECUReset))?,
+            None => Err(UdsError::SubFunctionError(Service::ECUReset))?,
         }
 
         Self::try_from(data)
@@ -79,9 +79,9 @@ pub(crate) fn ecu_reset(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = ECUResetType::try_from(sub_func.unwrap().0)?;

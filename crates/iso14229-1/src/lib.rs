@@ -103,7 +103,7 @@ impl Display for Service {
 /// if all seed is 0x00, return None
 /// else all seed is not 0xFF return algo data,
 /// otherwise return Error
-pub type SecurityAlgo = fn(u8, Vec<u8>, Vec<u8>) -> Result<Option<Vec<u8>>, Error>;
+pub type SecurityAlgo = fn(u8, Vec<u8>, Vec<u8>) -> Result<Option<Vec<u8>>, UdsError>;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum ByteOrder {
@@ -117,7 +117,7 @@ pub enum ByteOrder {
 pub struct Placeholder;
 
 impl TryFrom<u8> for Placeholder{
-    type Error = Error;
+    type Error = UdsError;
     #[inline]
     fn try_from(_: u8) -> Result<Self, Self::Error> {
         Ok(Self)
@@ -152,7 +152,7 @@ impl Default for Configuration {
 
 pub trait RequestData {
     type SubFunc;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error>
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError>
     where
         Self: Sized;
     fn to_vec(self, cfg: &Configuration) -> Vec<u8>;
@@ -161,7 +161,7 @@ pub trait RequestData {
 impl RequestData for Vec<u8> {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         Ok(data.to_vec())
     }
     #[inline]
@@ -172,7 +172,7 @@ impl RequestData for Vec<u8> {
 
 pub trait ResponseData {
     type SubFunc;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error>
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError>
     where
         Self: Sized;
     fn to_vec(self, cfg: &Configuration) -> Vec<u8>;
@@ -181,7 +181,7 @@ pub trait ResponseData {
 impl ResponseData for Vec<u8> {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         Ok(data.to_vec())
     }
     #[inline]

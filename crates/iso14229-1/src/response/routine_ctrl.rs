@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, error::Error, response::Code, ResponseData, RoutineCtrlType, RoutineId, utils, Service};
+use crate::{Configuration, error::UdsError, response::Code, ResponseData, RoutineCtrlType, RoutineId, utils, Service};
 use crate::response::{Response, SubFunction};
 
 lazy_static!(
@@ -30,9 +30,9 @@ impl RoutineCtrl {
         routine_id: RoutineId,
         routine_info: Option<u8>,
         routine_status: Vec<u8>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, UdsError> {
         if routine_info.is_none() && routine_status.len() > 0 {
-            return Err(Error::InvalidData(
+            return Err(UdsError::InvalidData(
                 "`routineStatusRecord` mut be empty when `routineInfo` is None".to_string()
             ));
         }
@@ -42,7 +42,7 @@ impl RoutineCtrl {
 }
 
 impl<'a> TryFrom<&'a [u8]> for RoutineCtrl {
-    type Error = Error;
+    type Error = UdsError;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
         utils::data_length_check(data_len, 2, false)?;
@@ -82,9 +82,9 @@ impl Into<Vec<u8>> for RoutineCtrl {
 impl ResponseData for RoutineCtrl {
     type SubFunc = RoutineCtrlType;
     #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
         if sub_func.is_none() {
-            return Err(Error::SubFunctionError(Service::RoutineCtrl));
+            return Err(UdsError::SubFunctionError(Service::RoutineCtrl));
         }
 
         Self::try_from(data)
@@ -100,9 +100,9 @@ pub(crate) fn routine_ctrl(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Response, Error> {
+) -> Result<Response, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = RoutineCtrlType::try_from(sub_func.unwrap().0)?;

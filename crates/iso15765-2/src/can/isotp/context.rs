@@ -1,4 +1,4 @@
-use crate::{CONSECUTIVE_SEQUENCE_START, Error, FlowControlContext, IsoTpEvent};
+use crate::{CONSECUTIVE_SEQUENCE_START, IsoTpError, FlowControlContext, IsoTpEvent};
 
 #[derive(Debug, Default, Clone)]
 pub(crate) struct FlowCtrl {
@@ -49,9 +49,9 @@ impl IsoTpContext {
         self.consecutive.length = Some(length);
         self.consecutive.buffer.append(&mut data);
     }
-    pub(crate) fn append_consecutive(&mut self, sequence: u8, mut data: Vec<u8>) -> Result<IsoTpEvent, Error> {
+    pub(crate) fn append_consecutive(&mut self, sequence: u8, mut data: Vec<u8>) -> Result<IsoTpEvent, IsoTpError> {
         if self.consecutive.length.is_none() {
-            return Err(Error::MixFramesError);
+            return Err(IsoTpError::MixFramesError);
         }
 
         let target = match self.consecutive.sequence {
@@ -63,7 +63,7 @@ impl IsoTpContext {
         };
         self.consecutive.sequence = Some(target);
         if sequence != target {
-            return Err(Error::InvalidSequence { expect: target, actual: sequence });
+            return Err(IsoTpError::InvalidSequence { expect: target, actual: sequence });
         }
 
         self.consecutive.buffer.append(&mut data);

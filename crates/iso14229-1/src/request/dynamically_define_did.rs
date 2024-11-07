@@ -1,7 +1,7 @@
 //! request of Service 2C
 
 
-use crate::{DynamicallyDID, DefinitionType, DynamicallyMemAddr, Error, request::{Request, SubFunction}, RequestData, Configuration, utils, Service};
+use crate::{DynamicallyDID, DefinitionType, DynamicallyMemAddr, UdsError, request::{Request, SubFunction}, RequestData, Configuration, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DynamicallyDefineDID {
@@ -20,7 +20,7 @@ pub enum DynamicallyDefineDID {
 
 impl RequestData for DynamicallyDefineDID {
     type SubFunc = DefinitionType;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
         match sub_func {
             Some(v) => {
                 let data_len = data.len();
@@ -86,7 +86,7 @@ impl RequestData for DynamicallyDefineDID {
                             2 => Ok(Some(DynamicallyDID::try_from(
                                 u16::from_be_bytes([data[offset], data[offset + 1]])
                             )?)),
-                            v => Err(Error::InvalidDataLength { expect: 2, actual: v }),
+                            v => Err(UdsError::InvalidDataLength { expect: 2, actual: v }),
                         }?;
 
                         Ok(Self::ClearDynamicallyDefinedDataIdentifier(dyn_did))
@@ -167,9 +167,9 @@ pub(crate) fn dyn_define_did(
     sub_func: Option<SubFunction>,
     data: Vec<u8>,
     cfg: &Configuration,
-) -> Result<Request, Error> {
+) -> Result<Request, UdsError> {
     if sub_func.is_none() {
-        return Err(Error::SubFunctionError(service));
+        return Err(UdsError::SubFunctionError(service));
     }
 
     let sf = DefinitionType::try_from(sub_func.unwrap().function)?;

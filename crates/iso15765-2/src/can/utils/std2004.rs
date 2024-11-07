@@ -1,7 +1,7 @@
 use crate::can::CanIsoTpFrame;
 use crate::can::utils::parse;
 use crate::can::constant::{CAN_FRAME_MAX_SIZE, CANFD_FRAME_MAX_SIZE, CONSECUTIVE_FRAME_SIZE, DEFAULT_PADDING, ISO_TP_MAX_LENGTH_2004, SINGLE_FRAME_SIZE_2004, FIRST_FRAME_SIZE_2004};
-use crate::Error;
+use crate::IsoTpError;
 use crate::FrameType;
 
 #[cfg(feature = "can-fd")]
@@ -10,19 +10,19 @@ use crate::can::utils::can_fd_resize;
 pub(crate) fn decode_single(data: &[u8],
                             byte0: u8,
                             length: usize
-) -> Result<CanIsoTpFrame, Error> {
+) -> Result<CanIsoTpFrame, IsoTpError> {
     #[cfg(feature = "can-fd")]
     let max_len = CANFD_FRAME_MAX_SIZE;
     #[cfg(not(feature = "can-fd"))]
     let max_len = CAN_FRAME_MAX_SIZE;
 
     if length > max_len {
-        return Err(Error::LengthOutOfRange(length));
+        return Err(IsoTpError::LengthOutOfRange(length));
     }
 
     let pdu_len = byte0 & 0x0F;
     if length < pdu_len as usize + 1 {
-        return Err(Error::InvalidPdu(data.to_vec()));
+        return Err(IsoTpError::InvalidPdu(data.to_vec()));
     }
 
     Ok(CanIsoTpFrame::SingleFrame { data: Vec::from(&data[1..=pdu_len as usize]) })
@@ -31,14 +31,14 @@ pub(crate) fn decode_single(data: &[u8],
 pub(crate) fn decode_first(data: &[u8],
                            byte0: u8,
                            length: usize,
-) -> Result<CanIsoTpFrame, Error> {
+) -> Result<CanIsoTpFrame, IsoTpError> {
     #[cfg(not(feature = "can-fd"))]
     if length != CAN_FRAME_MAX_SIZE {
-        return Err(Error::InvalidDataLength { actual: length, expect: CAN_FRAME_MAX_SIZE })
+        return Err(IsoTpError::InvalidDataLength { actual: length, expect: CAN_FRAME_MAX_SIZE })
     }
     #[cfg(feature = "can-fd")]
     if length != CANFD_FRAME_MAX_SIZE {
-        return Err(Error::InvalidDataLength { actual: length, expect: CANFD_FRAME_MAX_SIZE })
+        return Err(IsoTpError::InvalidDataLength { actual: length, expect: CANFD_FRAME_MAX_SIZE })
     }
 
     let pdu_len = (byte0 as u16 & 0x0F) << 8 | data[1] as u16;
@@ -67,25 +67,25 @@ pub(crate) fn encode_first(length: u32, mut data: Vec<u8>) -> Vec<u8> {
     result
 }
 
-pub(crate) fn new_single<T: AsRef<[u8]>>(data: T) -> Result<CanIsoTpFrame, Error> {
+pub(crate) fn new_single<T: AsRef<[u8]>>(data: T) -> Result<CanIsoTpFrame, IsoTpError> {
     let data = data.as_ref();
     let length = data.len();
     match length {
-        0 => Err(Error::EmptyPdu),
+        0 => Err(IsoTpError::EmptyPdu),
         1..=SINGLE_FRAME_SIZE_2004 => {
             let mut result = vec![FrameType::Single as u8 | length as u8];
             result.append(&mut data.to_vec());
             result.resize(SINGLE_FRAME_SIZE_2004, DEFAULT_PADDING);
             Ok(CanIsoTpFrame::SingleFrame { data: result })
         },
-        v => Err(Error::LengthOutOfRange(v)),
+        v => Err(IsoTpError::LengthOutOfRange(v)),
     }
 }
 
-pub(crate) fn from_data(data: &[u8]) -> Result<Vec<CanIsoTpFrame>, Error> {
+pub(crate) fn from_data(data: &[u8]) -> Result<Vec<CanIsoTpFrame>, IsoTpError> {
     let length = data.len();
     match length {
-        0 => Err(Error::EmptyPdu),
+        0 => Err(IsoTpError::EmptyPdu),
         1..=CONSECUTIVE_FRAME_SIZE => Ok(vec![CanIsoTpFrame::SingleFrame { data: data.to_vec() }]),
         ..=ISO_TP_MAX_LENGTH_2004 => {
             let mut offset = 0;
@@ -96,7 +96,7 @@ pub(crate) fn from_data(data: &[u8]) -> Result<Vec<CanIsoTpFrame>, Error> {
 
             Ok(results)
         },
-        v => Err(Error::LengthOutOfRange(v)),
+        v => Err(IsoTpError::LengthOutOfRange(v)),
     }
 }
 

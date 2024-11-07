@@ -1,9 +1,10 @@
-pub mod constant;
+mod constant;
 pub use constant::*;
-pub mod error;
+mod error;
 pub use error::*;
 pub mod can;
-pub mod device;
+mod device;
+pub use device::*;
 
 use std::fmt::{Debug, Display, Formatter};
 use std::sync::atomic::{AtomicU8, Ordering};
@@ -151,7 +152,7 @@ pub enum IsoTpEvent {
     Wait,
     FirstFrameReceived,
     DataReceived(Vec<u8>),
-    ErrorOccurred(Error),
+    ErrorOccurred(IsoTpError),
 }
 
 pub trait IsoTpEventListener {
@@ -200,7 +201,7 @@ impl Into<u8> for FrameType {
 }
 
 impl TryFrom<u8> for FrameType {
-    type Error = Error;
+    type Error = IsoTpError;
     #[inline]
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value & 0xF0 {
@@ -208,7 +209,7 @@ impl TryFrom<u8> for FrameType {
             0x10 => Ok(Self::First),
             0x20 => Ok(Self::Consecutive),
             0x30 => Ok(Self::FlowControl),
-            v => Err(Error::InvalidParam(format!("`frame type`({})", v))),
+            v => Err(IsoTpError::InvalidParam(format!("`frame type`({})", v))),
         }
     }
 }
@@ -224,13 +225,13 @@ pub enum FlowControlState {
 }
 
 impl TryFrom<u8> for FlowControlState {
-    type Error = Error;
+    type Error = IsoTpError;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0x00 => Ok(Self::Continues),
             0x01 => Ok(Self::Wait),
             0x02 => Ok(Self::Overload),
-            v => Err(Error::InvalidParam(format!("`state` ({})", v))),
+            v => Err(IsoTpError::InvalidParam(format!("`state` ({})", v))),
         }
     }
 }
@@ -263,10 +264,10 @@ impl FlowControlContext {
         state: FlowControlState,
         block_size: u8,
         st_min: u8,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, IsoTpError> {
         match st_min {
             0x80..=0xF0 |
-            0xFA..=0xFF => Err(Error::InvalidStMin(st_min)),
+            0xFA..=0xFF => Err(IsoTpError::InvalidStMin(st_min)),
             v => Ok(Self { state, block_size, st_min: v }),
         }
     }
@@ -322,7 +323,7 @@ pub trait IsoTpFrame: Send {
     /// # Return
     ///
     /// A struct that implements [`IsoTpFrame`] if parameters are valid.
-    fn decode<T: AsRef<[u8]>>(data: T) -> Result<Self, Error>
+    fn decode<T: AsRef<[u8]>>(data: T) -> Result<Self, IsoTpError>
     where
         Self: Sized;
     /// Encode frame to data.
@@ -348,7 +349,7 @@ pub trait IsoTpFrame: Send {
     /// The frames contain either a `SingleFrame` or a multi-frame sequence starting
     ///
     /// with a `FirstFrame` and followed by at least one `FlowControlFrame`.
-    fn from_data<T: AsRef<[u8]>>(data: T) -> Result<Vec<Self>, Error>
+    fn from_data<T: AsRef<[u8]>>(data: T) -> Result<Vec<Self>, IsoTpError>
     where
         Self: Sized;
 
@@ -359,7 +360,7 @@ pub trait IsoTpFrame: Send {
     /// # Returns
     ///
     /// A new `SingleFrame` if parameters are valid.
-    fn single_frame<T: AsRef<[u8]>>(data: T) -> Result<Self, Error>
+    fn single_frame<T: AsRef<[u8]>>(data: T) -> Result<Self, IsoTpError>
     where
         Self: Sized;
     /// New flow control frame from data.
@@ -373,7 +374,7 @@ pub trait IsoTpFrame: Send {
     /// # Returns
     ///
     /// A new `FlowControlFrame` if parameters are valid.
-    fn flow_ctrl_frame(state: FlowControlState, block_size: u8, st_min: u8) -> Result<Self, Error>
+    fn flow_ctrl_frame(state: FlowControlState, block_size: u8, st_min: u8) -> Result<Self, IsoTpError>
     where
         Self: Sized;
 
