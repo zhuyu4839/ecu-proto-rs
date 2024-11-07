@@ -1,6 +1,6 @@
 //! Service 29
 
-#[cfg(any(feature = "2020"))]
+#[cfg(any(feature = "std2020"))]
 #[cfg(test)]
 mod tests {
     use iso14229_1::{Configuration, TryFromWithCfg, AuthenticationTask, request, NotNullableData, NullableData, AlgorithmIndicator, response, Service};

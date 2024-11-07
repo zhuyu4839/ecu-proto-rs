@@ -1,5 +1,5 @@
 use std::{collections::VecDeque, sync::{Arc, Mutex}, time::{Duration, Instant}};
-use isotp_rs::{can::isotp::SyncCanIsoTp, error::Error as IsoTpError, IsoTpEvent, IsoTpEventListener};
+use iso15765_2::{can::isotp::SyncCanIsoTp, error::Error as IsoTpError, IsoTpEvent, IsoTpEventListener};
 use iso14229_1::Configuration;
 use crate::P2Context;
 
@@ -166,6 +166,3 @@ pub struct Context<C: Clone + Eq, F> {
     pub(crate) listener: IsoTpListener,
     pub(crate) config: Configuration,
 }
-
-
-

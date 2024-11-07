@@ -15,8 +15,8 @@ lazy_static = { workspace = true }
 half = { workspace = true }
 bitflags = { workspace = true }
 bitfield-struct = { workspace = true }
-isotp-rs = { workspace = true }
 hex = { workspace = true }
+iso15765-2 = { workspace = true }
 iso14229-1 = { workspace = true, default-features = false }
 
 [dependencies.tokio]

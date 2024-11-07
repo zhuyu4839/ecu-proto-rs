@@ -1,4 +1,4 @@
-use isotp_rs::error::Error as IsoTpError;
+use iso15765_2::error::Error as IsoTpError;
 use iso14229_1::{Service, response::Code};
 
 #[derive(thiserror::Error, Debug)]

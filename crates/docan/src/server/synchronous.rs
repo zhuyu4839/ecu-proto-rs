@@ -1,6 +1,6 @@
 use std::fmt::Display;
 use std::hash::Hash;
-use isotp_rs::{can::frame::Frame as CanFrame, device::SyncDevice};
+use iso15765_2::{can::frame::Frame as CanFrame, device::SyncDevice};
 
 pub struct SyncServer<D, Device, C, F>
 where
@@ -22,7 +22,3 @@ where
 
 
 }
-
-
-
-
