@@ -64,7 +64,7 @@ impl ResponseData for IOCtrl {
 
         let ctrl_type = IOCtrlParameter::try_from(data[offset])?;
         offset += 1;
-        let record_len = *cfg.did_cfg.get(&did)
+        let &record_len = cfg.did_cfg.get(&did)
             .ok_or(Error::DidNotSupported(did))?;
 
         utils::data_length_check(data_len, offset + record_len, true)?;

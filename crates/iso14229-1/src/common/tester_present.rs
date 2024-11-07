@@ -1,8 +1,8 @@
 //! Commons of Service 3E
 
-use crate::{enum_to_vec, Error};
+use crate::{enum_extend, Error};
 
-enum_to_vec!(
+enum_extend!(
     pub enum TesterPresentType {
         Zero = 0x00,
     }, u8);

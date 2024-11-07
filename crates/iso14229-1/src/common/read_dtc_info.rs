@@ -1,7 +1,7 @@
 //! Commons of Service 19
 
 use bitflags::bitflags;
-use crate::{enum_to_vec, Error};
+use crate::{enum_extend, Error};
 
 bitflags! {
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -17,7 +17,7 @@ bitflags! {
     }
 }
 
-enum_to_vec!(
+enum_extend!(
     /// Table 317 — Request message SubFunction definition
     pub enum DTCReportType {
         ReportNumberOfDTCByStatusMask = 0x01,

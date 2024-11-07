@@ -1,10 +1,10 @@
 //! Commons of Service 29
 
-use crate::{enum_to_vec, Error, utils};
+use crate::{enum_extend, Error, utils};
 
 pub(crate) const ALGORITHM_INDICATOR_LENGTH: usize = 16;
 
-enum_to_vec!(
+enum_extend!(
     pub enum AuthenticationTask {
         DeAuthenticate = 0x00,
         VerifyCertificateUnidirectional = 0x01,

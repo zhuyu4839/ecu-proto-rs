@@ -2,8 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, DataIdentifier, DIDData, error::Error, Placeholder, response::Code, ResponseData, utils, Service};
-use crate::response::{Response, SubFunction};
+use crate::{Configuration, DataIdentifier, DIDData, error::Error, Placeholder, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
 
 lazy_static!(
     pub static ref READ_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -36,7 +35,11 @@ impl Into<Vec<u8>> for ReadDID {
 
 impl ResponseData for ReadDID {
     type SubFunc = Placeholder;
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::ReadDID));
+        }
+
         let data_len = data.len();
         utils::data_length_check(data_len, 2, false)?;
         let mut offset = 0;
@@ -45,7 +48,7 @@ impl ResponseData for ReadDID {
             u16::from_be_bytes([data[offset], data[offset + 1]])
         );
         offset += 2;
-        let did_len = *cfg.did_cfg.get(&did)
+        let &did_len = cfg.did_cfg.get(&did)
             .ok_or(Error::DidNotSupported(did))?;
         utils::data_length_check(data_len, offset + did_len, false)?;
 
@@ -63,7 +66,7 @@ impl ResponseData for ReadDID {
                 u16::from_be_bytes([data[offset], data[offset + 1]])
             );
             offset += 2;
-            let did_len = *cfg.did_cfg.get(&did)
+            let &did_len = cfg.did_cfg.get(&did)
                 .ok_or(Error::DidNotSupported(did))?;
             utils::data_length_check(data_len, offset + did_len, false)?;
 

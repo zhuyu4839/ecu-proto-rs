@@ -16,6 +16,7 @@ impl IOCtrl {
         param: IOCtrlParameter,
         state: Vec<u8>,
         mask: Vec<u8>,
+        cfg: &Configuration,
     ) -> Result<Self, Error> {
         match param {
             IOCtrlParameter::ReturnControlToEcu |
@@ -26,11 +27,10 @@ impl IOCtrl {
                 }
             }
             IOCtrlParameter::ShortTermAdjustment => {
-                // let cfg_len = *UDS_CFG.did_cfg.get(&did)
-                //     .ok_or(Error::DidCodecNotSupported(did))?;
-                // if state.len() != cfg_len {
-                //     return Err(Error::InvalidParam("`controlState` length doesn't match DID configuration".to_string()));
-                // }
+                let &did_len = cfg.did_cfg.get(&did)
+                    .ok_or(Error::DidNotSupported(did))?;
+
+                utils::data_length_check(state.len(), did_len, true)?;
             },
         }
 
@@ -71,7 +71,11 @@ impl Into<Vec<u8>> for IOCtrl {
 
 impl RequestData for IOCtrl {
     type SubFunc = Placeholder;
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::IOCtrl));
+        }
+
         let data_len = data.len();
         utils::data_length_check(data_len, 3, false)?;
         let mut offset = 0;
@@ -83,26 +87,9 @@ impl RequestData for IOCtrl {
 
         let param = IOCtrlParameter::try_from(data[offset])?;
         offset += 1;
-        match param {
-            IOCtrlParameter::ReturnControlToEcu |
-            IOCtrlParameter::ResetToDefault |
-            IOCtrlParameter::FreezeCurrentState => {
-                let mask = data[offset..].to_vec();
-                Self::new(did, param, vec![], mask)
-            },
-            IOCtrlParameter::ShortTermAdjustment => {
-                let record_len = *cfg.did_cfg.get(&did)
-                    .ok_or(Error::DidNotSupported(did))?;
-                utils::data_length_check(data_len, offset + record_len, false)?;
 
-                let state = data[offset..offset + record_len].to_vec();
-                offset += record_len;
-
-                let mask = data[offset..].to_vec();
-
-                Self::new(did, param, state, mask)
-            },
-        }
+        let mask = data[offset..].to_vec();
+        Self::new(did, param, vec![], mask, cfg)
     }
     #[inline]
     fn to_vec(self, _: &Configuration) -> Vec<u8> {

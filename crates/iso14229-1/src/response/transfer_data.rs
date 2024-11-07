@@ -28,7 +28,7 @@ pub(crate) fn transfer_data(
         return Err(Error::SubFunctionError(service));
     }
 
-    utils::data_length_check(data.len(), 1, true)?;
+    utils::data_length_check(data.len(), 1, false)?;
 
     Ok(Response { service, negative: false, sub_func, data })
 }

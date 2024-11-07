@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 use bitfield_struct::bitfield;
 use lazy_static::lazy_static;
-use crate::{enum_to_vec, Service};
+use crate::{enum_extend, Service};
 use crate::{Configuration, DataIdentifier, error::Error, Placeholder, response::Code, ResponseData, utils};
 use crate::response::{Response, SubFunction};
 
@@ -19,7 +19,7 @@ lazy_static!(
     ]);
 );
 
-enum_to_vec! (
+enum_extend! (
     /// Table C.2 — scalingByte (High Nibble) parameter definitions
     pub enum ScalingByteType {
         UnSignedNumeric = 0x00,             // (1 to 4 bytes)
@@ -199,7 +199,11 @@ impl Into<Vec<u8>> for ReadScalingDID {
 impl ResponseData for ReadScalingDID {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::ReadScalingDID));
+        }
+
         Self::try_from(data)
     }
     #[inline]

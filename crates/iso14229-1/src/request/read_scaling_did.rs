@@ -12,10 +12,7 @@ impl<'a> TryFrom<&'a [u8]> for ReadScalingDID {
         utils::data_length_check(data.len(), 2, true)?;
 
         let did = DataIdentifier::from(
-            u16::from_be_bytes(
-                data.try_into()
-                .map_err(|_| Error::InvalidData(hex::encode(data)))?
-            )
+            u16::from_be_bytes([data[0], data[1]])
         );
 
         Ok(Self(did))
@@ -32,7 +29,11 @@ impl Into<Vec<u8>> for ReadScalingDID {
 impl RequestData for ReadScalingDID {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::ReadScalingDID));
+        }
+
         Self::try_from(data)
     }
     #[inline]

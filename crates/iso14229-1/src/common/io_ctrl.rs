@@ -1,8 +1,8 @@
 //! Commons of Service 2F
 
-use crate::{enum_to_vec, Error};
+use crate::{enum_extend, Error};
 
-enum_to_vec!(
+enum_extend!(
     pub enum IOCtrlParameter {
         ReturnControlToEcu = 0x00,
         ResetToDefault = 0x01,

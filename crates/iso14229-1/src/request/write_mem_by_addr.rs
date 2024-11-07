@@ -3,7 +3,7 @@
 
 use crate::{AddressAndLengthFormatIdentifier, Configuration, Error, MemoryLocation, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct WriteMemByAddr {
     pub mem_loc: MemoryLocation,
     pub data: Vec<u8>,
@@ -40,7 +40,11 @@ impl WriteMemByAddr {
 
 impl RequestData for WriteMemByAddr {
     type SubFunc = Placeholder;
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::WriteMemByAddr));
+        }
+
         utils::data_length_check(data.len(), 5, false)?;
         let mut offset = 0;
         let mem_loc = MemoryLocation::from_slice(data, cfg)?;

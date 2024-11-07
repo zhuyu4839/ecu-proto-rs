@@ -381,7 +381,7 @@ where
                                    others: Vec<DataIdentifier>,
     ) -> Result<response::ReadDID, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::ReadDIDD::new(did, others);
+            let data = request::ReadDID::new(did, others);
             let request = Request::new(Service::ReadDID, None, data.to_vec(&ctx.config), &ctx.config)
                 .map_err(Error::ISO14229Error)?;
 

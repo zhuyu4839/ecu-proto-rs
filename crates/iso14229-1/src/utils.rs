@@ -7,9 +7,9 @@ use crate::{ByteOrder, Error};
 ///
 /// Example:
 /// ```rust
-/// use iso14229_1::{enum_to_vec, Error};
+/// use iso14229_1::{enum_extend, Error};
 ///
-/// enum_to_vec!(
+/// enum_extend!(
 ///     pub enum AccessType {
 ///         ReadExtendedTimingParameterSet = 1,
 ///         SetTimingParametersToDefaultValues = 2,
@@ -24,7 +24,7 @@ use crate::{ByteOrder, Error};
 /// assert_eq!(demo, AccessType::ReadExtendedTimingParameterSet);
 /// ```
 #[macro_export]
-macro_rules! enum_to_vec {
+macro_rules! enum_extend {
     (
         $(#[$meta:meta])*
         $vis:vis enum $enum_name:ident {

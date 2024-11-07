@@ -1,8 +1,8 @@
 //! Commons of Service 87
 
-use crate::{enum_to_vec, Error, utils};
+use crate::{enum_extend, Error, utils};
 
-enum_to_vec!(
+enum_extend!(
     pub enum LinkCtrlMode {
         PC9600Baud = 0x01,
         PC19200Baud = 0x02,

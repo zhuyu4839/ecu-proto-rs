@@ -1,8 +1,8 @@
 //! Commons of Service 83
 
-use crate::{Configuration, enum_to_vec, Error, RequestData, ResponseData, Service};
+use crate::{Configuration, enum_extend, Error, RequestData, ResponseData, Service};
 
-enum_to_vec!(
+enum_extend!(
     pub enum TimingParameterAccessType {
         ReadExtendedTimingParameterSet = 0x01,
         SetTimingParametersToDefaultValues = 0x02,

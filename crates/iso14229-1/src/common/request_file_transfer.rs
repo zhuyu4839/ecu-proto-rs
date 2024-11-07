@@ -1,8 +1,8 @@
 //! Commons of Service 38
 
-use crate::{enum_to_vec, Error};
+use crate::{enum_extend, Error};
 
-enum_to_vec! (
+enum_extend! (
     pub enum ModeOfOperation {
         AddFile = 0x01,
         DeleteFile = 0x02,

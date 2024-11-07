@@ -12,7 +12,5 @@ pub(crate) fn request_transfer_exit(
         return Err(Error::SubFunctionError(service));
     }
 
-    utils::data_length_check(data.len(), 0, true)?;
-
     Ok(Request { service, sub_func, data })
 }

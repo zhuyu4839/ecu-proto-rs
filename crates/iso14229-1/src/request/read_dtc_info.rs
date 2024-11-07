@@ -141,8 +141,10 @@ impl RequestData for DTCInfo {
 
                         Ok(Self::ReportEmissionsOBDDTCByStatusMask(data[offset]))
                     },
-                    DTCReportType::ReportDTCSnapshotIdentification =>
-                        Ok(Self::ReportDTCSnapshotIdentification),
+                    DTCReportType::ReportDTCSnapshotIdentification => {
+                        utils::data_length_check(data_len, offset, true)?;
+                        Ok(Self::ReportDTCSnapshotIdentification)
+                    },
                     DTCReportType::ReportDTCSnapshotRecordByDTCNumber => {
                         utils::data_length_check(data_len, offset + 4, true)?;
 
@@ -220,20 +222,34 @@ impl RequestData for DTCInfo {
                             mask_record,
                         })
                     },
-                    DTCReportType::ReportSupportedDTC =>
-                        Ok(Self::ReportSupportedDTC),
-                    DTCReportType::ReportFirstTestFailedDTC =>
-                        Ok(Self::ReportFirstTestFailedDTC),
-                    DTCReportType::ReportFirstConfirmedDTC =>
-                        Ok(Self::ReportFirstConfirmedDTC),
-                    DTCReportType::ReportMostRecentTestFailedDTC =>
-                        Ok(Self::ReportMostRecentTestFailedDTC),
-                    DTCReportType::ReportMostRecentConfirmedDTC =>
-                        Ok(Self::ReportMostRecentConfirmedDTC),
-                    DTCReportType::ReportDTCFaultDetectionCounter =>
-                        Ok(Self::ReportDTCFaultDetectionCounter),
-                    DTCReportType::ReportDTCWithPermanentStatus =>
-                        Ok(Self::ReportDTCWithPermanentStatus),
+                    DTCReportType::ReportSupportedDTC => {
+                        utils::data_length_check(data_len, offset, true)?;
+                        Ok(Self::ReportSupportedDTC)
+                    },
+                    DTCReportType::ReportFirstTestFailedDTC => {
+                        utils::data_length_check(data_len, offset, true)?;
+                        Ok(Self::ReportFirstTestFailedDTC)
+                    },
+                    DTCReportType::ReportFirstConfirmedDTC => {
+                        utils::data_length_check(data_len, offset, true)?;
+                        Ok(Self::ReportFirstConfirmedDTC)
+                    },
+                    DTCReportType::ReportMostRecentTestFailedDTC => {
+                        utils::data_length_check(data_len, offset, true)?;
+                        Ok(Self::ReportMostRecentTestFailedDTC)
+                    },
+                    DTCReportType::ReportMostRecentConfirmedDTC => {
+                        utils::data_length_check(data_len, offset, true)?;
+                        Ok(Self::ReportMostRecentConfirmedDTC)
+                    },
+                    DTCReportType::ReportDTCFaultDetectionCounter => {
+                        utils::data_length_check(data_len, offset, true)?;
+                        Ok(Self::ReportDTCFaultDetectionCounter)
+                    },
+                    DTCReportType::ReportDTCWithPermanentStatus => {
+                        utils::data_length_check(data_len, offset, true)?;
+                        Ok(Self::ReportDTCWithPermanentStatus)
+                    },
                     #[cfg(any(feature = "std2013", feature = "std2020"))]
                     DTCReportType::ReportDTCExtDataRecordByRecordNumber => {
                         utils::data_length_check(data_len, offset + 1, true)?;

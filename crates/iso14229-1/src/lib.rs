@@ -8,10 +8,9 @@ pub use constant::*;
 mod error;
 pub use error::*;
 
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
+use std::{collections::HashMap, fmt::{Display, Formatter}};
 
-enum_to_vec! (
+enum_extend! (
     /// the service marked with `✅` is completed.
     ///
     /// the service marked with `⭕` is partially completed.

@@ -1,8 +1,8 @@
 //! Commons of Service 2C
 
-use crate::{DataIdentifier, enum_to_vec, Error, utils};
+use crate::{DataIdentifier, enum_extend, Error, utils};
 
-enum_to_vec!(
+enum_extend!(
     pub enum DefinitionType {
         DefineByIdentifier = 0x01,
         DefineByMemoryAddress = 0x02,

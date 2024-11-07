@@ -2,6 +2,7 @@
 
 use crate::{ByteOrder, Configuration, error::Error, DataFormatIdentifier, ModeOfOperation, request::{Request, SubFunction}, RequestData, utils, Service};
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RequestFileTransfer {
     AddFile {
         filepath: String,

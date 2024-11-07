@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{enum_to_vec, Service};
+use crate::{enum_extend, Service};
 use crate::{Configuration, DataIdentifier, DTCReportType, error::Error, response::Code, ResponseData, utils};
 use crate::response::{Response, SubFunction};
 
@@ -15,7 +15,7 @@ lazy_static!(
     ]);
 );
 
-enum_to_vec! (
+enum_extend! (
     #[allow(non_camel_case_types)]
     pub enum DTCFormatIdentifier {
         SAE_J2012_DA_DTCFormat_00 = 0x00,
@@ -25,52 +25,52 @@ enum_to_vec! (
         SAE_J2012_DA_DTCFormat_04 = 0x04
     }, u8);
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DTCAndStatusRecord { // 0x02 0x0A 0x0B 0x0C 0x0D 0x0E 0x15 0x17 0x1A 0x55 0x56
     pub dtc: utils::U24,
     pub status: u8,     // DTCStatusMask
 }
 
-#[derive(Debug, Clone, )]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DTCSnapshotIdentification {  // 0x03
     pub dtc: utils::U24,
     pub number: u8,
 }
 
-#[derive(Debug, Clone, )]
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DTCSnapshotRecord {
+    pub did: DataIdentifier,
+    pub data: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DTCSnapshotRecordByDTCNumber {   // 0x04
     pub number: u8,     // the echo of client request
     pub number_of_identifier: u8,
-    pub records: Vec<(DataIdentifier, Vec<u8>)>,
+    pub records: Vec<DTCSnapshotRecord>,
 }
 
-#[derive(Debug, Clone, )]
-pub struct DTCStoredDataByRecordNumber {    // 0x05
-    pub status_record: DTCAndStatusRecord,
-    pub number_of_identifier: u8,
-    pub records: Vec<(DataIdentifier, Vec<u8>)>,
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DTCStoredDataRecord {
+    pub did: DataIdentifier,
+    pub data: Vec<u8>,
 }
 
-#[derive(Debug, Clone, )]
-pub struct DTCExtDataRecordByDTCNumber {    // 0x06 0x10
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ReportDTCStoredDataByRecord {    // 0x05
+    pub number: u8,
+    pub record: Option<DTCAndStatusRecord>,
+    pub number_of_identifier: Option<u8>,
+    pub records: Vec<DTCStoredDataRecord>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DTCExtDataRecord {    // 0x06 0x10
     pub number: u8,     // 0x00~0xFD
     pub data: Vec<u8>,
 }
 
-#[derive(Debug, Clone, )]
-pub struct DTCExtDataRecordByRecordNumber { // 0x16
-    pub status_record: DTCAndStatusRecord,
-    pub data: Vec<u8>,
-}
-
-#[derive(Debug, Clone, )]
-pub struct DTCAndSeverityRecord {   // 0x42
-    pub severity: u8,
-    pub dtc: utils::U24,
-    pub status: u8,
-}
-
-#[derive(Debug, Clone, )]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DTCAndSeverityRecord1 {  // 0x08 0x09
     pub severity: u8,
     pub func_unit: u8,
@@ -78,27 +78,34 @@ pub struct DTCAndSeverityRecord1 {  // 0x08 0x09
     pub status: u8,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DTCFaultDetectionCounterRecord { // 0x14
     pub dtc: utils::U24,
     pub counter: u8,    // less than 0x7F
 }
 
-#[derive(Debug, Clone, )]
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DTCExtDataRecordByRecordNumber { // 0x16
+    pub status_record: DTCAndStatusRecord,
+    pub data: Vec<u8>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct UserDefDTCSnapshotRecord {   // 0x18
     pub number: u8,     // the echo from client request
     // pub status_record: DTCAndStatusRecord,
     pub number_of_identifier: u8,
-    pub records: Vec<(DataIdentifier, Vec<u8>)>,
+    pub records: Vec<DTCSnapshotRecord>,
 }
 
-// #[derive(Debug, Clone, )]
-// pub struct UserDefMemoryDTCExtDataRecord {  // 0x19
-//     pub number: u8,     // 00 to FE
-//     pub record: Vec<u8>,
-// }
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct DTCAndSeverityRecord {   // 0x42
+    pub severity: u8,
+    pub dtc: utils::U24,
+    pub status: u8,
+}
 
-#[derive(Debug, Clone, )]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DTCInfo {
     ReportNumberOfDTCByStatusMask {     // 0x01
         avl_mask: u8,
@@ -106,28 +113,6 @@ pub enum DTCInfo {
         count: u16,
     },
     ReportDTCByStatusMask {             // 0x02
-        avl_mask: u8,
-        records: Vec<DTCAndStatusRecord>,
-    },
-    #[cfg(any(feature = "std2006", feature = "std2013"))]
-    ReportMirrorMemoryDTCByStatusMask { // 0x0F
-        avl_mask: u8,
-        records: Vec<DTCAndStatusRecord>,
-    },
-    #[cfg(any(feature = "std2006", feature = "std2013"))]
-    ReportNumberOfMirrorMemoryDTCByStatusMask { // 0x11
-        avl_mask: u8,
-        fid: DTCFormatIdentifier,
-        count: u16,
-    },
-    #[cfg(any(feature = "std2006", feature = "std2013"))]
-    ReportNumberOfEmissionsOBDDTCByStatusMask { // 0x12
-        avl_mask: u8,
-        fid: DTCFormatIdentifier,
-        count: u16,
-    },
-    #[cfg(any(feature = "std2006", feature = "std2013"))]
-    ReportEmissionsOBDDTCByStatusMask {     // 0x13
         avl_mask: u8,
         records: Vec<DTCAndStatusRecord>,
     },
@@ -139,17 +124,16 @@ pub enum DTCInfo {
         records: Vec<DTCSnapshotRecordByDTCNumber>,
     },
     ReportDTCStoredDataByRecordNumber {     // 0x05
-        number: u8,
-        status_records: Vec<DTCStoredDataByRecordNumber>,
+        records: Vec<ReportDTCStoredDataByRecord>,
     },
     ReportDTCExtDataRecordByDTCNumber {     // 0x06
         status_record: DTCAndStatusRecord,
-        records: Vec<DTCExtDataRecordByDTCNumber>,
+        records: Vec<DTCExtDataRecord>,
     },
     #[cfg(any(feature = "std2006", feature = "std2013"))]
     ReportMirrorMemoryDTCExtDataRecordByDTCNumber {    // 0x10
         status_record: DTCAndStatusRecord,
-        records: Vec<DTCExtDataRecordByDTCNumber>,
+        records: Vec<DTCExtDataRecord>,
     },
     ReportNumberOfDTCBySeverityMaskRecord { // 0x07
         avl_mask: u8,
@@ -185,9 +169,30 @@ pub enum DTCInfo {
         avl_mask: u8,
         record: Option<DTCAndStatusRecord>,
     },
+    #[cfg(any(feature = "std2006", feature = "std2013"))]
+    ReportMirrorMemoryDTCByStatusMask { // 0x0F
+        avl_mask: u8,
+        records: Vec<DTCAndStatusRecord>,
+    },
+    #[cfg(any(feature = "std2006", feature = "std2013"))]
+    ReportNumberOfMirrorMemoryDTCByStatusMask { // 0x11
+        avl_mask: u8,
+        fid: DTCFormatIdentifier,
+        count: u16,
+    },
+    #[cfg(any(feature = "std2006", feature = "std2013"))]
+    ReportNumberOfEmissionsOBDDTCByStatusMask { // 0x12
+        avl_mask: u8,
+        fid: DTCFormatIdentifier,
+        count: u16,
+    },
+    #[cfg(any(feature = "std2006", feature = "std2013"))]
+    ReportEmissionsOBDDTCByStatusMask {     // 0x13
+        avl_mask: u8,
+        records: Vec<DTCAndStatusRecord>,
+    },
     ReportDTCFaultDetectionCounter {        // 0x14
-        record: DTCFaultDetectionCounterRecord,
-        others: Vec<DTCFaultDetectionCounterRecord>,
+        records: Vec<DTCFaultDetectionCounterRecord>,
     },
     ReportDTCWithPermanentStatus {          // 0x15
         avl_mask: u8,
@@ -195,7 +200,7 @@ pub enum DTCInfo {
     },
     #[cfg(any(feature = "std2013", feature = "std2020"))]
     ReportDTCExtDataRecordByRecordNumber {  // 0x16
-        ext_number: u8,
+        number: u8,
         records: Vec<DTCExtDataRecordByRecordNumber>,       // length of .1 = ext_number
     },
     #[cfg(any(feature = "std2013", feature = "std2020"))]
@@ -220,7 +225,7 @@ pub enum DTCInfo {
     #[cfg(any(feature = "std2020"))]
     ReportSupportedDTCExtDataRecord {       // 0x1A
         avl_mask: u8,
-        number: u8, // 00 to FD
+        number: u8, // 01 to FD
         records: Vec<DTCAndStatusRecord>,
     },
     #[cfg(any(feature = "std2013", feature = "std2020"))]
@@ -262,20 +267,20 @@ impl ResponseData for DTCInfo {
         match sub_func {
             Some(v) => match v {
                 DTCReportType::ReportNumberOfDTCByStatusMask => {
-                    utils::data_length_check(data_len, offset + 4, false)?;
+                    utils::data_length_check(data_len, offset + 4, true)?;
 
                     let avl_mask = data[offset];
                     offset += 1;
                     let fid = DTCFormatIdentifier::try_from(data[offset])?;
                     offset += 1;
-                    match fid {
-                        DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_00 => {}
-                        DTCFormatIdentifier::ISO_14229_1_DTCFormat => {}
-                        DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
-                        DTCFormatIdentifier::ISO_11992_4_DTCFormat => {}
-                        DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 =>
-                            return Err(Error::InvalidData(hex::encode(data))),
-                    }
+                    // match fid {
+                    //     DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_00 => {}
+                    //     DTCFormatIdentifier::ISO_14229_1_DTCFormat => {}
+                    //     DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
+                    //     DTCFormatIdentifier::ISO_11992_4_DTCFormat => {}
+                    //     DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 =>
+                    //         return Err(Error::InvalidData(hex::encode(data))),
+                    // }
                     let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
 
                     Ok(Self::ReportNumberOfDTCByStatusMask {
@@ -443,21 +448,23 @@ impl ResponseData for DTCInfo {
                         let number_of_identifier = data[offset];
                         offset += 1;
                         let mut sub_records = Vec::new();
-                        while sub_records.len() < number_of_identifier as usize {
+                        while sub_records.len() < number as usize {
                             utils::data_length_check(data_len, offset + 2, false)?;
 
                             let did = DataIdentifier::from(
                                 u16::from_be_bytes([data[offset], data[offset + 1]])
                             );
                             offset += 2;
-                            let did_data_len = *cfg.did_cfg.get(&did)
+                            let &did_data_len = cfg.did_cfg.get(&did)
                                 .ok_or(Error::DidNotSupported(did))?;
 
                             utils::data_length_check(data_len, offset + did_data_len, false)?;
 
-                            sub_records.push((did, data[offset..offset + did_data_len].to_vec()));
+                            sub_records.push(DTCSnapshotRecord {
+                                did,
+                                data: data[offset..offset + did_data_len].to_vec(),
+                            });
                             offset += did_data_len;
-
                         }
 
                         records.push(DTCSnapshotRecordByDTCNumber {
@@ -471,77 +478,10 @@ impl ResponseData for DTCInfo {
                     })
                 },
                 DTCReportType::ReportDTCStoredDataByRecordNumber => {
-                    utils::data_length_check(data_len, offset + 1, false)?;
-
-                    let number = data[offset];
-                    offset += 1;
-
-                    let mut status_records = Vec::new();
-
-                    while data_len > offset {
-                        utils::data_length_check(data_len, offset + 5, false)?;
-
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-                        let number_of_identifier = data[offset];
-                        offset += 1;
-
-                        let mut sub_records = Vec::new();
-                        while sub_records.len() < number_of_identifier as usize {
-                            utils::data_length_check(data_len, offset + 2, false)?;
-
-                            let did = DataIdentifier::from(
-                                u16::from_be_bytes([data[offset], data[offset + 1]])
-                            );
-                            offset += 2;
-                            let did_data_len = *cfg.did_cfg.get(&did)
-                                .ok_or(Error::DidNotSupported(did))?;
-
-                            utils::data_length_check(data_len, offset + did_data_len, false)?;
-
-                            sub_records.push((did, data[offset..offset + did_data_len].to_vec()));
-                            offset += did_data_len;
-                        }
-
-                        status_records.push(DTCStoredDataByRecordNumber {
-                            status_record: DTCAndStatusRecord { dtc, status },
-                            number_of_identifier,
-                            records: sub_records,
-                        });
-                    }
-
-                    Ok(Self::ReportDTCStoredDataByRecordNumber {
-                        number,
-                        status_records,
-                    })
+                    Err(Error::OtherError("This library does not yet support".to_string()))
                 },
                 DTCReportType::ReportDTCExtDataRecordByDTCNumber => {
-                    utils::data_length_check(data_len, offset + 4, false)?;
-
-                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                    offset += 3;
-                    let status = data[offset];
-                    offset += 1;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let number = data[offset];
-                        offset += 1;
-                        utils::data_length_check(data_len, offset + number as usize, false)?;
-
-                        records.push(DTCExtDataRecordByDTCNumber {
-                            number,
-                            data: data[offset..offset + number as usize].to_vec(),
-                        });
-                        offset += number as usize;
-                    }
-
-                    Ok(Self::ReportDTCExtDataRecordByDTCNumber {
-                        status_record: DTCAndStatusRecord { dtc, status },
-                        records,
-                    })
+                    Err(Error::OtherError("This library does not yet support".to_string()))
                 },
                 #[cfg(any(feature = "std2006", feature = "std2013"))]
                 DTCReportType::ReportMirrorMemoryDTCExtDataRecordByDTCNumber => {
@@ -558,7 +498,7 @@ impl ResponseData for DTCInfo {
                         offset += 1;
                         utils::data_length_check(data_len, offset + number as usize, false)?;
 
-                        records.push(DTCExtDataRecordByDTCNumber {
+                        records.push(DTCExtDataRecord {
                             number,
                             data: data[offset..offset + number as usize].to_vec(),
                         });
@@ -571,7 +511,7 @@ impl ResponseData for DTCInfo {
                     })
                 },
                 DTCReportType::ReportNumberOfDTCBySeverityMaskRecord => {
-                    utils::data_length_check(data_len, offset + 4, false)?;
+                    utils::data_length_check(data_len, offset + 4, true)?;
 
                     let avl_mask = data[offset];
                     offset += 1;
@@ -776,29 +716,19 @@ impl ResponseData for DTCInfo {
                         return Err(Error::InvalidData(hex::encode(data)));
                     }
 
-                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                    offset += 3;
-                    let counter = data[offset];
-                    offset += 1;
-
-                    let mut others = Vec::new();
+                    let mut records = Vec::new();
                     while data_len > offset {
                         let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
                         offset += 3;
                         let counter = data[offset];
                         offset += 1;
 
-                        others.push(DTCFaultDetectionCounterRecord {
+                        records.push(DTCFaultDetectionCounterRecord {
                             dtc, counter
                         });
                     }
 
-                    Ok(Self::ReportDTCFaultDetectionCounter {
-                        record: DTCFaultDetectionCounterRecord {
-                            dtc, counter
-                        },
-                        others,
-                    })
+                    Ok(Self::ReportDTCFaultDetectionCounter { records })
                 },
                 DTCReportType::ReportDTCWithPermanentStatus => {
                     utils::data_length_check(data_len, offset + 5, false)?;
@@ -873,19 +803,22 @@ impl ResponseData for DTCInfo {
                         offset += 1;
 
                         let mut sub_records = Vec::new();
-                        while sub_records.len() < number_of_identifier as usize {
+                        while sub_records.len() < number as usize {
                             utils::data_length_check(data_len, offset + 2, false)?;
 
                             let did = DataIdentifier::from(
                                 u16::from_be_bytes([data[offset], data[offset + 1]])
                             );
                             offset += 2;
-                            let did_data_len = *cfg.did_cfg.get(&did)
+                            let &did_data_len = cfg.did_cfg.get(&did)
                                 .ok_or(Error::DidNotSupported(did))?;
 
                             utils::data_length_check(data_len, offset + did_data_len, false)?;
 
-                            sub_records.push((did, data[offset..offset + did_data_len].to_vec()));
+                            sub_records.push(DTCSnapshotRecord {
+                                did,
+                                data: data[offset..offset + did_data_len].to_vec()
+                            });
                             offset += did_data_len;
                         }
 
@@ -904,62 +837,24 @@ impl ResponseData for DTCInfo {
                 },
                 #[cfg(any(feature = "std2013", feature = "std2020"))]
                 DTCReportType::ReportUserDefMemoryDTCExtDataRecordByDTCNumber => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
-
-                    let mem_selection = data[offset];
-                    offset += 1;
-                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                    offset += 3;
-                    let status = data[offset];
-                    offset += 1;
-
-                    let mut number = None;
-                    let mut records = Vec::new();
-                    if data_len > offset {
-                        let value = data[offset];
-                        offset += 1;
-                        if value > 0xFE {
-                            return Err(Error::InvalidData(hex::encode(data)));
-                        }
-
-                        number = Some(value);
-
-                        while data_len > offset {
-                            // TODO add to configuration
-                            return Err(Error::OtherError("This library does not yet support".to_string()))
-                        }
-                    }
-
-                    Ok(Self::ReportUserDefMemoryDTCExtDataRecordByDTCNumber {
-                        mem_selection,
-                        status_record: DTCAndStatusRecord { dtc, status },
-                        number,
-                        records,
-                    })
+                    Err(Error::OtherError("This library does not yet support".to_string()))
                 },
                 #[cfg(any(feature = "std2020"))]
                 DTCReportType::ReportSupportedDTCExtDataRecord => {
-                    utils::data_length_check(data_len, offset + 1, false)?;
+                    utils::data_length_check(data_len, offset + 2, false)?;
 
                     let avl_mask = data[offset];
                     offset += 1;
-
-                    let number = if data_len > offset {
-                        let result = data[offset];
-                        offset += 1;
-                        result
-                    }
-                    else {
-                        0
-                    };
-
-                    if number > 0xFD {
+                    let number = data[offset];
+                    offset += 1;
+                    if number < 0x01 || number > 0xFD {
                         return Err(Error::InvalidData(hex::encode(data)));
                     }
                     utils::data_length_check(data_len, offset + 4 * number as usize, false)?;
 
                     let mut records = Vec::new();
                     while data_len > offset {
+                        utils::data_length_check(data_len, offset + 4, false)?;
                         let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
                         offset += 3;
                         let status = data[offset];
@@ -1160,26 +1055,30 @@ impl Into<Vec<u8>> for DTCInfo {
                         result.push(v.number);
                         result.push(v.number_of_identifier);
                         v.records.into_iter()
-                            .for_each(|(did, mut data)| {
-                                let did: u16 = did.into();
+                            .for_each(|mut record| {
+                                let did: u16 = record.did.into();
                                 result.extend(did.to_be_bytes());
-                                result.append(&mut data);
+                                result.append(&mut record.data);
                             })
                     });
             },
-            Self::ReportDTCStoredDataByRecordNumber { number, status_records } => {
-                result.push(number);
-                status_records.into_iter()
+            Self::ReportDTCStoredDataByRecordNumber { records } => {
+                records.into_iter()
                     .for_each(|v| {
-                        result.append(&mut v.status_record.dtc.into());
-                        result.push(v.status_record.status);
-                        result.push(v.number_of_identifier);
+                        result.push(v.number);
+                        if let Some(record) = v.record {
+                            result.append(&mut record.dtc.into());
+                            result.push(record.status);
+                        }
+                        if let Some(number_of_identifier) = v.number_of_identifier {
+                            result.push(number_of_identifier);
+                        }
                         v.records.into_iter()
-                            .for_each(|(did, mut data)| {
-                                let did: u16 = did.into();
+                            .for_each(|mut r| {
+                                let did: u16 = r.did.into();
                                 result.extend(did.to_be_bytes());
-                                result.append(&mut data);
-                            })
+                                result.append(&mut r.data);
+                            });
                     })
             },
             Self::ReportDTCExtDataRecordByDTCNumber { status_record, records } => {
@@ -1249,10 +1148,8 @@ impl Into<Vec<u8>> for DTCInfo {
                     result.push(v.status);
                 }
             },
-            Self::ReportDTCFaultDetectionCounter { record, others } => {
-                result.append(&mut record.dtc.into());
-                result.push(record.counter);
-                others.into_iter()
+            Self::ReportDTCFaultDetectionCounter { records } => {
+                records.into_iter()
                     .for_each(|v| {
                         result.append(&mut v.dtc.into());
                         result.push(v.counter);
@@ -1267,8 +1164,8 @@ impl Into<Vec<u8>> for DTCInfo {
                     });
             },
             #[cfg(any(feature = "std2013", feature = "std2020"))]
-            Self::ReportDTCExtDataRecordByRecordNumber { ext_number, records } => {
-                result.push(ext_number);
+            Self::ReportDTCExtDataRecordByRecordNumber { number, records } => {
+                result.push(number);
                 records.into_iter()
                     .for_each(|mut v| {
                         result.append(&mut v.status_record.dtc.into());
@@ -1296,10 +1193,10 @@ impl Into<Vec<u8>> for DTCInfo {
                         result.push(v.number);
                         result.push(v.number_of_identifier);
                         v.records.into_iter()
-                            .for_each(|(did, mut data)| {
-                                let did: u16 = did.into();
+                            .for_each(|mut r| {
+                                let did: u16 = r.did.into();
                                 result.extend(did.to_be_bytes());
-                                result.append(&mut data);
+                                result.append(&mut r.data);
                             });
                     });
             },

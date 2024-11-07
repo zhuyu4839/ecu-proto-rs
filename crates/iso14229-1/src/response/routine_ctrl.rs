@@ -18,7 +18,7 @@ lazy_static!(
     ]);
 );
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RoutineCtrl {
     pub routine_id: RoutineId,
     pub routine_info: Option<u8>,
@@ -83,7 +83,7 @@ impl ResponseData for RoutineCtrl {
     type SubFunc = RoutineCtrlType;
     #[inline]
     fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
-        if sub_func.is_some() {
+        if sub_func.is_none() {
             return Err(Error::SubFunctionError(Service::RoutineCtrl));
         }
 

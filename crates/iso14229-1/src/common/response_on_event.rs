@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 use lazy_static::lazy_static;
 use crate::{constant::POSITIVE_OFFSET, error::Error, Service};
-use crate::enum_to_vec;
+use crate::enum_extend;
 
 lazy_static!(
     /// Table 91 — Recommended services to be used with the ResponseOnEvent service(2006)
@@ -20,7 +20,7 @@ lazy_static!(
     ]);
 );
 
-enum_to_vec!(
+enum_extend!(
     pub enum ResponseOnEventType {
         StopResponseOnEvent = 0x00,
         OnDTCStatusChange = 0x01,

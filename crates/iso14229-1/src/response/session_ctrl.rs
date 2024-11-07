@@ -82,7 +82,11 @@ impl Into<Vec<u8>> for SessionTiming {
 impl ResponseData for SessionTiming {
     type SubFunc = SessionType;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_none() {
+            return Err(Error::SubFunctionError(Service::SessionCtrl));
+        }
+
         Self::try_from(data)
     }
     #[inline]

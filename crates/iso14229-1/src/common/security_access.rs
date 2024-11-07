@@ -1,10 +1,10 @@
 //! Commons of Service 27
 
 
-use crate::{Configuration, Error, Placeholder, RequestData, ResponseData, utils};
+use crate::{Configuration, Error, Placeholder, RequestData, ResponseData, utils, Service};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct SecurityAccessLevel(u8);
+pub struct SecurityAccessLevel(pub(crate) u8);
 
 impl SecurityAccessLevel {
     pub fn new(level: u8) -> Result<Self, Error> {
@@ -50,7 +50,11 @@ impl Into<Vec<u8>> for SecurityAccessData {
 
 impl RequestData for SecurityAccessData {
     type SubFunc = SecurityAccessLevel;
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::SecurityAccess));
+        }
+
         Self::try_from(data)
     }
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
@@ -61,7 +65,11 @@ impl RequestData for SecurityAccessData {
 impl ResponseData for SecurityAccessData {
     type SubFunc = SecurityAccessLevel;
 
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::SecurityAccess));
+        }
+
         Self::try_from(data)
     }
     fn to_vec(self, _: &Configuration) -> Vec<u8> {

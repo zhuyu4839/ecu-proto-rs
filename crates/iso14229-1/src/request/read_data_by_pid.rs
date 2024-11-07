@@ -1,9 +1,9 @@
 //! request of Service 2A
 
 
-use crate::{Configuration, enum_to_vec, Error, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, enum_extend, Error, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
-enum_to_vec!(
+enum_extend!(
     /// Table C.10 — transmissionMode parameter definitions
     pub enum TransmissionMode {
         SendAtSlowRate = 0x01,
@@ -82,7 +82,11 @@ impl Into<Vec<u8>> for ReadDataByPeriodId {
 impl RequestData for ReadDataByPeriodId {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::ReadDataByPeriodId));
+        }
+
         Self::try_from(data)
     }
     #[inline]

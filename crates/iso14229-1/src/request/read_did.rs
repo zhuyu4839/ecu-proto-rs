@@ -4,12 +4,12 @@
 use crate::{Configuration, Error, DataIdentifier, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone)]
-pub struct ReadDIDD {
+pub struct ReadDID {
     pub did: DataIdentifier,
     pub others: Vec<DataIdentifier>,
 }
 
-impl ReadDIDD {
+impl ReadDID {
     pub fn new(
         did: DataIdentifier,
         others: Vec<DataIdentifier>
@@ -18,7 +18,7 @@ impl ReadDIDD {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for ReadDIDD {
+impl<'a> TryFrom<&'a [u8]> for ReadDID {
     type Error = Error;
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
@@ -44,7 +44,7 @@ impl<'a> TryFrom<&'a [u8]> for ReadDIDD {
     }
 }
 
-impl Into<Vec<u8>> for ReadDIDD {
+impl Into<Vec<u8>> for ReadDID {
     fn into(self) -> Vec<u8> {
         let did: u16 = self.did.into();
         let mut result: Vec<_> = did.to_be_bytes().to_vec();
@@ -59,10 +59,14 @@ impl Into<Vec<u8>> for ReadDIDD {
     }
 }
 
-impl RequestData for ReadDIDD {
+impl RequestData for ReadDID {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::ReadDID));
+        }
+
         Self::try_from(data)
     }
     #[inline]
@@ -81,7 +85,7 @@ pub(crate) fn read_did(
         return Err(Error::SubFunctionError(service));
     }
 
-    let _ = ReadDIDD::try_parse(data.as_slice(), None, cfg)?;
+    let _ = ReadDID::try_parse(data.as_slice(), None, cfg)?;
 
     Ok(Request { service, sub_func, data })
 }

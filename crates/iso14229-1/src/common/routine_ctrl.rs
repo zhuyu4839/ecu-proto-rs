@@ -2,9 +2,9 @@
 
 
 use crate::{constant::ISO_SAE_RESERVED, error::Error, Service, utils};
-use crate::enum_to_vec;
+use crate::enum_extend;
 
-enum_to_vec! (
+enum_extend! (
     pub enum RoutineCtrlType {
         StartRoutine = 1,
         StopRoutine = 2,

@@ -1,7 +1,7 @@
 //! Commons of Service 22|2E
 
 
-use crate::{error::Error, Service, utils};
+use crate::{error::Error, Service, utils, Configuration};
 
 /// Table C.1 — DID data-parameter definitions
 #[repr(u16)]
@@ -190,21 +190,35 @@ pub struct DIDData {
     pub data: Vec<u8>,
 }
 
-impl<'a> TryFrom<&'a [u8]> for DIDData {
-    type Error = Error;
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
-        let data_len = data.len();
-        utils::data_length_check(data_len, 2, false)?;
+impl DIDData {
+    pub fn new(
+        did: DataIdentifier,
+        data: Vec<u8>,
+        cfg: &Configuration,
+    ) -> Result<Self, Error> {
+        let &did_len = cfg.did_cfg.get(&did)
+            .ok_or(Error::DidNotSupported(did))?;
+        utils::data_length_check(data.len(), did_len, true)?;
 
-        let mut offset = 0;
-        let did = DataIdentifier::from(
-            u16::from_be_bytes([data[offset], data[offset + 1]])
-        );
-        offset += 2;
-
-        Ok(Self { did, data: data[offset..].to_vec() })
+        Ok(Self { did, data })
     }
 }
+
+// impl<'a> TryFrom<&'a [u8]> for DIDData {
+//     type Error = Error;
+//     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
+//         let data_len = data.len();
+//         utils::data_length_check(data_len, 2, false)?;
+//
+//         let mut offset = 0;
+//         let did = DataIdentifier::from(
+//             u16::from_be_bytes([data[offset], data[offset + 1]])
+//         );
+//         offset += 2;
+//
+//         Ok(Self { did, data: data[offset..].to_vec() })
+//     }
+// }
 
 impl Into<Vec<u8>> for DIDData {
     fn into(mut self) -> Vec<u8> {

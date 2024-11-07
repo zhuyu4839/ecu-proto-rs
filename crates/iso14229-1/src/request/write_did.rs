@@ -30,7 +30,11 @@ impl Into<Vec<u8>> for WriteDID {
 impl RequestData for WriteDID {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::WriteDID));
+        }
+
         Self::try_from(data)
     }
     #[inline]

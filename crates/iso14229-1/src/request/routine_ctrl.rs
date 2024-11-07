@@ -1,7 +1,7 @@
 //! request of Service 31
 
 
-use crate::{Configuration,Error, Placeholder, request::{Request, SubFunction}, RequestData, RoutineCtrlType, RoutineId, Service, utils};
+use crate::{Configuration,Error, request::{Request, SubFunction}, RequestData, RoutineCtrlType, RoutineId, Service, utils};
 
 #[derive(Debug, Clone)]
 pub struct RoutineCtrl {
@@ -34,10 +34,14 @@ impl Into<Vec<u8>> for RoutineCtrl {
 }
 
 impl RequestData for RoutineCtrl {
-    type SubFunc = Placeholder;
+    type SubFunc = RoutineCtrlType;
 
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_none() {
+            return Err(Error::SubFunctionError(Service::RoutineCtrl));
+        }
+
         Self::try_from(data)
     }
 
@@ -53,11 +57,12 @@ pub(crate) fn routine_ctrl(
     data: Vec<u8>,
     cfg: &Configuration,
 ) -> Result<Request, Error> {
-    if sub_func.is_some() {
+    if sub_func.is_none() {
         return Err(Error::SubFunctionError(service));
     }
 
-    let _ = RoutineCtrl::try_parse(data.as_slice(), None, cfg)?;
+    let sf = RoutineCtrlType::try_from(sub_func.unwrap().function)?;
+    let _ = RoutineCtrl::try_parse(data.as_slice(), Some(sf), cfg)?;
 
     Ok(Request { service, sub_func, data })
 }

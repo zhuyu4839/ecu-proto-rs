@@ -2,9 +2,9 @@
 
 
 use bitfield_struct::bitfield;
-use crate::{Configuration, Error, enum_to_vec, EventType, request::{Request, SubFunction}, RequestData, ResponseOnEventType, Service, Placeholder};
+use crate::{Configuration, Error, enum_extend, EventType, request::{Request, SubFunction}, RequestData, ResponseOnEventType, Service, Placeholder};
 
-enum_to_vec!(
+enum_extend!(
     /// Table 142 — Comparison logic parameter definition
     pub enum ComparisonLogicID {
         LessThan = 0x01,
@@ -129,7 +129,11 @@ impl Into<Vec<u8>> for ResponseOnEvent {
 impl RequestData for ResponseOnEvent {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::ResponseOnEvent));
+        }
+
         Self::try_from(data)
     }
     #[inline]

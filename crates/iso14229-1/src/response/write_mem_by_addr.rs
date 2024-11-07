@@ -17,12 +17,17 @@ lazy_static!(
     ]);
 );
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct WriteMemByAddr(pub MemoryLocation);
 
 impl ResponseData for WriteMemByAddr {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::WriteMemByAddr));
+        }
+
         Ok(Self(MemoryLocation::from_slice(data, cfg)?))
     }
     #[inline]

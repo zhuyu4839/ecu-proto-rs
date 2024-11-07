@@ -3,13 +3,17 @@
 
 use crate::{Configuration, Error, MemoryLocation, Placeholder, request::{Request, SubFunction}, RequestData, Service};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ReadMemByAddr(pub MemoryLocation);
 
 impl RequestData for ReadMemByAddr {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::ReadMemByAddr));
+        }
+
         Ok(Self(MemoryLocation::from_slice(data, cfg)?))
     }
     #[inline]

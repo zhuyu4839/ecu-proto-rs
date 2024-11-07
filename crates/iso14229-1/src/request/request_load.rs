@@ -3,7 +3,7 @@
 
 use crate::{Configuration, DataFormatIdentifier, Error, MemoryLocation, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RequestLoadData {
     pub dfi: DataFormatIdentifier,
     pub mem_loc: MemoryLocation,
@@ -12,7 +12,11 @@ pub struct RequestLoadData {
 impl RequestData for RequestLoadData {
     type SubFunc = Placeholder;
     #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, Error> {
+        if sub_func.is_some() {
+            return Err(Error::SubFunctionError(Service::RequestDownload));  // TODO Service::RequestUpload
+        }
+
         utils::data_length_check(data.len(), 2, false)?;
 
         let mut offset = 0;
