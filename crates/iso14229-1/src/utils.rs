@@ -1,5 +1,4 @@
-use std::fmt::{Display, LowerHex};
-use crate::{ByteOrder, UdsError};
+use crate::{ByteOrder, UdsError, SUPPRESS_NEGATIVE};
 
 /// Add to_vector function and
 /// implement `Debug`, `Copy`, `Clone`, `Eq`, `PartialEq`,
@@ -66,7 +65,7 @@ macro_rules! enum_extend {
                         $(#[$variant_meta])*
                         $value => Ok(Self::$variant),
                     )*
-                    _ => Err(Self::Error::ReservedError(value.to_string()))
+                    _ => Err(UdsError::ReservedError(value.to_string()))
                 }
             }
         }
@@ -155,6 +154,7 @@ fn is_big_endian() -> bool {
     1u16.to_ne_bytes()[0] == 0
 }
 
+/// used only enable std2020 feature
 #[allow(unused)]
 pub(crate) fn u128_to_vec_fix(value: u128, bo: ByteOrder) -> Vec<u8> {
     let mut result = value.to_le_bytes().to_vec();
@@ -214,11 +214,6 @@ pub(crate) fn slice_to_u128(slice: &[u8], bo: ByteOrder) -> u128 {
 }
 
 #[inline]
-pub(crate) fn err_msg<T: Display + LowerHex>(v: T) -> String {
-    format!("the value {0:x} is invalid or ISO/SAE reserved", v)
-}
-
-#[inline]
 pub(crate) fn length_of_u_type<T>(mut value: T) -> usize
 where
     T: std::ops::ShrAssign + std::cmp::PartialOrd + From<u8> {
@@ -234,5 +229,5 @@ where
 
 #[inline]
 pub fn peel_suppress_positive(value: u8) -> (bool, u8) {
-    ((value & 0x80) == 0x80, value & 0x7F)
+    ((value & SUPPRESS_NEGATIVE) == SUPPRESS_NEGATIVE, value & 0x7F)
 }

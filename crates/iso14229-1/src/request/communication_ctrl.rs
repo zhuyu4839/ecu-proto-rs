@@ -11,7 +11,7 @@ impl TryFrom<u16> for NodeId {
     fn try_from(value: u16) -> Result<Self, Self::Error> {
         match value {
             0x0001..=0xFFFF => Ok(Self(value)),
-            v => Err(UdsError::InvalidParam(utils::err_msg(v))),
+            v => Err(UdsError::ReservedError(v.to_string())),
         }
     }
 }

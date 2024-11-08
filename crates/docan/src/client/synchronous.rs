@@ -593,9 +593,9 @@ where
                             mem_addr: u128,
                             mem_size: u128,
                             dfi: Option<DataFormatIdentifier>,
-    ) -> Result<response::RequestLoad, Error> {
+    ) -> Result<response::RequestDownload, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::RequestLoadData {
+            let data = request::RequestDownload {
                 dfi: dfi.unwrap_or_default(),
                 mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)
                     .map_err(Error::ISO14229Error)?
@@ -616,9 +616,9 @@ where
                           mem_addr: u128,
                           mem_size: u128,
                           dfi: Option<DataFormatIdentifier>,
-    ) -> Result<response::RequestLoad, Error> {
+    ) -> Result<response::RequestUpload, Error> {
         self.context_util(channel, |ctx| {
-            let data = request::RequestLoadData {
+            let data = request::RequestUpload {
                 dfi: dfi.unwrap_or_default(),
                 mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)
                     .map_err(Error::ISO14229Error)?

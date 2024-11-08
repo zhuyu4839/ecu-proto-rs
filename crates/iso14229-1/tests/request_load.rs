@@ -12,7 +12,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function();
         assert_eq!(sub_func, None);
-        let data: request::RequestLoadData = request.data::<_, _>(&cfg)?;
+        let data: request::RequestDownload = request.data::<_, _>(&cfg)?;
         assert_eq!(data.dfi, DataFormatIdentifier::new(0x01, 0x01));
         assert_eq!(data.mem_loc, MemoryLocation::new(
             AddressAndLengthFormatIdentifier::new(0x04, 0x04)?,
@@ -31,7 +31,7 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function();
         assert_eq!(sub_func, None);
-        let data: response::RequestLoad = response.data::<_, _>(&cfg)?;
+        let data: response::RequestDownload = response.data::<_, _>(&cfg)?;
         assert_eq!(data.lfi, LengthFormatIdentifier::new(0x04)?);
         assert_eq!(data.max_num_of_block_len, 0x12345678);
 
@@ -66,7 +66,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function();
         assert_eq!(sub_func, None);
-        let data: request::RequestLoadData = request.data::<_, _>(&cfg)?;
+        let data: request::RequestUpload = request.data::<_, _>(&cfg)?;
         assert_eq!(data.dfi, DataFormatIdentifier::new(0x01, 0x01));
         assert_eq!(data.mem_loc, MemoryLocation::new(
             AddressAndLengthFormatIdentifier::new(0x04, 0x04)?,
@@ -85,7 +85,7 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function();
         assert_eq!(sub_func, None);
-        let data: response::RequestLoad = response.data::<_, _>(&cfg)?;
+        let data: response::RequestUpload = response.data::<_, _>(&cfg)?;
         assert_eq!(data.lfi, LengthFormatIdentifier::new(0x04)?);
         assert_eq!(data.max_num_of_block_len, 0x12345678);
 

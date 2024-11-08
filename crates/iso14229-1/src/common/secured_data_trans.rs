@@ -118,7 +118,7 @@ impl TryFrom<u8> for SignatureEncryptionCalculation {
         match value {
             0x00..=0x7F => Ok(Self::VehicleManufacturerSpecific(value)),
             0x80..=0x8F => Ok(Self::SystemSupplier(value)),
-            v => Err(UdsError::InvalidParam(utils::err_msg(v)))
+            v => Err(UdsError::ReservedError(v.to_string())),
         }
     }
 }

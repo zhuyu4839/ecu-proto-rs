@@ -30,7 +30,7 @@ impl TryFrom<u8> for CommunicationCtrlType {
             0x40..=0x5F => Ok(Self::VehicleManufacturerSpecific(value)),
             0x60..=0x7E => Ok(Self::SystemSupplierSpecific(value)),
             0x7F => Ok(Self::Reserved(value)),
-            v => Err(UdsError::InvalidParam(utils::err_msg(v))),
+            v => Err(UdsError::ReservedError(v.to_string())),
         }
     }
 }
@@ -69,7 +69,7 @@ impl CommunicationType {
         subnet: u8,
     ) -> Result<Self, UdsError> {
         if subnet > 0x0F {
-            return Err(UdsError::InvalidParam(utils::err_msg(subnet)));
+            return Err(UdsError::ReservedError(subnet.to_string()));
         }
 
         let mut result = comm_type.bits();

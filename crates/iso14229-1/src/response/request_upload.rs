@@ -1,14 +1,13 @@
-//! response of Service 34|35
+//! response of Service 35
 
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
 use crate::{ByteOrder, Configuration, error::UdsError, LengthFormatIdentifier, Placeholder, ResponseData, utils, Service};
-
 use super::{Code, Response, SubFunction};
 
 lazy_static!(
-    pub static ref REQUEST_LOAD_NEGATIVES: HashSet<Code> = HashSet::from([
+    pub static ref REQUEST_UPLOAD_NEGATIVES: HashSet<Code> = HashSet::from([
         Code::IncorrectMessageLengthOrInvalidFormat,
         Code::ConditionsNotCorrect,
         Code::RequestOutOfRange,
@@ -19,12 +18,12 @@ lazy_static!(
 );
 
 #[derive(Debug, Clone)]
-pub struct RequestLoad {
+pub struct RequestUpload {
     pub lfi: LengthFormatIdentifier,
     pub max_num_of_block_len: u128,
 }
 
-impl RequestLoad {
+impl RequestUpload {
     pub fn new(
         max_num_of_block_len: u128
     ) -> Result<Self, UdsError> {
@@ -41,9 +40,14 @@ impl RequestLoad {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for RequestLoad {
-    type Error = UdsError;
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
+impl ResponseData for RequestUpload {
+    type SubFunc = Placeholder;
+    #[inline]
+    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
+        if sub_func.is_some() {
+            return Err(UdsError::SubFunctionError(Service::RequestUpload));
+        }
+
         let mut offset = 0;
         utils::data_length_check(data.len(), 1, false)?;
         let lfi = LengthFormatIdentifier::try_from(data[offset])?;
@@ -62,10 +66,8 @@ impl<'a> TryFrom<&'a [u8]> for RequestLoad {
             max_num_of_block_len,
         })
     }
-}
-
-impl Into<Vec<u8>> for RequestLoad {
-    fn into(self) -> Vec<u8> {
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         let mut result = vec![self.lfi.0];
         let mut max_num_of_block_len = self.max_num_of_block_len.to_le_bytes().to_vec();
         max_num_of_block_len.resize(self.lfi.max_number_of_block_length(), Default::default());
@@ -75,37 +77,6 @@ impl Into<Vec<u8>> for RequestLoad {
 
         result
     }
-}
-
-impl ResponseData for RequestLoad {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::RequestDownload));  // TODO Service::RequestUpload
-        }
-
-        Self::try_from(data)
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
-pub(crate) fn request_download(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = RequestLoad::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Response { service, negative: false, sub_func, data })
 }
 
 pub(crate) fn request_upload(
@@ -118,7 +89,7 @@ pub(crate) fn request_upload(
         return Err(UdsError::SubFunctionError(service));
     }
 
-    let _ = RequestLoad::try_parse(data.as_slice(), None, cfg)?;
+    let _ = RequestUpload::try_parse(data.as_slice(), None, cfg)?;
 
     Ok(Response { service, negative: false, sub_func, data })
 }

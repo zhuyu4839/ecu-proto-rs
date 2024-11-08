@@ -59,8 +59,10 @@ mod routine_ctrl;           // 0x31
 pub use routine_ctrl::*;
 
 /* - Upload download functional unit - */
-mod request_load;           // 0x34 | 0x35
-pub use request_load::*;
+mod request_download;       // 0x34
+pub use request_download::*;
+mod request_upload;         // 0x35
+pub use request_upload::*;
 mod transfer_data;          // 0x36
 pub use transfer_data::*;
 mod request_transfer_exit;  // 0x37
