@@ -1,6 +1,10 @@
 [workspace]
 members = [
-    "ecu-uds",
+    "crates/docan",
+    "crates/doip",
+    "crates/iso13400-2",
+    "crates/iso14229-1",
+    "crates/iso15765-2",
 ]
 
 resolver = "2"
@@ -11,13 +15,18 @@ resolver = "2"
 #quote = "1.0"
 #proc-macro2 = "1.0"
 log = "0.4"
-thiserror = "1.0"
+thiserror = "2"
 lazy_static = "1"
+#byteorder = "1"
 half = "2"
 bitflags = "2"
 bitfield-struct = "0.9"
-isotp-rs = { version = "0.2.1" }
+derive-getters = "0"
+hex = "0.4"
+tokio = { version = "1" }
+iso13400-2 = { path = "crates/iso13400-2" }
+iso14229-1 = { path = "crates/iso14229-1" }
+iso15765-2 = { path = "crates/iso15765-2" }
 
 # dev dependencies
 anyhow = "1"
-hex-literal = "0.4"
