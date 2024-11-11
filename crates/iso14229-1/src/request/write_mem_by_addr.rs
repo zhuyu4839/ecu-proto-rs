@@ -1,7 +1,7 @@
 //! request of Service 3D
 
 
-use crate::{AddressAndLengthFormatIdentifier, Configuration, UdsError, MemoryLocation, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{AddressAndLengthFormatIdentifier, Configuration, UdsError, MemoryLocation, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct WriteMemByAddr {
@@ -39,13 +39,25 @@ impl WriteMemByAddr {
 }
 
 impl RequestData for WriteMemByAddr {
-    type SubFunc = Placeholder;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::WriteMemByAddr));
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::WriteMemByAddr)),
+            None => {
+                utils::data_length_check(data.len(), 5, false)?;
+
+                Ok(Request { service: Service::WriteMemByAddr, sub_func: None, data: data.to_vec(), })
+            }
+        }
+    }
+
+    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service();
+        if service != Service::WriteMemByAddr
+            || request.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
         }
 
-        utils::data_length_check(data.len(), 5, false)?;
+        let data = &request.data;
         let mut offset = 0;
         let mem_loc = MemoryLocation::from_slice(data, cfg)?;
         offset += mem_loc.len();
@@ -54,25 +66,11 @@ impl RequestData for WriteMemByAddr {
         Ok(Self { mem_loc, data })
     }
 
+    #[inline]
     fn to_vec(mut self, cfg: &Configuration) -> Vec<u8> {
-        let mut result: Vec<_> = self.mem_loc.to_vec(cfg);
+        let mut result = self.mem_loc.to_vec(cfg);
         result.append(&mut self.data);
 
         result
     }
-}
-
-pub(crate) fn write_mem_by_addr(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = WriteMemByAddr::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Request { service, sub_func, data })
 }

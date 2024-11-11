@@ -44,124 +44,6 @@ pub enum Authentication {
     AuthenticationConfiguration,    // 0x08
 }
 
-impl RequestData for Authentication {
-    type SubFunc = AuthenticationTask;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        match sub_func {
-            Some(v) => {
-                let data_len = data.len();
-                let mut offset = 0;
-                match v {
-                    AuthenticationTask::DeAuthenticate =>
-                        Ok(Self::DeAuthenticate),
-                    AuthenticationTask::VerifyCertificateUnidirectional => {
-                        utils::data_length_check(data_len, 5, false)?;
-
-                        let config = data[offset];
-                        offset += 1;
-                        let certificate = parse_not_nullable(data, data_len, &mut offset)?;
-                        let challenge = parse_nullable(data, data_len, &mut offset)?;
-
-                        Ok(Self::VerifyCertificateUnidirectional {
-                            config,
-                            certificate,
-                            challenge,
-                        })
-                    },
-                    AuthenticationTask::VerifyCertificateBidirectional => {
-                        utils::data_length_check(data_len, 7, false)?;
-
-                        let config = data[offset];
-                        offset += 1;
-                        let certificate = parse_not_nullable(data, data_len, &mut offset)?;
-                        let challenge = parse_not_nullable(data, data_len, &mut offset)?;
-
-                        Ok(Self::VerifyCertificateBidirectional {
-                            config,
-                            certificate,
-                            challenge,
-                        })
-                    },
-                    AuthenticationTask::ProofOfOwnership => {
-                        let proof_of_ownership = parse_not_nullable(data, data_len, &mut offset)?;
-                        let ephemeral_public_key = parse_nullable(data, data_len, &mut offset)?;
-
-                        Ok(Self::ProofOfOwnership {
-                            proof_of_ownership,
-                            ephemeral_public_key,
-                        })
-                    },
-                    AuthenticationTask::TransmitCertificate => {
-                        utils::data_length_check(data_len, 5, false)?;
-
-                        let cert_evaluation_id = u16::from_be_bytes([data[offset], data[offset + 1]]);
-                        offset += 2;
-                        let certificate = parse_not_nullable(data, data_len, &mut offset)?;
-
-                        Ok(Self::TransmitCertificate {
-                            cert_evaluation_id,
-                            certificate,
-                        })
-                    },
-                    AuthenticationTask::RequestChallengeForAuthentication => {
-                        utils::data_length_check(data_len, 17, false)?;
-
-                        let config = data[offset];
-                        offset += 1;
-                        let algo_indicator = parse_algo_indicator(data, &mut offset);
-
-                        Ok(Self::RequestChallengeForAuthentication {
-                            config,
-                            algo_indicator,
-                        })
-                    },
-                    AuthenticationTask::VerifyProofOfOwnershipUnidirectional => {
-                        utils::data_length_check(data_len, 19, false)?;
-
-                        let algo_indicator = parse_algo_indicator(data, &mut offset);
-                        let proof_of_ownership = parse_not_nullable(data, data_len, &mut offset)?;
-                        let challenge = parse_nullable(data, data_len, &mut offset)?;
-                        let additional = parse_nullable(data, data_len, &mut offset)?;
-
-
-                        Ok(Self::VerifyProofOfOwnershipUnidirectional {
-                            algo_indicator,
-                            proof_of_ownership,
-                            challenge,
-                            additional,
-                        })
-                    },
-                    AuthenticationTask::VerifyProofOfOwnershipBidirectional => {
-                        utils::data_length_check(data_len, 24, false)?;
-
-                        let algo_indicator = parse_algo_indicator(data, &mut offset);
-                        let proof_of_ownership = parse_not_nullable(data, data_len, &mut offset)?;
-                        let challenge = parse_not_nullable(data, data_len, &mut offset)?;
-                        let additional = parse_nullable(data, data_len, &mut offset)?;
-
-                        Ok(Self::VerifyProofOfOwnershipBidirectional {
-                            algo_indicator,
-                            proof_of_ownership,
-                            challenge,
-                            additional,
-                        })
-                    },
-                    AuthenticationTask::AuthenticationConfiguration => {
-                        utils::data_length_check(data_len, 0, true)?;
-
-                        Ok(Self::AuthenticationConfiguration)
-                    },
-                }
-            },
-            None => panic!("Sub-function required"),
-        }
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
 impl Into<Vec<u8>> for Authentication {
     fn into(self) -> Vec<u8> {
         let mut result = Vec::new();
@@ -235,18 +117,134 @@ impl Into<Vec<u8>> for Authentication {
     }
 }
 
-pub(crate) fn authentication(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_none() {
-        return Err(UdsError::SubFunctionError(service));
+impl RequestData for Authentication {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+        match sub_func {
+            Some(sub_func) => {
+                let (suppress_positive, sub_func) = utils::peel_suppress_positive(sub_func);
+
+                let data_len = data.len();
+                match AuthenticationTask::try_from(sub_func)? {
+                    AuthenticationTask::DeAuthenticate => utils::data_length_check(data_len, 0, true)?,
+                    AuthenticationTask::VerifyCertificateUnidirectional => utils::data_length_check(data_len, 5, false)?,
+                    AuthenticationTask::VerifyCertificateBidirectional => utils::data_length_check(data_len, 7, false)?,
+                    AuthenticationTask::ProofOfOwnership => utils::data_length_check(data_len, 2, false)?,
+                    AuthenticationTask::TransmitCertificate => utils::data_length_check(data_len, 5, false)?,
+                    AuthenticationTask::RequestChallengeForAuthentication => utils::data_length_check(data_len, 17, false)?,
+                    AuthenticationTask::VerifyProofOfOwnershipUnidirectional => utils::data_length_check(data_len, 19, false)?,
+                    AuthenticationTask::VerifyProofOfOwnershipBidirectional => utils::data_length_check(data_len, 24, false)?,
+                    AuthenticationTask::AuthenticationConfiguration => utils::data_length_check(data_len, 0, true)?,
+                }
+
+                Ok(Request {
+                    service: Service::Authentication,
+                    sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                    data: data.to_vec()
+                })
+            },
+            None => Err(UdsError::SubFunctionError(Service::Authentication)),
+        }
     }
 
-    let sf = AuthenticationTask::try_from(sub_func.unwrap().function)?;
-    let _ = Authentication::try_parse(data.as_slice(), Some(sf), cfg)?;
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service;
+        if service != Service::Authentication
+            || request.sub_func.is_none() {
+            return Err(UdsError::ServiceError(service));
+        }
+        let sub_func: AuthenticationTask = request.sub_function().unwrap().function()?;
 
-    Ok(Request { service, sub_func, data })
+        let data = &request.data;
+        let data_len = data.len();
+        let mut offset = 0;
+        match sub_func {
+            AuthenticationTask::DeAuthenticate => Ok(Self::DeAuthenticate),
+            AuthenticationTask::VerifyCertificateUnidirectional => {
+                let config = data[offset];
+                offset += 1;
+                let certificate = parse_not_nullable(data, data_len, &mut offset)?;
+                let challenge = parse_nullable(data, data_len, &mut offset)?;
+
+                Ok(Self::VerifyCertificateUnidirectional {
+                    config,
+                    certificate,
+                    challenge,
+                })
+            },
+            AuthenticationTask::VerifyCertificateBidirectional => {
+                let config = data[offset];
+                offset += 1;
+                let certificate = parse_not_nullable(data, data_len, &mut offset)?;
+                let challenge = parse_not_nullable(data, data_len, &mut offset)?;
+
+                Ok(Self::VerifyCertificateBidirectional {
+                    config,
+                    certificate,
+                    challenge,
+                })
+            },
+            AuthenticationTask::ProofOfOwnership => {
+                let proof_of_ownership = parse_not_nullable(data, data_len, &mut offset)?;
+                let ephemeral_public_key = parse_nullable(data, data_len, &mut offset)?;
+
+                Ok(Self::ProofOfOwnership {
+                    proof_of_ownership,
+                    ephemeral_public_key,
+                })
+            },
+            AuthenticationTask::TransmitCertificate => {
+                let cert_evaluation_id = u16::from_be_bytes([data[offset], data[offset + 1]]);
+                offset += 2;
+                let certificate = parse_not_nullable(data, data_len, &mut offset)?;
+
+                Ok(Self::TransmitCertificate {
+                    cert_evaluation_id,
+                    certificate,
+                })
+            },
+            AuthenticationTask::RequestChallengeForAuthentication => {
+                let config = data[offset];
+                offset += 1;
+                let algo_indicator = parse_algo_indicator(data, &mut offset);
+
+                Ok(Self::RequestChallengeForAuthentication {
+                    config,
+                    algo_indicator,
+                })
+            },
+            AuthenticationTask::VerifyProofOfOwnershipUnidirectional => {
+                let algo_indicator = parse_algo_indicator(data, &mut offset);
+                let proof_of_ownership = parse_not_nullable(data, data_len, &mut offset)?;
+                let challenge = parse_nullable(data, data_len, &mut offset)?;
+                let additional = parse_nullable(data, data_len, &mut offset)?;
+
+
+                Ok(Self::VerifyProofOfOwnershipUnidirectional {
+                    algo_indicator,
+                    proof_of_ownership,
+                    challenge,
+                    additional,
+                })
+            },
+            AuthenticationTask::VerifyProofOfOwnershipBidirectional => {
+                let algo_indicator = parse_algo_indicator(data, &mut offset);
+                let proof_of_ownership = parse_not_nullable(data, data_len, &mut offset)?;
+                let challenge = parse_not_nullable(data, data_len, &mut offset)?;
+                let additional = parse_nullable(data, data_len, &mut offset)?;
+
+                Ok(Self::VerifyProofOfOwnershipBidirectional {
+                    algo_indicator,
+                    proof_of_ownership,
+                    challenge,
+                    additional,
+                })
+            },
+            AuthenticationTask::AuthenticationConfiguration => Ok(Self::AuthenticationConfiguration),
+        }
+    }
+
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self.into()
+    }
 }

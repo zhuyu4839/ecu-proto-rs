@@ -15,7 +15,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<ModeOfOperation>()?, ModeOfOperation::AddFile);
-        let data: request::RequestFileTransfer = request.data::<ModeOfOperation, _>(&cfg)?;
+        let data = request.data::<request::RequestFileTransfer>(&cfg)?;
         match data {
             request::RequestFileTransfer::AddFile {
                 filepath,
@@ -44,9 +44,9 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function().unwrap();
         assert_eq!(sub_func.function::<ModeOfOperation>()?, ModeOfOperation::AddFile);
-        let data: response::RequestFileTransferData = response.data::<ModeOfOperation, _>(&cfg)?;
+        let data = response.data::<response::RequestFileTransfer>(&cfg)?;
         match data {
-            response::RequestFileTransferData::AddFile {
+            response::RequestFileTransfer::AddFile {
                 lfi,
                 max_block_len,
                 dfi,

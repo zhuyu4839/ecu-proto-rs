@@ -11,13 +11,13 @@ mod tests {
         let source = hex::decode("2312481305")?;
         let request = request::Request::try_from_cfg(source, &cfg)?;
         assert_eq!(request.sub_function(), None);
-        let data: request::ReadMemByAddr = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::ReadMemByAddr>(&cfg)?;
         assert_eq!(data.0, MemoryLocation::new(AddressAndLengthFormatIdentifier::new(2, 1)?, 0x4813,0x05,)?);
 
         let source = hex::decode("2324204813920103")?;
         let request = request::Request::try_from_cfg(source, &cfg)?;
         assert_eq!(request.sub_function(), None);
-        let data: request::ReadMemByAddr = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::ReadMemByAddr>(&cfg)?;
         assert_eq!(data.0, MemoryLocation::new(AddressAndLengthFormatIdentifier::new(4, 2)?,0x20481392,0x0103,)?);
 
         Ok(())
@@ -30,8 +30,8 @@ mod tests {
         let source = hex::decode("630102")?;
         let response = response::Response::try_from_cfg(source, &cfg)?;
         assert_eq!(response.sub_function(), None);
-        let data: Vec<u8> = response.data::<_, _>(&cfg)?;
-        assert_eq!(data, vec![0x01, 0x02]);
+        let data = response.data::<response::ReadMemByAddr>(&cfg)?;
+        assert_eq!(data.data, vec![0x01, 0x02]);
 
         Ok(())
     }
@@ -63,7 +63,7 @@ mod tests {
         let source = hex::decode("3D4420481213000000051122334455")?;
         let request = request::Request::try_from_cfg(source, &cfg)?;
         assert_eq!(request.sub_function(), None);
-        let data: request::WriteMemByAddr = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::WriteMemByAddr>(&cfg)?;
         assert_eq!(data, request::WriteMemByAddr::new(
             AddressAndLengthFormatIdentifier::new(4, 4)?,
             0x20481213,
@@ -81,7 +81,7 @@ mod tests {
         let source = hex::decode("7D12481305")?;
         let response = response::Response::try_from_cfg(source, &cfg)?;
         assert_eq!(response.sub_function(), None);
-        let data: response::WriteMemByAddr = response.data::<_, _>(&cfg)?;
+        let data = response.data::<response::WriteMemByAddr>(&cfg)?;
         assert_eq!(data.0, MemoryLocation::new(AddressAndLengthFormatIdentifier::new(2, 1)?, 0x4813,0x05,)?);
 
         Ok(())

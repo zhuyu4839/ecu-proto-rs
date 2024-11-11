@@ -257,742 +257,6 @@ pub enum DTCInfo {
     },
 }
 
-impl ResponseData for DTCInfo {
-    type SubFunc = DTCReportType;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
-        let data_len = data.len();
-        utils::data_length_check(data_len, 1, false)?;
-        let mut offset = 0;
-
-        match sub_func {
-            Some(v) => match v {
-                DTCReportType::ReportNumberOfDTCByStatusMask => {
-                    utils::data_length_check(data_len, offset + 4, true)?;
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-                    let fid = DTCFormatIdentifier::try_from(data[offset])?;
-                    offset += 1;
-                    // match fid {
-                    //     DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_00 => {}
-                    //     DTCFormatIdentifier::ISO_14229_1_DTCFormat => {}
-                    //     DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
-                    //     DTCFormatIdentifier::ISO_11992_4_DTCFormat => {}
-                    //     DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 =>
-                    //         return Err(Error::InvalidData(hex::encode(data))),
-                    // }
-                    let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
-
-                    Ok(Self::ReportNumberOfDTCByStatusMask {
-                        avl_mask,
-                        fid,
-                        count
-                    })
-                },
-                DTCReportType::ReportDTCByStatusMask => {
-                    utils::data_length_check(data_len, offset + 1, false)?;
-                    if (data_len - offset - 1) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportDTCByStatusMask {
-                        avl_mask,
-                        records,
-                    })
-                },
-                #[cfg(any(feature = "std2006", feature = "std2013"))]
-                DTCReportType::ReportMirrorMemoryDTCByStatusMask => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
-                    if (data_len - offset - 1) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportMirrorMemoryDTCByStatusMask {
-                        avl_mask,
-                        records,
-                    })
-                },
-                #[cfg(any(feature = "std2006", feature = "std2013"))]
-                DTCReportType::ReportNumberOfMirrorMemoryDTCByStatusMask => {
-                    utils::data_length_check(data_len, offset + 4, false)?;
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-                    let fid = DTCFormatIdentifier::try_from(data[offset])?;
-                    offset += 1;
-                    match fid {
-                        DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_00 => {}
-                        DTCFormatIdentifier::ISO_14229_1_DTCFormat => {}
-                        DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
-                        DTCFormatIdentifier::ISO_11992_4_DTCFormat => {}
-                        DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 =>
-                            return Err(UdsError::InvalidData(hex::encode(data))),
-                    }
-                    let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
-
-                    Ok(Self::ReportNumberOfMirrorMemoryDTCByStatusMask {
-                        avl_mask,
-                        fid,
-                        count
-                    })
-                },
-                #[cfg(any(feature = "std2006", feature = "std2013"))]
-                DTCReportType::ReportNumberOfEmissionsOBDDTCByStatusMask => {
-                    utils::data_length_check(data_len, offset + 4, false)?;
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-                    let fid = DTCFormatIdentifier::try_from(data[offset])?;
-                    offset += 1;
-                    match fid {
-                        DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_00 => {}
-                        DTCFormatIdentifier::ISO_14229_1_DTCFormat => {}
-                        DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
-                        DTCFormatIdentifier::ISO_11992_4_DTCFormat => {}
-                        DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 =>
-                            return Err(UdsError::InvalidData(hex::encode(data))),
-                    }
-                    let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
-
-                    Ok(Self::ReportNumberOfEmissionsOBDDTCByStatusMask {
-                        avl_mask,
-                        fid,
-                        count
-                    })
-                },
-                #[cfg(any(feature = "std2006", feature = "std2013"))]
-                DTCReportType::ReportEmissionsOBDDTCByStatusMask => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
-                    if (data_len - offset - 1) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportEmissionsOBDDTCByStatusMask {
-                        avl_mask,
-                        records,
-                    })
-                },
-                DTCReportType::ReportDTCSnapshotIdentification => {
-                    if (data_len % 4) != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let number = data[offset];
-                        offset += 1;
-
-                        records.push(DTCSnapshotIdentification { dtc, number });
-
-                    }
-
-                    Ok(Self::ReportDTCSnapshotIdentification {
-                        records
-                    })
-                },
-                DTCReportType::ReportDTCSnapshotRecordByDTCNumber => {
-                    utils::data_length_check(data_len, offset + 4, false)?;
-
-                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                    offset += 3;
-                    let status = data[offset];
-                    offset += 1;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        utils::data_length_check(data_len, offset + 2, false)?;
-
-                        let number = data[offset];
-                        offset += 1;
-                        let number_of_identifier = data[offset];
-                        offset += 1;
-                        let mut sub_records = Vec::new();
-                        while sub_records.len() < number as usize {
-                            utils::data_length_check(data_len, offset + 2, false)?;
-
-                            let did = DataIdentifier::from(
-                                u16::from_be_bytes([data[offset], data[offset + 1]])
-                            );
-                            offset += 2;
-                            let &did_data_len = cfg.did_cfg.get(&did)
-                                .ok_or(UdsError::DidNotSupported(did))?;
-
-                            utils::data_length_check(data_len, offset + did_data_len, false)?;
-
-                            sub_records.push(DTCSnapshotRecord {
-                                did,
-                                data: data[offset..offset + did_data_len].to_vec(),
-                            });
-                            offset += did_data_len;
-                        }
-
-                        records.push(DTCSnapshotRecordByDTCNumber {
-                            number, number_of_identifier, records: sub_records,
-                        });
-                    }
-
-                    Ok(Self::ReportDTCSnapshotRecordByDTCNumber {
-                        status_record: DTCAndStatusRecord { dtc, status },
-                        records
-                    })
-                },
-                DTCReportType::ReportDTCStoredDataByRecordNumber => {
-                    Err(UdsError::OtherError("This library does not yet support".to_string()))
-                },
-                DTCReportType::ReportDTCExtDataRecordByDTCNumber => {
-                    Err(UdsError::OtherError("This library does not yet support".to_string()))
-                },
-                #[cfg(any(feature = "std2006", feature = "std2013"))]
-                DTCReportType::ReportMirrorMemoryDTCExtDataRecordByDTCNumber => {
-                    utils::data_length_check(data_len, offset + 4, false)?;
-
-                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                    offset += 3;
-                    let status = data[offset];
-                    offset += 1;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let number = data[offset];
-                        offset += 1;
-                        utils::data_length_check(data_len, offset + number as usize, false)?;
-
-                        records.push(DTCExtDataRecord {
-                            number,
-                            data: data[offset..offset + number as usize].to_vec(),
-                        });
-                        offset += number as usize;
-                    }
-
-                    Ok(Self::ReportDTCExtDataRecordByDTCNumber {
-                        status_record: DTCAndStatusRecord { dtc, status },
-                        records,
-                    })
-                },
-                DTCReportType::ReportNumberOfDTCBySeverityMaskRecord => {
-                    utils::data_length_check(data_len, offset + 4, true)?;
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-                    let fid = DTCFormatIdentifier::try_from(data[offset])?;
-                    offset += 1;
-                    let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
-
-                    Ok(Self::ReportNumberOfDTCBySeverityMaskRecord {
-                        avl_mask,
-                        fid,
-                        count
-                    })
-                },
-                DTCReportType::ReportDTCBySeverityMaskRecord => {
-                    utils::data_length_check(data_len, offset + 7, false)?;
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-                    if (data_len - offset) % 6 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let severity = data[offset];
-                    offset += 1;
-                    let func_unit = data[offset];
-                    offset += 1;
-                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                    offset += 3;
-                    let status = data[offset];
-                    offset += 1;
-
-                    let mut others = Vec::new();
-                    while data_len > offset {
-                        let severity = data[offset];
-                        offset += 1;
-                        let func_unit = data[offset];
-                        offset += 1;
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        others.push(DTCAndSeverityRecord1 {
-                            severity, func_unit, dtc, status
-                        })
-                    }
-
-                    Ok(Self::ReportDTCBySeverityMaskRecord {
-                        avl_mask,
-                        record: DTCAndSeverityRecord1 {
-                            severity, func_unit, dtc, status
-                        },
-                        others,
-                    })
-                },
-                DTCReportType::ReportSeverityInformationOfDTC => {
-                    let avl_mask = data[offset];
-                    offset += 1;
-                    if (data_len - offset) % 6 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let severity = data[offset];
-                        offset += 1;
-                        let func_unit = data[offset];
-                        offset += 1;
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndSeverityRecord1 {
-                            severity, func_unit, dtc, status
-                        })
-                    }
-
-                    Ok(Self::ReportSeverityInformationOfDTC {
-                        avl_mask, records
-                    })
-                },
-                DTCReportType::ReportSupportedDTC => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
-                    if (data_len - offset - 1) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportSupportedDTC {
-                        avl_mask,
-                        records,
-                    })
-                },
-                DTCReportType::ReportFirstTestFailedDTC => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-                    if (data_len - offset) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let mut record = None;
-                    if data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-
-                        record = Some(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportMostRecentConfirmedDTC {
-                        avl_mask,
-                        record,
-                    })
-                },
-                DTCReportType::ReportFirstConfirmedDTC => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-                    if (data_len - offset) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let mut record = None;
-                    if data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-
-                        record = Some(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportMostRecentConfirmedDTC {
-                        avl_mask,
-                        record,
-                    })
-                },
-                DTCReportType::ReportMostRecentTestFailedDTC => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-                    if (data_len - offset) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let mut record = None;
-                    if data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-
-                        record = Some(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportMostRecentConfirmedDTC {
-                        avl_mask,
-                        record,
-                    })
-                },
-                DTCReportType::ReportMostRecentConfirmedDTC => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
-                    if (data_len - offset - 1) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-
-                    let mut record = None;
-                    if data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-
-                        record = Some(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportMostRecentConfirmedDTC {
-                        avl_mask,
-                        record,
-                    })
-                },
-                DTCReportType::ReportDTCFaultDetectionCounter => {
-                    utils::data_length_check(data_len, 4, false)?;
-                    if (data_len - offset) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let counter = data[offset];
-                        offset += 1;
-
-                        records.push(DTCFaultDetectionCounterRecord {
-                            dtc, counter
-                        });
-                    }
-
-                    Ok(Self::ReportDTCFaultDetectionCounter { records })
-                },
-                DTCReportType::ReportDTCWithPermanentStatus => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
-                    if (data_len - offset - 1) % 4 != 0{
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportDTCWithPermanentStatus {
-                        avl_mask,
-                        records,
-                    })
-                },
-                #[cfg(any(feature = "std2013", feature = "std2020"))]
-                DTCReportType::ReportDTCExtDataRecordByRecordNumber => {
-                    Err(UdsError::OtherError("This library does not yet support".to_string()))
-                },
-                #[cfg(any(feature = "std2013", feature = "std2020"))]
-                DTCReportType::ReportUserDefMemoryDTCByStatusMask => {
-                    utils::data_length_check(data_len, offset + 2, false)?;
-                    if (data_len - offset - 2) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let mem_selection = data[offset];
-                    offset += 1;
-                    let avl_mask = data[offset];
-                    offset += 1;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndStatusRecord { dtc, status })
-                    }
-
-                    Ok(Self::ReportUserDefMemoryDTCByStatusMask {
-                        mem_selection, avl_mask, records,
-                    })
-                },
-                #[cfg(any(feature = "std2013", feature = "std2020"))]
-                DTCReportType::ReportUserDefMemoryDTCSnapshotRecordByDTCNumber => {
-                    utils::data_length_check(data_len, offset + 5, false)?;
-
-                    let mem_selection = data[offset];
-                    offset += 1;
-                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                    offset += 3;
-                    let status = data[offset];
-                    offset += 1;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let number = data[offset];
-                        offset += 1;
-                        let number_of_identifier = data[offset];
-                        offset += 1;
-
-                        let mut sub_records = Vec::new();
-                        while sub_records.len() < number as usize {
-                            utils::data_length_check(data_len, offset + 2, false)?;
-
-                            let did = DataIdentifier::from(
-                                u16::from_be_bytes([data[offset], data[offset + 1]])
-                            );
-                            offset += 2;
-                            let &did_data_len = cfg.did_cfg.get(&did)
-                                .ok_or(UdsError::DidNotSupported(did))?;
-
-                            utils::data_length_check(data_len, offset + did_data_len, false)?;
-
-                            sub_records.push(DTCSnapshotRecord {
-                                did,
-                                data: data[offset..offset + did_data_len].to_vec()
-                            });
-                            offset += did_data_len;
-                        }
-
-                        records.push(UserDefDTCSnapshotRecord {
-                            number,
-                            number_of_identifier,
-                            records: sub_records,
-                        });
-                    }
-
-                    Ok(Self::ReportUserDefMemoryDTCSnapshotRecordByDTCNumber {
-                        mem_selection,
-                        status_record: DTCAndStatusRecord { dtc, status },
-                        records,
-                    })
-                },
-                #[cfg(any(feature = "std2013", feature = "std2020"))]
-                DTCReportType::ReportUserDefMemoryDTCExtDataRecordByDTCNumber => {
-                    Err(UdsError::OtherError("This library does not yet support".to_string()))
-                },
-                #[cfg(any(feature = "std2020"))]
-                DTCReportType::ReportSupportedDTCExtDataRecord => {
-                    utils::data_length_check(data_len, offset + 2, false)?;
-
-                    let avl_mask = data[offset];
-                    offset += 1;
-                    let number = data[offset];
-                    offset += 1;
-                    if number < 0x01 || number > 0xFD {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-                    utils::data_length_check(data_len, offset + 4 * number as usize, false)?;
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        utils::data_length_check(data_len, offset + 4, false)?;
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndStatusRecord { dtc, status })
-                    }
-
-                    Ok(Self::ReportSupportedDTCExtDataRecord {
-                        avl_mask, number, records,
-                    })
-                },
-                #[cfg(any(feature = "std2013", feature = "std2020"))]
-                DTCReportType::ReportWWHOBDDTCByMaskRecord => {
-                    utils::data_length_check(data_len, offset + 4, false)?;
-                    if (data_len - offset - 4) % 5 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let func_gid = data[offset];
-                    offset += 1;
-                    if func_gid > 0xFE {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let status_avl_mask = data[offset];
-                    offset += 1;
-                    let severity_avl_mask = data[offset];
-                    offset += 1;
-                    let fid = DTCFormatIdentifier::try_from(data[offset])?;
-                    offset += 1;
-                    match fid {
-                        DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
-                        DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 => {}
-                        _ => return Err(UdsError::InvalidData(hex::encode(data))),
-                    }
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let severity = data[offset];
-                        offset += 1;
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndSeverityRecord { severity, dtc, status });
-                    }
-
-                    Ok(Self::ReportWWHOBDDTCByMaskRecord {
-                        func_gid, status_avl_mask, severity_avl_mask, fid, records,
-                    })
-                },
-                #[cfg(any(feature = "std2013", feature = "std2020"))]
-                DTCReportType::ReportWWHOBDDTCWithPermanentStatus => {
-                    utils::data_length_check(data_len, offset + 3, false)?;
-                    if (data_len - offset - 3) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let func_gid = data[offset];
-                    offset += 1;
-                    if func_gid > 0xFE {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let status_avl_mask = data[offset];
-                    offset += 1;
-                    let fid = DTCFormatIdentifier::try_from(data[offset])?;
-                    offset += 1;
-                    match fid {
-                        DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
-                        DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 => {}
-                        _ => return Err(UdsError::InvalidData(hex::encode(data))),
-                    }
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportWWHOBDDTCWithPermanentStatus {
-                        func_gid, status_avl_mask, fid, records,
-                    })
-                },
-                #[cfg(any(feature = "std2020"))]
-                DTCReportType::ReportDTCInformationByDTCReadinessGroupIdentifier => {
-                    utils::data_length_check(data_len, offset + 4, false)?;
-                    if (data_len - offset - 4) % 4 != 0 {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let func_gid = data[offset];
-                    offset += 1;
-                    if func_gid > 0xFE {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let status_avl_mask = data[offset];
-                    offset += 1;
-                    let format_identifier = data[offset];
-                    offset += 1;
-
-                    let readiness_gid = data[offset];
-                    offset += 1;
-                    if readiness_gid > 0xFE {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
-                    }
-
-                    let mut records = Vec::new();
-                    while data_len > offset {
-                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                        offset += 3;
-                        let status = data[offset];
-                        offset += 1;
-
-                        records.push(DTCAndStatusRecord { dtc, status });
-                    }
-
-                    Ok(Self::ReportDTCInformationByDTCReadinessGroupIdentifier {
-                        func_gid, status_avl_mask, format_identifier, readiness_gid, records,
-                    })
-                },
-            },
-            None => Err(UdsError::SubFunctionError(Service::ReadDTCInfo)),
-        }
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
 impl Into<Vec<u8>> for DTCInfo {
     fn into(self) -> Vec<u8> {
         let mut result = Vec::new();
@@ -1279,19 +543,801 @@ impl Into<Vec<u8>> for DTCInfo {
     }
 }
 
-pub(crate) fn read_dtc_info(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_none() {
-        return Err(UdsError::SubFunctionError(service));
+impl ResponseData for DTCInfo {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(sub_func) => {
+                let data_len = data.len();
+                match DTCReportType::try_from(sub_func)? {
+                    DTCReportType::ReportNumberOfDTCByStatusMask =>
+                        utils::data_length_check(data_len, 4, true)?,
+                    DTCReportType::ReportDTCByStatusMask => {
+                        utils::data_length_check(data_len, 1, false)?;
+                        if (data_len - 1) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    DTCReportType::ReportDTCSnapshotIdentification => {
+                        if (data_len % 4) != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    DTCReportType::ReportDTCSnapshotRecordByDTCNumber =>
+                        utils::data_length_check(data_len, 4, false)?,
+                    DTCReportType::ReportDTCStoredDataByRecordNumber => {
+                        return Err(UdsError::NotImplement);
+                    }
+                    DTCReportType::ReportDTCExtDataRecordByDTCNumber => {
+                        return Err(UdsError::NotImplement);
+                    }
+                    DTCReportType::ReportNumberOfDTCBySeverityMaskRecord =>
+                        utils::data_length_check(data_len, 4, true)?,
+                    DTCReportType::ReportDTCBySeverityMaskRecord =>
+                        utils::data_length_check(data_len, 7, false)?,
+                    DTCReportType::ReportSeverityInformationOfDTC => {
+                        if (data_len - 1) % 6 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    DTCReportType::ReportSupportedDTC => {
+                        utils::data_length_check(data_len, 5, false)?;
+                        if (data_len - 1) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    DTCReportType::ReportFirstTestFailedDTC => {
+                        utils::data_length_check(data_len, 5, false)?;
+                        if (data_len - 1) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    DTCReportType::ReportFirstConfirmedDTC => {
+                        utils::data_length_check(data_len, 5, false)?;
+                        if (data_len - 1) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    DTCReportType::ReportMostRecentTestFailedDTC => {
+                        utils::data_length_check(data_len, 5, false)?;
+                        if (data_len - 1) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    DTCReportType::ReportMostRecentConfirmedDTC => {
+                        utils::data_length_check(data_len, 5, false)?;
+                        if (data_len - 1) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    #[cfg(any(feature = "std2006", feature = "std2013"))]
+                    DTCReportType::ReportMirrorMemoryDTCByStatusMask => {
+                        utils::data_length_check(data_len, 5, false)?;
+                        if (data_len - 1) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    #[cfg(any(feature = "std2006", feature = "std2013"))]
+                    DTCReportType::ReportMirrorMemoryDTCExtDataRecordByDTCNumber =>
+                        utils::data_length_check(data_len, 4, false)?,
+                    #[cfg(any(feature = "std2006", feature = "std2013"))]
+                    DTCReportType::ReportNumberOfMirrorMemoryDTCByStatusMask =>
+                        utils::data_length_check(data_len, 4, false)?,
+                    #[cfg(any(feature = "std2006", feature = "std2013"))]
+                    DTCReportType::ReportNumberOfEmissionsOBDDTCByStatusMask =>
+                        utils::data_length_check(data_len, 4, false)?,
+                    #[cfg(any(feature = "std2006", feature = "std2013"))]
+                    DTCReportType::ReportEmissionsOBDDTCByStatusMask => {
+                        utils::data_length_check(data_len, 5, false)?;
+                        if (data_len - 1) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    DTCReportType::ReportDTCFaultDetectionCounter => {
+                        utils::data_length_check(data_len, 4, false)?;
+                        if data_len % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    DTCReportType::ReportDTCWithPermanentStatus => {
+                        utils::data_length_check(data_len, 5, false)?;
+                        if (data_len - 1) % 4 != 0{
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    #[cfg(any(feature = "std2013", feature = "std2020"))]
+                    DTCReportType::ReportDTCExtDataRecordByRecordNumber => {
+                        return Err(UdsError::NotImplement);
+                    }
+                    #[cfg(any(feature = "std2013", feature = "std2020"))]
+                    DTCReportType::ReportUserDefMemoryDTCByStatusMask => {
+                        utils::data_length_check(data_len, 2, false)?;
+                        if (data_len - 2) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    #[cfg(any(feature = "std2013", feature = "std2020"))]
+                    DTCReportType::ReportUserDefMemoryDTCSnapshotRecordByDTCNumber =>
+                        utils::data_length_check(data_len, 5, false)?,
+                    #[cfg(any(feature = "std2013", feature = "std2020"))]
+                    DTCReportType::ReportUserDefMemoryDTCExtDataRecordByDTCNumber => {
+                        return Err(UdsError::NotImplement);
+                    }
+                    #[cfg(any(feature = "std2020"))]
+                    DTCReportType::ReportSupportedDTCExtDataRecord =>
+                        utils::data_length_check(data_len, 2, false)?,
+                    #[cfg(any(feature = "std2013", feature = "std2020"))]
+                    DTCReportType::ReportWWHOBDDTCByMaskRecord => {
+                        utils::data_length_check(data_len, 4, false)?;
+                        if (data_len - 4) % 5 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    #[cfg(any(feature = "std2013", feature = "std2020"))]
+                    DTCReportType::ReportWWHOBDDTCWithPermanentStatus => {
+                        if (data_len - 3) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                    #[cfg(any(feature = "std2020"))]
+                    DTCReportType::ReportDTCInformationByDTCReadinessGroupIdentifier => {
+                        utils::data_length_check(data_len, 4, false)?;
+                        if (data_len - 4) % 4 != 0 {
+                            return Err(UdsError::InvalidData(hex::encode(data)));
+                        }
+                    }
+                }
+
+                Ok(Response {
+                    service: Service::ReadDTCInfo,
+                    negative: false,
+                    sub_func: Some(SubFunction::new(sub_func)),
+                    data: data.to_vec(),
+                })
+            },
+            None => Err(UdsError::SubFunctionError(Service::ReadDTCInfo)),
+        }
     }
 
-    let sf = DTCReportType::try_from(sub_func.unwrap().0)?;
-    let _ = DTCInfo::try_parse(data.as_slice(), Some(sf), cfg)?;
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::ReadDTCInfo
+            || response.sub_func.is_none() {
+            return Err(UdsError::ServiceError(service))
+        }
 
-    Ok(Response { service, negative: false, sub_func, data })
+        let sub_func: DTCReportType = response.sub_function().unwrap().function()?;
+        let data = &response.data;
+        let data_len = data.len();
+        let mut offset = 0;
+        match sub_func {
+            DTCReportType::ReportNumberOfDTCByStatusMask => {
+                let avl_mask = data[offset];
+                offset += 1;
+                let fid = DTCFormatIdentifier::try_from(data[offset])?;
+                offset += 1;
+                // match fid {
+                //     DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_00 => {}
+                //     DTCFormatIdentifier::ISO_14229_1_DTCFormat => {}
+                //     DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
+                //     DTCFormatIdentifier::ISO_11992_4_DTCFormat => {}
+                //     DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 =>
+                //         return Err(Error::InvalidData(hex::encode(data))),
+                // }
+                let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
+
+                Ok(Self::ReportNumberOfDTCByStatusMask {
+                    avl_mask,
+                    fid,
+                    count
+                })
+            }
+            DTCReportType::ReportDTCByStatusMask => {
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    records.push(DTCAndStatusRecord { dtc, status });
+                }
+
+                Ok(Self::ReportDTCByStatusMask {
+                    avl_mask,
+                    records,
+                })
+            }
+            DTCReportType::ReportDTCSnapshotIdentification => {
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let number = data[offset];
+                    offset += 1;
+
+                    records.push(DTCSnapshotIdentification { dtc, number });
+
+                }
+
+                Ok(Self::ReportDTCSnapshotIdentification {
+                    records
+                })
+            }
+            DTCReportType::ReportDTCSnapshotRecordByDTCNumber => {
+                let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                offset += 3;
+                let status = data[offset];
+                offset += 1;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    utils::data_length_check(data_len, offset + 2, false)?;
+
+                    let number = data[offset];
+                    offset += 1;
+                    let number_of_identifier = data[offset];
+                    offset += 1;
+                    let mut sub_records = Vec::new();
+                    while sub_records.len() < number as usize {
+                        utils::data_length_check(data_len, offset + 2, false)?;
+
+                        let did = DataIdentifier::from(
+                            u16::from_be_bytes([data[offset], data[offset + 1]])
+                        );
+                        offset += 2;
+                        let &did_data_len = cfg.did_cfg.get(&did)
+                            .ok_or(UdsError::DidNotSupported(did))?;
+
+                        utils::data_length_check(data_len, offset + did_data_len, false)?;
+
+                        sub_records.push(DTCSnapshotRecord {
+                            did,
+                            data: data[offset..offset + did_data_len].to_vec(),
+                        });
+                        offset += did_data_len;
+                    }
+
+                    records.push(DTCSnapshotRecordByDTCNumber {
+                        number, number_of_identifier, records: sub_records,
+                    });
+                }
+
+                Ok(Self::ReportDTCSnapshotRecordByDTCNumber {
+                    status_record: DTCAndStatusRecord { dtc, status },
+                    records
+                })
+            }
+            DTCReportType::ReportDTCStoredDataByRecordNumber => {
+                Err(UdsError::NotImplement)
+            }
+            DTCReportType::ReportDTCExtDataRecordByDTCNumber => {
+                Err(UdsError::NotImplement)
+            }
+            DTCReportType::ReportNumberOfDTCBySeverityMaskRecord => {
+                let avl_mask = data[offset];
+                offset += 1;
+                let fid = DTCFormatIdentifier::try_from(data[offset])?;
+                offset += 1;
+                let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
+
+                Ok(Self::ReportNumberOfDTCBySeverityMaskRecord {
+                    avl_mask,
+                    fid,
+                    count
+                })
+            }
+            DTCReportType::ReportDTCBySeverityMaskRecord => {
+                let avl_mask = data[offset];
+                offset += 1;
+                if (data_len - offset) % 6 != 0 {
+                    return Err(UdsError::InvalidData(hex::encode(data)));
+                }
+
+                let severity = data[offset];
+                offset += 1;
+                let func_unit = data[offset];
+                offset += 1;
+                let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                offset += 3;
+                let status = data[offset];
+                offset += 1;
+
+                let mut others = Vec::new();
+                while data_len > offset {
+                    let severity = data[offset];
+                    offset += 1;
+                    let func_unit = data[offset];
+                    offset += 1;
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    others.push(DTCAndSeverityRecord1 {
+                        severity, func_unit, dtc, status
+                    })
+                }
+
+                Ok(Self::ReportDTCBySeverityMaskRecord {
+                    avl_mask,
+                    record: DTCAndSeverityRecord1 {
+                        severity, func_unit, dtc, status
+                    },
+                    others,
+                })
+            }
+            DTCReportType::ReportSeverityInformationOfDTC => {
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let severity = data[offset];
+                    offset += 1;
+                    let func_unit = data[offset];
+                    offset += 1;
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    records.push(DTCAndSeverityRecord1 {
+                        severity, func_unit, dtc, status
+                    })
+                }
+
+                Ok(Self::ReportSeverityInformationOfDTC {
+                    avl_mask, records
+                })
+            }
+            DTCReportType::ReportSupportedDTC => {
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    records.push(DTCAndStatusRecord { dtc, status });
+                }
+
+                Ok(Self::ReportSupportedDTC {
+                    avl_mask,
+                    records,
+                })
+            }
+            DTCReportType::ReportFirstTestFailedDTC => {
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut record = None;
+                if data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+
+                    record = Some(DTCAndStatusRecord { dtc, status });
+                }
+
+                Ok(Self::ReportFirstTestFailedDTC {
+                    avl_mask,
+                    record,
+                })
+            }
+            DTCReportType::ReportFirstConfirmedDTC => {
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut record = None;
+                if data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+
+                    record = Some(DTCAndStatusRecord { dtc, status });
+                }
+
+                Ok(Self::ReportFirstConfirmedDTC {
+                    avl_mask,
+                    record,
+                })
+            }
+            DTCReportType::ReportMostRecentTestFailedDTC => {
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut record = None;
+                if data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+
+                    record = Some(DTCAndStatusRecord { dtc, status });
+                }
+
+                Ok(Self::ReportMostRecentTestFailedDTC {
+                    avl_mask,
+                    record,
+                })
+            }
+            DTCReportType::ReportMostRecentConfirmedDTC => {
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut record = None;
+                if data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+
+                    record = Some(DTCAndStatusRecord { dtc, status });
+                }
+
+                Ok(Self::ReportMostRecentConfirmedDTC {
+                    avl_mask,
+                    record,
+                })
+            }
+            #[cfg(any(feature = "std2006", feature = "std2013"))]
+            DTCReportType::ReportMirrorMemoryDTCByStatusMask => {
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    records.push(DTCAndStatusRecord { dtc, status });
+                }
+
+                Ok(Self::ReportMirrorMemoryDTCByStatusMask {
+                    avl_mask,
+                    records,
+                })
+            }
+            #[cfg(any(feature = "std2006", feature = "std2013"))]
+            DTCReportType::ReportMirrorMemoryDTCExtDataRecordByDTCNumber => {
+                let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                offset += 3;
+                let status = data[offset];
+                offset += 1;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let number = data[offset];
+                    offset += 1;
+                    utils::data_length_check(data_len, offset + number as usize, false)?;
+
+                    records.push(DTCExtDataRecord {
+                        number,
+                        data: data[offset..offset + number as usize].to_vec(),
+                    });
+                    offset += number as usize;
+                }
+
+                Ok(Self::ReportMirrorMemoryDTCExtDataRecordByDTCNumber {
+                    status_record: DTCAndStatusRecord { dtc, status },
+                    records,
+                })
+            }
+            #[cfg(any(feature = "std2006", feature = "std2013"))]
+            DTCReportType::ReportNumberOfMirrorMemoryDTCByStatusMask => {
+                let avl_mask = data[offset];
+                offset += 1;
+                let fid = DTCFormatIdentifier::try_from(data[offset])?;
+                offset += 1;
+                match fid {
+                    DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_00 => {}
+                    DTCFormatIdentifier::ISO_14229_1_DTCFormat => {}
+                    DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
+                    DTCFormatIdentifier::ISO_11992_4_DTCFormat => {}
+                    DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 =>
+                        return Err(UdsError::InvalidData(hex::encode(data))),
+                }
+                let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
+
+                Ok(Self::ReportNumberOfMirrorMemoryDTCByStatusMask {
+                    avl_mask,
+                    fid,
+                    count
+                })
+            }
+            #[cfg(any(feature = "std2006", feature = "std2013"))]
+            DTCReportType::ReportNumberOfEmissionsOBDDTCByStatusMask => {
+                let avl_mask = data[offset];
+                offset += 1;
+                let fid = DTCFormatIdentifier::try_from(data[offset])?;
+                offset += 1;
+                match fid {
+                    DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_00 => {}
+                    DTCFormatIdentifier::ISO_14229_1_DTCFormat => {}
+                    DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
+                    DTCFormatIdentifier::ISO_11992_4_DTCFormat => {}
+                    DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 =>
+                        return Err(UdsError::InvalidData(hex::encode(data))),
+                }
+                let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
+
+                Ok(Self::ReportNumberOfEmissionsOBDDTCByStatusMask {
+                    avl_mask,
+                    fid,
+                    count
+                })
+            }
+            #[cfg(any(feature = "std2006", feature = "std2013"))]
+            DTCReportType::ReportEmissionsOBDDTCByStatusMask => {
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    records.push(DTCAndStatusRecord { dtc, status });
+                }
+
+                Ok(Self::ReportEmissionsOBDDTCByStatusMask {
+                    avl_mask,
+                    records,
+                })
+            }
+            DTCReportType::ReportDTCFaultDetectionCounter => {
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let counter = data[offset];
+                    offset += 1;
+
+                    records.push(DTCFaultDetectionCounterRecord {
+                        dtc, counter
+                    });
+                }
+
+                Ok(Self::ReportDTCFaultDetectionCounter { records })
+            }
+            DTCReportType::ReportDTCWithPermanentStatus => {
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    records.push(DTCAndStatusRecord { dtc, status });
+                }
+
+                Ok(Self::ReportDTCWithPermanentStatus {
+                    avl_mask,
+                    records,
+                })
+            }
+            #[cfg(any(feature = "std2013", feature = "std2020"))]
+            DTCReportType::ReportDTCExtDataRecordByRecordNumber => {
+                Err(UdsError::NotImplement)
+            }
+            #[cfg(any(feature = "std2013", feature = "std2020"))]
+            DTCReportType::ReportUserDefMemoryDTCByStatusMask => {
+                let mem_selection = data[offset];
+                offset += 1;
+                let avl_mask = data[offset];
+                offset += 1;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    records.push(DTCAndStatusRecord { dtc, status })
+                }
+
+                Ok(Self::ReportUserDefMemoryDTCByStatusMask {
+                    mem_selection, avl_mask, records,
+                })
+            }
+            #[cfg(any(feature = "std2013", feature = "std2020"))]
+            DTCReportType::ReportUserDefMemoryDTCSnapshotRecordByDTCNumber => {
+                let mem_selection = data[offset];
+                offset += 1;
+                let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                offset += 3;
+                let status = data[offset];
+                offset += 1;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let number = data[offset];
+                    offset += 1;
+                    let number_of_identifier = data[offset];
+                    offset += 1;
+
+                    let mut sub_records = Vec::new();
+                    while sub_records.len() < number as usize {
+                        utils::data_length_check(data_len, offset + 2, false)?;
+
+                        let did = DataIdentifier::from(
+                            u16::from_be_bytes([data[offset], data[offset + 1]])
+                        );
+                        offset += 2;
+                        let &did_data_len = cfg.did_cfg.get(&did)
+                            .ok_or(UdsError::DidNotSupported(did))?;
+
+                        utils::data_length_check(data_len, offset + did_data_len, false)?;
+
+                        sub_records.push(DTCSnapshotRecord {
+                            did,
+                            data: data[offset..offset + did_data_len].to_vec()
+                        });
+                        offset += did_data_len;
+                    }
+
+                    records.push(UserDefDTCSnapshotRecord {
+                        number,
+                        number_of_identifier,
+                        records: sub_records,
+                    });
+                }
+
+                Ok(Self::ReportUserDefMemoryDTCSnapshotRecordByDTCNumber {
+                    mem_selection,
+                    status_record: DTCAndStatusRecord { dtc, status },
+                    records,
+                })
+            }
+            #[cfg(any(feature = "std2013", feature = "std2020"))]
+            DTCReportType::ReportUserDefMemoryDTCExtDataRecordByDTCNumber => {
+                Err(UdsError::NotImplement)
+            }
+            #[cfg(any(feature = "std2020"))]
+            DTCReportType::ReportSupportedDTCExtDataRecord => {
+                let avl_mask = data[offset];
+                offset += 1;
+                let number = data[offset];
+                offset += 1;
+                if number < 0x01 || number > 0xFD {
+                    return Err(UdsError::InvalidData(hex::encode(data)));
+                }
+                utils::data_length_check(data_len, offset + 4 * number as usize, false)?;
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    utils::data_length_check(data_len, offset + 4, false)?;
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    records.push(DTCAndStatusRecord { dtc, status })
+                }
+
+                Ok(Self::ReportSupportedDTCExtDataRecord {
+                    avl_mask, number, records,
+                })
+            }
+            #[cfg(any(feature = "std2013", feature = "std2020"))]
+            DTCReportType::ReportWWHOBDDTCByMaskRecord => {
+                let func_gid = data[offset];
+                offset += 1;
+                if func_gid > 0xFE {
+                    return Err(UdsError::InvalidData(hex::encode(data)));
+                }
+
+                let status_avl_mask = data[offset];
+                offset += 1;
+                let severity_avl_mask = data[offset];
+                offset += 1;
+                let fid = DTCFormatIdentifier::try_from(data[offset])?;
+                offset += 1;
+                match fid {
+                    DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
+                    DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 => {}
+                    _ => return Err(UdsError::InvalidData(hex::encode(data))),
+                }
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let severity = data[offset];
+                    offset += 1;
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    records.push(DTCAndSeverityRecord { severity, dtc, status });
+                }
+
+                Ok(Self::ReportWWHOBDDTCByMaskRecord {
+                    func_gid, status_avl_mask, severity_avl_mask, fid, records,
+                })
+            }
+            #[cfg(any(feature = "std2013", feature = "std2020"))]
+            DTCReportType::ReportWWHOBDDTCWithPermanentStatus => {
+                utils::data_length_check(data_len, offset + 3, false)?;
+                    let func_gid = data[offset];
+                    offset += 1;
+                    if func_gid > 0xFE {
+                        return Err(UdsError::InvalidData(hex::encode(data)));
+                    }
+
+                    let status_avl_mask = data[offset];
+                    offset += 1;
+                    let fid = DTCFormatIdentifier::try_from(data[offset])?;
+                    offset += 1;
+                    match fid {
+                        DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
+                        DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 => {}
+                        _ => return Err(UdsError::InvalidData(hex::encode(data))),
+                    }
+
+                    let mut records = Vec::new();
+                    while data_len > offset {
+                        let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                        offset += 3;
+                        let status = data[offset];
+                        offset += 1;
+
+                        records.push(DTCAndStatusRecord { dtc, status });
+                    }
+
+                    Ok(Self::ReportWWHOBDDTCWithPermanentStatus {
+                        func_gid, status_avl_mask, fid, records,
+                    })
+            }
+            #[cfg(any(feature = "std2020"))]
+            DTCReportType::ReportDTCInformationByDTCReadinessGroupIdentifier => {
+                let func_gid = data[offset];
+                offset += 1;
+                if func_gid > 0xFE {
+                    return Err(UdsError::InvalidData(hex::encode(data)));
+                }
+
+                let status_avl_mask = data[offset];
+                offset += 1;
+                let format_identifier = data[offset];
+                offset += 1;
+
+                let readiness_gid = data[offset];
+                offset += 1;
+                if readiness_gid > 0xFE {
+                    return Err(UdsError::InvalidData(hex::encode(data)));
+                }
+
+                let mut records = Vec::new();
+                while data_len > offset {
+                    let dtc = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    offset += 3;
+                    let status = data[offset];
+                    offset += 1;
+
+                    records.push(DTCAndStatusRecord { dtc, status });
+                }
+
+                Ok(Self::ReportDTCInformationByDTCReadinessGroupIdentifier {
+                    func_gid, status_avl_mask, format_identifier, readiness_gid, records,
+                })
+            }
+        }
+    }
+
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self.into()
+    }
 }
-

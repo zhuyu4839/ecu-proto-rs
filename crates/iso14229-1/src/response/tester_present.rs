@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{utils, UdsError, response::{Code, Response, SubFunction}, Service, TesterPresentType, Configuration};
+use crate::{utils, UdsError, response::{Code, Response, SubFunction}, Service, TesterPresentType, Configuration, ResponseData};
 
 lazy_static!(
     pub static ref TESTER_PRESENT_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -12,18 +12,42 @@ lazy_static!(
     ]);
 );
 
-pub(crate) fn tester_present(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    _: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_none() {
-        return Err(UdsError::SubFunctionError(service));
+#[derive(Debug, Default, Clone, Eq, PartialEq)]
+pub struct TesterPresent {
+    pub data: Vec<u8>,  // should emtpy
+}
+
+impl ResponseData for TesterPresent {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(sub_func) => {
+                let _ = TesterPresentType::try_from(sub_func)?;
+
+                utils::data_length_check(data.len(), 0, true)?;
+
+                Ok(Response {
+                    service: Service::TesterPresent,
+                    negative: false,
+                    sub_func: Some(SubFunction::new(sub_func)),
+                    data: data.to_vec(),
+                })
+            },
+            None => Err(UdsError::SubFunctionError(Service::TesterPresent)),
+        }
     }
 
-    let _ = TesterPresentType::try_from(sub_func.unwrap().0)?;
-    utils::data_length_check(data.len(), 0, true)?;
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::TesterPresent
+            || response.sub_func.is_none() {
+            return Err(UdsError::ServiceError(service))
+        }
 
-    Ok(Response { service, negative: false, sub_func, data })
+        Ok(Self { data: response.data.clone() })
+    }
+
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self.data
+    }
 }

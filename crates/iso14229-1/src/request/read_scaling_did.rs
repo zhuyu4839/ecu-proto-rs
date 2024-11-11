@@ -1,58 +1,40 @@
 //! request of Service 24
 
 
-use crate::{Configuration, DataIdentifier, UdsError, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, DataIdentifier, UdsError, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct ReadScalingDID(pub DataIdentifier);
 
-impl<'a> TryFrom<&'a [u8]> for ReadScalingDID {
-    type Error = UdsError;
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
-        utils::data_length_check(data.len(), 2, true)?;
+impl RequestData for ReadScalingDID {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::ReadScalingDID)),
+            None => {
+                utils::data_length_check(data.len(), 2, true)?;
 
+                Ok(Request { service: Service::ReadScalingDID, sub_func: None, data: data.to_vec(), })
+            }
+        }
+    }
+
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service();
+        if service != Service::ReadScalingDID
+            || request.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
+        }
+
+        let data = &request.data;
         let did = DataIdentifier::from(
             u16::from_be_bytes([data[0], data[1]])
         );
 
         Ok(Self(did))
     }
-}
 
-impl Into<Vec<u8>> for ReadScalingDID {
-    fn into(self) -> Vec<u8> {
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         let did: u16 = self.0.into();
         did.to_be_bytes().to_vec()
     }
-}
-
-impl RequestData for ReadScalingDID {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::ReadScalingDID));
-        }
-
-        Self::try_from(data)
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
-pub(crate) fn read_scaling_did(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = ReadScalingDID::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Request { service, sub_func, data })
 }

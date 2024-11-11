@@ -56,8 +56,8 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function().unwrap();
         assert_eq!(sub_func.function::<ECUResetType>()?, ECUResetType::EnableRapidPowerShutDown);
-        let data: response::PowerDownSeconds = response.data::<ECUResetType, _>(&cfg)?;
-        assert_eq!(data.seconds(), Some(1));
+        let data = response.data::<response::ECUReset>(&cfg)?;
+        assert_eq!(data.second, Some(1));
 
         Ok(())
     }

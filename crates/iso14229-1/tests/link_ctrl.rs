@@ -13,7 +13,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<LinkCtrlType>()?, LinkCtrlType::VerifyModeTransitionWithFixedParameter);
-        let data: request::LinkCtrl = request.data::<LinkCtrlType, _>(&cfg)?;
+        let data = request.data::<request::LinkCtrl>(&cfg)?;
         match data {
             request::LinkCtrl::VerifyModeTransitionWithFixedParameter(v) =>
                 assert_eq!(v, LinkCtrlMode::CAN1MBaud),
@@ -24,7 +24,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<LinkCtrlType>()?, LinkCtrlType::VerifyModeTransitionWithSpecificParameter);
-        let data: request::LinkCtrl = request.data::<LinkCtrlType, _>(&cfg)?;
+        let data = request.data::<request::LinkCtrl>(&cfg)?;
         match data {
             request::LinkCtrl::VerifyModeTransitionWithSpecificParameter(v) =>
                 assert_eq!(v, U24::new(0x112233)),
@@ -35,7 +35,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<LinkCtrlType>()?, LinkCtrlType::TransitionMode);
-        let data: request::LinkCtrl = request.data::<LinkCtrlType, _>(&cfg)?;
+        let data = request.data::<request::LinkCtrl>(&cfg)?;
         match data {
             request::LinkCtrl::TransitionMode => {},
             _ => panic!("Unexpected data {:?}", data)
@@ -52,8 +52,8 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function().unwrap();
         assert_eq!(sub_func.function::<LinkCtrlType>()?, LinkCtrlType::VerifyModeTransitionWithFixedParameter);
-        let data: Vec<u8> = response.data::<_, _>(&cfg)?;
-        assert!(data.is_empty());
+        let data = response.data::<response::LinkCtrl>(&cfg)?;
+        assert!(data.data.is_empty());
 
         let source = hex::decode("C70100")?;
         let err = response::Response::try_from_cfg(source, &cfg).unwrap_err();

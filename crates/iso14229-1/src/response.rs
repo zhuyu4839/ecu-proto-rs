@@ -139,14 +139,15 @@ impl SubFunction {
     }
 
     #[inline]
-    pub fn function<T: TryFrom<u8, Error =UdsError>>(&self) -> Result<T, UdsError> {
+    pub fn function<T: TryFrom<u8, Error = UdsError>>(&self) -> Result<T, UdsError> {
         T::try_from(self.0)
     }
 }
 
 impl Into<u8> for SubFunction {
+    #[inline]
     fn into(self) -> u8 {
-        self.0
+        self.0.into()
     }
 }
 
@@ -161,41 +162,41 @@ pub struct Response {
 impl Response {
     pub fn new(
         service: Service,
-        sub_func: Option<SubFunction>,
+        sub_func: Option<u8>,
         data: Vec<u8>,
         cfg: &Configuration,
     ) -> Result<Self, UdsError> {
         match service {
-            Service::SessionCtrl => response::session_ctrl(service, sub_func, data, cfg),
-            Service::ECUReset => response::ecu_reset(service, sub_func, data, cfg),
-            Service::ClearDiagnosticInfo => response::clear_diag_info(service, sub_func, data, cfg),
-            Service::ReadDTCInfo => response::read_dtc_info(service, sub_func, data, cfg),
-            Service::ReadDID => response::read_did(service, sub_func, data, cfg),
-            Service::ReadMemByAddr => response::read_mem_by_addr(service, sub_func, data, cfg),
-            Service::ReadScalingDID => response::read_scaling_did(service, sub_func, data, cfg),
-            Service::SecurityAccess => response::security_access(service, sub_func, data, cfg),
-            Service::CommunicationCtrl => response::communication_ctrl(service, sub_func, data, cfg),
+            Service::SessionCtrl => SessionCtrl::response(&data, sub_func, cfg),
+            Service::ECUReset => ECUReset::response(&data, sub_func, cfg),
+            Service::ClearDiagnosticInfo => ClearDiagnosticInfo::response(&data, sub_func, cfg),
+            Service::ReadDTCInfo => DTCInfo::response(&data, sub_func, cfg),
+            Service::ReadDID => ReadDID::response(&data, sub_func, cfg),
+            Service::ReadMemByAddr => ReadMemByAddr::response(&data, sub_func, cfg),
+            Service::ReadScalingDID => ReadScalingDID::response(&data, sub_func, cfg),
+            Service::SecurityAccess => SecurityAccess::response(&data, sub_func, cfg),
+            Service::CommunicationCtrl => CommunicationCtrl::response(&data, sub_func, cfg),
             #[cfg(any(feature = "std2020"))]
-            Service::Authentication => response::authentication(service, sub_func, data, cfg),
-            Service::ReadDataByPeriodId => response::read_data_by_pid(service, sub_func, data, cfg),
-            Service::DynamicalDefineDID => response::dyn_define_did(service, sub_func, data, cfg),
-            Service::WriteDID => response::write_did(service, sub_func, data, cfg),
-            Service::IOCtrl => response::io_ctrl(service, sub_func, data, cfg),
-            Service::RoutineCtrl => response::routine_ctrl(service, sub_func, data, cfg),
-            Service::RequestDownload => response::request_download(service, sub_func, data, cfg),
-            Service::RequestUpload => response::request_upload(service, sub_func, data, cfg),
-            Service::TransferData => response::transfer_data(service, sub_func, data, cfg),
-            Service::RequestTransferExit => response::request_transfer_exit(service, sub_func, data, cfg),
+            Service::Authentication => Authentication::response(&data, sub_func, cfg),
+            Service::ReadDataByPeriodId => ReadDataByPeriodId::response(&data, sub_func, cfg),
+            Service::DynamicalDefineDID => DynamicallyDefineDID::response(&data, sub_func, cfg),
+            Service::WriteDID => WriteDID::response(&data, sub_func, cfg),
+            Service::IOCtrl => IOCtrl::response(&data, sub_func, cfg),
+            Service::RoutineCtrl => RoutineCtrl::response(&data, sub_func, cfg),
+            Service::RequestDownload => RequestDownload::response(&data, sub_func, cfg),
+            Service::RequestUpload => RequestUpload::response(&data, sub_func, cfg),
+            Service::TransferData => TransferData::response(&data, sub_func, cfg),
+            Service::RequestTransferExit => RequestTransferExit::response(&data, sub_func, cfg),
             #[cfg(any(feature = "std2013", feature = "std2020"))]
-            Service::RequestFileTransfer => response::request_file_transfer(service, sub_func, data, cfg),
-            Service::WriteMemByAddr => response::write_mem_by_addr(service, sub_func, data, cfg),
-            Service::TesterPresent => response::tester_present(service, sub_func, data, cfg),
+            Service::RequestFileTransfer => RequestFileTransfer::response(&data, sub_func, cfg),
+            Service::WriteMemByAddr => WriteMemByAddr::response(&data, sub_func, cfg),
+            Service::TesterPresent => TesterPresent::response(&data, sub_func, cfg),
             #[cfg(any(feature = "std2006", feature = "std2013"))]
-            Service::AccessTimingParam => response::access_timing_param(service, sub_func, data, cfg),
-            Service::SecuredDataTrans => response::secured_data_trans(service, sub_func, data, cfg),
-            Service::CtrlDTCSetting => response::ctrl_dtc_setting(service, sub_func, data, cfg),
-            Service::ResponseOnEvent => response::response_on_event(service, sub_func, data, cfg),
-            Service::LinkCtrl => response::link_ctrl(service, sub_func, data, cfg),
+            Service::AccessTimingParam => AccessTimingParameter::response(&data, sub_func, cfg),
+            Service::SecuredDataTrans => SecuredDataTrans::response(&data, sub_func, cfg),
+            Service::CtrlDTCSetting => CtrlDTCSetting::response(&data, sub_func, cfg),
+            Service::ResponseOnEvent => ResponseOnEvent::response(&data, sub_func, cfg),
+            Service::LinkCtrl => LinkCtrl::response(&data, sub_func, cfg),
             Service::NRC => {
                 if sub_func.is_some() {
                     return Err(UdsError::SubFunctionError(service));
@@ -244,15 +245,28 @@ impl Response {
     }
 
     #[inline]
-    pub fn data<F, T>(&self, cfg: &Configuration) -> Result<T, UdsError>
+    pub fn data<T>(&self, cfg: &Configuration) -> Result<T, UdsError>
     where
-        F: TryFrom<u8, Error =UdsError>,
-        T: ResponseData<SubFunc = F>,
+        T: ResponseData,
     {
-        T::try_parse(self.data.as_slice(), match self.sub_func {
-            Some(v) => Some(F::try_from(v.0)?),
-            None => None,
-        }, cfg)
+        T::try_parse(&self, cfg)
+    }
+
+    #[inline]
+    fn inner_new(
+        data: &[u8],
+        data_len: usize,
+        mut offset: usize,
+        service: Service,
+        cfg: &Configuration
+    ) -> Result<Self, UdsError> {
+        utils::data_length_check(data_len, offset + 1, false)?;
+
+        let sub_func = data[offset];
+        offset += 1;
+        let data = data[offset..].to_vec();
+
+        Self::new(service, Some(sub_func), data, cfg)
     }
 }
 
@@ -303,45 +317,13 @@ impl TryFromWithCfg<Vec<u8>> for Response {
             Service::CtrlDTCSetting |
             Service::TesterPresent |
             Service::LinkCtrl |
-            Service::DynamicalDefineDID => {
-                utils::data_length_check(data_len, offset + 1, false)?;
-
-                let sub_func = data[offset];
-                offset += 1;
-                let data = data[offset..].to_vec();
-
-                Self::new(service, Some(SubFunction::new(sub_func)), data, cfg)
-            },
+            Service::DynamicalDefineDID => Self::inner_new(&data, data_len, offset, service, cfg),
             #[cfg(any(feature = "std2006", feature = "std2013"))]
-            Service::AccessTimingParam => {
-                utils::data_length_check(data_len, offset + 1, false)?;
-
-                let sub_func = data[offset];
-                offset += 1;
-                let data = data[offset..].to_vec();
-
-                Self::new(service, Some(SubFunction::new(sub_func)), data, cfg)
-            },
+            Service::AccessTimingParam => Self::inner_new(&data, data_len, offset, service, cfg),
             #[cfg(any(feature = "std2020"))]
-            Service::Authentication => {
-                utils::data_length_check(data_len, offset + 1, false)?;
-
-                let sub_func = data[offset];
-                offset += 1;
-                let data = data[offset..].to_vec();
-
-                Self::new(service, Some(SubFunction::new(sub_func)), data, cfg)
-            },
+            Service::Authentication => Self::inner_new(&data, data_len, offset, service, cfg),
             #[cfg(any(feature = "std2013", feature = "std2020"))]
-            Service::RequestFileTransfer => {
-                utils::data_length_check(data_len, offset + 1, false)?;
-
-                let sub_func = data[offset];
-                offset += 1;
-                let data = data[offset..].to_vec();
-
-                Self::new(service, Some(SubFunction::new(sub_func)), data, cfg)
-            },
+            Service::RequestFileTransfer => Self::inner_new(&data, data_len, offset, service, cfg),
             Service::ClearDiagnosticInfo |
             Service::ReadDID |
             Service::ReadMemByAddr |

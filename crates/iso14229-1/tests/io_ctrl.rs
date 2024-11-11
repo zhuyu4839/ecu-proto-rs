@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{request, response, Configuration, DataIdentifier, IOCtrlParameter, Placeholder, Service, TryFromWithCfg};
+    use iso14229_1::{request, response, Configuration, DataIdentifier, IOCtrlParameter, Service, TryFromWithCfg};
 
     #[test]
     fn test_request() -> anyhow::Result<()> {
@@ -14,7 +14,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function();
         assert_eq!(sub_func, None);
-        let data: request::IOCtrl = request.data::<Placeholder, _>(&cfg)?;
+        let data = request.data::<request::IOCtrl>(&cfg)?;
         assert_eq!(data, request::IOCtrl::new(
             did,
             IOCtrlParameter::ShortTermAdjustment,
@@ -36,7 +36,7 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function();
         assert_eq!(sub_func, None);
-        let data: response::IOCtrl = response.data::<Placeholder, _>(&cfg)?;
+        let data = response.data::<response::IOCtrl>(&cfg)?;
         assert_eq!(data, response::IOCtrl::new(
             did,
             IOCtrlParameter::ShortTermAdjustment,

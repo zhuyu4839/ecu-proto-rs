@@ -7,6 +7,11 @@ authors = ["zhuyu <zhuyu4839@gmail.com>"]
 description = "A DoCAN protocol."
 homepage = "https://github.com/zhuyu4839/ecu-proto-rs"
 repository = "https://github.com/zhuyu4839/ecu-proto-rs"
+keywords = [
+    "automotive",
+    "UDS",
+    "DoCAN"
+]
 
 [dependencies]
 log = { workspace = true }

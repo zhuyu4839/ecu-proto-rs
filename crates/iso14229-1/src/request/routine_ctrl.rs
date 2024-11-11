@@ -9,11 +9,35 @@ pub struct RoutineCtrl {
     pub option_record: Vec<u8>,
 }
 
-impl<'a> TryFrom<&'a [u8]> for RoutineCtrl {
-    type Error = UdsError;
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
-        utils::data_length_check(data.len(), 2, false)?;
+impl RequestData for RoutineCtrl {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+        match sub_func {
+            Some(sub_func) => {
+                let (suppress_positive, sub_func) = utils::peel_suppress_positive(sub_func);
+                let _ = RoutineCtrlType::try_from(sub_func)?;
 
+                utils::data_length_check(data.len(), 2, false)?;
+
+                Ok(Request {
+                    service: Service::RoutineCtrl,
+                    sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                    data: data.to_vec(),
+                })
+            },
+            None => Err(UdsError::SubFunctionError(Service::RoutineCtrl)),
+        }
+    }
+
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service();
+        if service != Service::RoutineCtrl
+            || request.sub_func.is_none() {
+            return Err(UdsError::ServiceError(service))
+        }
+
+        // let sub_func: RoutineCtrlType = request.sub_function().unwrap().function()?;
+
+        let data = &request.data;
         let mut offset = 0;
         let routine_id = u16::from_be_bytes([data[offset], data[offset + 1]]);
         offset += 2;
@@ -21,48 +45,12 @@ impl<'a> TryFrom<&'a [u8]> for RoutineCtrl {
 
         Ok(Self { routine_id, option_record: data[offset..].to_vec() })
     }
-}
-
-impl Into<Vec<u8>> for RoutineCtrl {
-    fn into(mut self) -> Vec<u8> {
+    #[inline]
+    fn to_vec(mut self, _: &Configuration) -> Vec<u8> {
         let routine_id: u16 = self.routine_id.into();
         let mut result = routine_id.to_be_bytes().to_vec();
         result.append(&mut self.option_record);
 
         result
     }
-}
-
-impl RequestData for RoutineCtrl {
-    type SubFunc = RoutineCtrlType;
-
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_none() {
-            return Err(UdsError::SubFunctionError(Service::RoutineCtrl));
-        }
-
-        Self::try_from(data)
-    }
-
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
-pub(crate) fn routine_ctrl(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_none() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let sf = RoutineCtrlType::try_from(sub_func.unwrap().function)?;
-    let _ = RoutineCtrl::try_parse(data.as_slice(), Some(sf), cfg)?;
-
-    Ok(Request { service, sub_func, data })
 }

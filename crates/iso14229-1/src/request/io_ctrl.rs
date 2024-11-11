@@ -1,7 +1,7 @@
 //! request of Service 2F
 
 
-use crate::{Configuration, UdsError, IOCtrlParameter, IOCtrlOption, DataIdentifier, request::{Request, SubFunction}, RequestData, Placeholder, utils, Service};
+use crate::{Configuration, UdsError, IOCtrlParameter, IOCtrlOption, DataIdentifier, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IOCtrl {
@@ -57,27 +57,27 @@ impl IOCtrl {
     }
 }
 
-impl Into<Vec<u8>> for IOCtrl {
-    fn into(mut self) -> Vec<u8> {
-        let did: u16 = self.did.into();
-        let mut result = did.to_be_bytes().to_vec();
-        result.push(self.option.param.into());
-        result.append(&mut self.option.state);
-        result.append(&mut self.mask);
-
-        result
-    }
-}
-
 impl RequestData for IOCtrl {
-    type SubFunc = Placeholder;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::IOCtrl));
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::IOCtrl)),
+            None => {
+                utils::data_length_check(data.len(), 3, false)?;
+
+                Ok(Request { service: Service::IOCtrl, sub_func: None, data: data.to_vec(), })
+            },
+        }
+    }
+
+    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service();
+        if service != Service::IOCtrl
+            || request.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
         }
 
+        let data = &request.data;
         let data_len = data.len();
-        utils::data_length_check(data_len, 3, false)?;
         let mut offset = 0;
 
         let did = DataIdentifier::from(
@@ -96,24 +96,14 @@ impl RequestData for IOCtrl {
         let mask = data[offset..].to_vec();
         Self::new(did, param, state, mask, cfg)
     }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
+
+    fn to_vec(mut self, _: &Configuration) -> Vec<u8> {
+        let did: u16 = self.did.into();
+        let mut result = did.to_be_bytes().to_vec();
+        result.push(self.option.param.into());
+        result.append(&mut self.option.state);
+        result.append(&mut self.mask);
+
+        result
     }
 }
-
-pub(crate) fn io_ctrl(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = IOCtrl::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Request { service, sub_func, data })
-}
-

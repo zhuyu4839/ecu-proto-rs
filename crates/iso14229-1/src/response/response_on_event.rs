@@ -3,8 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, error::UdsError, Placeholder, response::Code, ResponseData, Service};
-use crate::response::{Response, SubFunction};
+use crate::{Configuration, error::UdsError, response::{Code, Response, SubFunction}, ResponseData, Service};
 
 lazy_static!(
     pub static ref RESPONSE_ON_EVENT_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -17,52 +16,32 @@ lazy_static!(
 
 #[derive(Debug, Clone)]
 pub struct ResponseOnEvent {
-    
+    pub data: Vec<u8>,
 }
 
 #[allow(unused_variables)]
-impl<'a> TryFrom<&'a [u8]> for ResponseOnEvent {
-    type Error = UdsError;
-    // #[deprecated(since = "0.1.0", note = "This library does not yet support")]
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
-        return Err(UdsError::OtherError("This library does not yet support".to_string()))
-    }
-}
-
-impl Into<Vec<u8>> for ResponseOnEvent {
-    // #[deprecated(since = "0.1.0", note = "This library does not yet support")]
-    fn into(self) -> Vec<u8> {
-        panic!("This library does not yet support")
-    }
-}
-
 impl ResponseData for ResponseOnEvent {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::ResponseOnEvent));
+    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(sub_func) => Err(UdsError::SubFunctionError(Service::ResponseOnEvent)),
+            None => {
+
+                Ok(Response {
+                    service: Service::ResponseOnEvent,
+                    negative: false,
+                    sub_func: None,
+                    data: data.to_vec(),
+                })
+            }
         }
-
-        Self::try_from(data)
     }
+
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
+        Err(UdsError::NotImplement)
+    }
+
     #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
+    fn to_vec(self, cfg: &Configuration) -> Vec<u8> {
+        self.data
     }
-}
-
-pub(crate) fn response_on_event(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = ResponseOnEvent::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Response { service, negative: false, sub_func, data })
 }

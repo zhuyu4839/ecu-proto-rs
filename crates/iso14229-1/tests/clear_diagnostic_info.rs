@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{request, response, Configuration, Placeholder, Service, TryFromWithCfg};
+    use iso14229_1::{request, response, Configuration, Service, TryFromWithCfg};
     use iso14229_1::utils::U24;
 
     #[cfg(any(feature = "std2006", feature = "std2013"))]
@@ -15,7 +15,7 @@ mod tests {
         let sub_func = request.sub_function();
         assert_eq!(sub_func, None);
 
-        let data: request::ClearDiagnosticInfo = request.data::<Placeholder, _>(&cfg)?;
+        let data = request.data::<request::ClearDiagnosticInfo>(&cfg)?;
         assert_eq!(data, request::ClearDiagnosticInfo::new(
             U24::from_be_bytes([0x00, 0xFF, 0xFF, 0x33]),
         ));
@@ -33,7 +33,7 @@ mod tests {
         let sub_func = request.sub_function();
         assert_eq!(sub_func, None);
 
-        let data: request::ClearDiagnosticInfo = request.data::<Placeholder, _>(&cfg)?;
+        let data = request.data::<request::ClearDiagnosticInfo>(&cfg)?;
         assert_eq!(data, request::ClearDiagnosticInfo::new(
             U24::from_be_bytes([0x00, 0xFF, 0xFF, 0x33]),
             Some(0x01)

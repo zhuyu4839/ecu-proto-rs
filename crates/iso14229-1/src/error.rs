@@ -26,6 +26,9 @@ pub enum UdsError {
     #[error("ISO 14229-1 - the sub-function is required/unnecessary on service `{0}`")]
     SubFunctionError(Service),
 
+    #[error("ISO 14229-1 - the service `{0}` is error")]
+    ServiceError(Service),
+
     // #[error("ISO 14229-1 - service `{service}` got an unexpected sub-function(expect: {expect}, actual: {actual})")]
     // UnexpectedSubFunction { service: Service, expect: u8, actual: u8 },
 
@@ -47,6 +50,6 @@ pub enum UdsError {
     #[error("ISO 14229-1 - other error: {0}")]
     OtherError(String),
 
-    // #[error("ISO 14229-1 - service: {0} is not implement")]
-    // NotImplement(Service),
+    #[error("ISO 14229-1 - not implement")]
+    NotImplement,
 }

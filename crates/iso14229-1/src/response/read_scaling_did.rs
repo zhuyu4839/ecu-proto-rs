@@ -5,8 +5,7 @@ use std::collections::HashSet;
 use bitfield_struct::bitfield;
 use lazy_static::lazy_static;
 use crate::{enum_extend, Service};
-use crate::{Configuration, DataIdentifier, error::UdsError, Placeholder, response::Code, ResponseData, utils};
-use crate::response::{Response, SubFunction};
+use crate::{Configuration, DataIdentifier, error::UdsError, response::{Code, Response, SubFunction}, ResponseData, utils};
 
 lazy_static!(
     pub static ref READ_SCALING_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -120,11 +119,33 @@ pub struct ReadScalingDID {
     pub others: Vec<ScalingByteData>, // at least one
 }
 
-impl<'a> TryFrom<&'a [u8]> for ReadScalingDID {
-    type Error = UdsError;
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
+impl ResponseData for ReadScalingDID {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::ReadScalingDID)),
+            None => {
+                let data_len = data.len();
+                utils::data_length_check(data_len, 2, false)?;
+
+                Ok(Response {
+                    service: Service::ReadScalingDID,
+                    negative: false,
+                    sub_func: None,
+                    data: data.to_vec(),
+                })
+            }
+        }
+    }
+
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::ReadScalingDID
+            || response.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
+        }
+
+        let data = &response.data;
         let data_len = data.len();
-        utils::data_length_check(data_len, 2, false)?;
         let mut offset = 0;
         let did = DataIdentifier::from(
             u16::from_be_bytes([data[offset], data[offset + 1]])
@@ -174,10 +195,9 @@ impl<'a> TryFrom<&'a [u8]> for ReadScalingDID {
 
         Ok(Self { did, data: ScalingByteData { byte_type, byte_len: byte_len as u8, extensions }, others })
     }
-}
 
-impl Into<Vec<u8>> for ReadScalingDID {
-    fn into(self) -> Vec<u8> {
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         let did: u16 = self.did.into();
         let mut result = did.to_be_bytes().to_vec();
 
@@ -195,35 +215,3 @@ impl Into<Vec<u8>> for ReadScalingDID {
         result
     }
 }
-
-impl ResponseData for ReadScalingDID {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::ReadScalingDID));
-        }
-
-        Self::try_from(data)
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
-pub(crate) fn read_scaling_did(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = ReadScalingDID::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Response { service, negative: false, sub_func, data })
-}
-

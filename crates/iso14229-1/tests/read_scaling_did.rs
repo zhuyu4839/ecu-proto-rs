@@ -13,7 +13,7 @@ mod tests {
         let sub_func = request.sub_function();
         assert_eq!(sub_func, None);
 
-        let data: request::ReadScalingDID = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::ReadScalingDID>(&cfg)?;
         assert_eq!(data, request::ReadScalingDID(DataIdentifier::from(0xF301)));
 
         Ok(())
@@ -27,14 +27,14 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function();
         assert_eq!(sub_func, None);
-        let data: response::ReadScalingDID = response.data::<_, _>(&cfg)?;
+        let data = response.data::<response::ReadScalingDID>(&cfg)?;
         println!("{:?}", data);
 
         let source = hex::decode("640105019500E04B001EA130")?;
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function();
         assert_eq!(sub_func, None);
-        let data: response::ReadScalingDID = response.data::<_, _>(&cfg)?;
+        let data = response.data::<response::ReadScalingDID>(&cfg)?;
         println!("{:?}", data);
 
         Ok(())

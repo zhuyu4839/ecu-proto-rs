@@ -3,8 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{ByteOrder, Configuration, DataFormatIdentifier, error::UdsError, LengthFormatIdentifier, ModeOfOperation, Placeholder, response::Code, ResponseData, utils, Service};
-use crate::response::{Response, SubFunction};
+use crate::{ByteOrder, Configuration, DataFormatIdentifier, error::UdsError, LengthFormatIdentifier, ModeOfOperation, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
 
 lazy_static!(
     pub static ref REQUEST_FILE_TRANSFER_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -80,7 +79,7 @@ or 05 (ReadDir) this parameter shall not be included in the request.
 */
 // filePosition
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum RequestFileTransferData {
+pub enum RequestFileTransfer {
     AddFile {       // 1 modeOfOperation
         lfi: u8,
         max_block_len: u128,
@@ -115,139 +114,7 @@ pub enum RequestFileTransferData {
     },
 }
 
-impl ResponseData for RequestFileTransferData {
-    type SubFunc = ModeOfOperation;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        match sub_func {
-            Some(mode) => {
-                let data_len = data.len();
-                utils::data_length_check(data_len, 1, false)?;
-                let mut offset = 0;
-
-                match mode {
-                    ModeOfOperation::AddFile => {
-                        utils::data_length_check(data_len, offset + 1, false)?;
-
-                        let lfi = data[offset];
-                        offset += 1;
-                        utils::data_length_check(data_len, offset + lfi as usize + 1, false)?;
-
-                        let max_block_len = utils::slice_to_u128(&data[offset..offset + lfi as usize], ByteOrder::Big);
-                        offset += lfi as usize;
-                        let dfi = DataFormatIdentifier::from(data[offset]);
-                        Ok(Self::AddFile {
-                            lfi, max_block_len, dfi
-                        })
-                    },
-                    ModeOfOperation::DeleteFile => Ok(Self::DeleteFile),
-                    ModeOfOperation::ReplaceFile => {
-                        utils::data_length_check(data_len, offset + 1, false)?;
-
-                        let lfi = data[offset];
-                        offset += 1;
-                        utils::data_length_check(data_len, offset + lfi as usize + 1, false)?;
-
-                        let max_block_len = utils::slice_to_u128(&data[offset..offset + lfi as usize], ByteOrder::Big);
-                        offset += lfi as usize;
-                        let dfi = DataFormatIdentifier::from(data[offset]);
-                        Ok(Self::ReplaceFile {
-                            lfi, max_block_len, dfi
-                        })
-                    },
-                    ModeOfOperation::ReadFile => {
-                        utils::data_length_check(data_len, offset + 1, false)?;
-
-                        let lfi = data[offset];
-                        offset += 1;
-                        utils::data_length_check(data_len, offset + lfi as usize + 4, false)?;
-
-                        let max_block_len = utils::slice_to_u128(&data[offset..offset + lfi as usize], ByteOrder::Big);
-                        offset += lfi as usize;
-
-                        let dfi = DataFormatIdentifier::from(data[offset]);
-                        offset += 1;
-
-                        let filesize_or_dir_param_len = u16::from_be_bytes([data[offset], data[offset + 1]]);
-                        offset += 2;
-
-                        utils::data_length_check(data_len, offset + filesize_or_dir_param_len as usize + 1, false)?;
-
-                        let uncompressed_size_or_dir_len = utils::slice_to_u128(&data[offset..offset + filesize_or_dir_param_len as usize], ByteOrder::Big);
-                        offset += filesize_or_dir_param_len as usize;
-
-                        let compressed_size = utils::slice_to_u128(&data[offset..], ByteOrder::Big);
-
-                        Ok(Self::ReadFile {
-                            lfi,
-                            max_block_len,
-                            dfi,
-                            filesize_or_dir_param_len,
-                            uncompressed_size_or_dir_len,
-                            compressed_size,
-                        })
-                    },
-                    ModeOfOperation::ReadDir => {
-                        utils::data_length_check(data_len, offset + 1, false)?;
-
-                        let lfi = data[offset];
-                        offset += 1;
-                        utils::data_length_check(data_len, offset + lfi as usize + 4, false)?;
-
-                        let max_block_len = utils::slice_to_u128(&data[offset..offset + lfi as usize], ByteOrder::Big);
-                        offset += lfi as usize;
-
-                        let dfi = data[offset];
-                        offset += 1;
-                        if dfi != 0x00 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
-                        }
-                        let dfi = DataFormatIdentifier(dfi);
-
-                        let filesize_or_dir_param_len = u16::from_be_bytes([data[offset], data[offset + 1]]);
-                        offset += 2;
-                        let uncompressed_size_or_dir_len = utils::slice_to_u128(&data[offset..offset + filesize_or_dir_param_len as usize], ByteOrder::Big);
-
-                        Ok(Self::ReadDir {
-                            lfi,
-                            max_block_len,
-                            dfi,
-                            filesize_or_dir_param_len,
-                            uncompressed_size_or_dir_len,
-                        })
-                    },
-                    ModeOfOperation::ResumeFile => {
-                        utils::data_length_check(data_len, offset + 1, false)?;
-
-                        let lfi = data[offset];
-                        offset += 1;
-                        utils::data_length_check(data_len, offset + lfi as usize + 9, false)?;
-
-                        let max_block_len = utils::slice_to_u128(&data[offset..offset + lfi as usize], ByteOrder::Big);
-                        offset += lfi as usize;
-                        let dfi = DataFormatIdentifier::from(data[offset]);
-                        offset += 1;
-                        let file_pos = <[u8; 8]>::try_from(&data[offset..])
-                            .map_err(|_| UdsError::InvalidData(hex::encode(data)))?;
-
-                        Ok(Self::ResumeFile {
-                            lfi,
-                            max_block_len,
-                            dfi,
-                            file_pos,
-                        })
-                    },
-                }
-            },
-            None => panic!("Sub-function required"),
-        }
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
-impl Into<Vec<u8>> for RequestFileTransferData {
+impl Into<Vec<u8>> for RequestFileTransfer {
     fn into(self) -> Vec<u8> {
         let mut result = Vec::new();
         match self {
@@ -307,18 +174,159 @@ impl Into<Vec<u8>> for RequestFileTransferData {
     }
 }
 
-pub(crate) fn request_file_transfer(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_none() {
-        return Err(UdsError::SubFunctionError(service));
+impl ResponseData for RequestFileTransfer {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(sub_func) => {
+                let data_len = data.len();
+                match ModeOfOperation::try_from(sub_func)? {
+                    ModeOfOperation::AddFile => utils::data_length_check(data_len, 2, false)?,
+                    ModeOfOperation::DeleteFile => utils::data_length_check(data_len, 1, true)?,
+                    ModeOfOperation::ReplaceFile => utils::data_length_check(data_len, 2, false)?,
+                    ModeOfOperation::ReadFile => utils::data_length_check(data_len, 2, false)?,
+                    ModeOfOperation::ReadDir => utils::data_length_check(data_len, 2, false)?,
+                    ModeOfOperation::ResumeFile => utils::data_length_check(data_len, 2, false)?,
+                }
+
+                Ok(Response {
+                    service: Service::RequestFileTransfer,
+                    negative: false,
+                    sub_func: Some(SubFunction::new(sub_func)),
+                    data: data.to_vec(),
+                })
+            }
+            None => Err(UdsError::SubFunctionError(Service::RequestFileTransfer)),
+        }
     }
 
-    let sf = ModeOfOperation::try_from(sub_func.unwrap().0)?;
-    let _ = RequestFileTransferData::try_parse(data.as_slice(), Some(sf), cfg)?;
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::RequestFileTransfer
+            || response.sub_func.is_none() {
+            return Err(UdsError::ServiceError(service))
+        }
 
-    Ok(Response { service, negative: false, sub_func, data })
+        let sub_func: ModeOfOperation = response.sub_function().unwrap().function()?;
+        let data = &response.data;
+        let data_len = data.len();
+        let mut offset = 0;
+        match sub_func {
+            ModeOfOperation::AddFile => {
+                utils::data_length_check(data_len, offset + 1, false)?;
+
+                let lfi = data[offset];
+                offset += 1;
+                utils::data_length_check(data_len, offset + lfi as usize + 1, false)?;
+
+                let max_block_len = utils::slice_to_u128(&data[offset..offset + lfi as usize], ByteOrder::Big);
+                offset += lfi as usize;
+                let dfi = DataFormatIdentifier::from(data[offset]);
+                Ok(Self::AddFile {
+                    lfi, max_block_len, dfi
+                })
+            },
+            ModeOfOperation::DeleteFile => Ok(Self::DeleteFile),
+            ModeOfOperation::ReplaceFile => {
+                utils::data_length_check(data_len, offset + 1, false)?;
+
+                let lfi = data[offset];
+                offset += 1;
+                utils::data_length_check(data_len, offset + lfi as usize + 1, false)?;
+
+                let max_block_len = utils::slice_to_u128(&data[offset..offset + lfi as usize], ByteOrder::Big);
+                offset += lfi as usize;
+                let dfi = DataFormatIdentifier::from(data[offset]);
+                Ok(Self::ReplaceFile {
+                    lfi, max_block_len, dfi
+                })
+            },
+            ModeOfOperation::ReadFile => {
+                utils::data_length_check(data_len, offset + 1, false)?;
+
+                let lfi = data[offset];
+                offset += 1;
+                utils::data_length_check(data_len, offset + lfi as usize + 4, false)?;
+
+                let max_block_len = utils::slice_to_u128(&data[offset..offset + lfi as usize], ByteOrder::Big);
+                offset += lfi as usize;
+
+                let dfi = DataFormatIdentifier::from(data[offset]);
+                offset += 1;
+
+                let filesize_or_dir_param_len = u16::from_be_bytes([data[offset], data[offset + 1]]);
+                offset += 2;
+
+                utils::data_length_check(data_len, offset + filesize_or_dir_param_len as usize + 1, false)?;
+
+                let uncompressed_size_or_dir_len = utils::slice_to_u128(&data[offset..offset + filesize_or_dir_param_len as usize], ByteOrder::Big);
+                offset += filesize_or_dir_param_len as usize;
+
+                let compressed_size = utils::slice_to_u128(&data[offset..], ByteOrder::Big);
+
+                Ok(Self::ReadFile {
+                    lfi,
+                    max_block_len,
+                    dfi,
+                    filesize_or_dir_param_len,
+                    uncompressed_size_or_dir_len,
+                    compressed_size,
+                })
+            },
+            ModeOfOperation::ReadDir => {
+                utils::data_length_check(data_len, offset + 1, false)?;
+
+                let lfi = data[offset];
+                offset += 1;
+                utils::data_length_check(data_len, offset + lfi as usize + 4, false)?;
+
+                let max_block_len = utils::slice_to_u128(&data[offset..offset + lfi as usize], ByteOrder::Big);
+                offset += lfi as usize;
+
+                let dfi = data[offset];
+                offset += 1;
+                if dfi != 0x00 {
+                    return Err(UdsError::InvalidData(hex::encode(data)));
+                }
+                let dfi = DataFormatIdentifier(dfi);
+
+                let filesize_or_dir_param_len = u16::from_be_bytes([data[offset], data[offset + 1]]);
+                offset += 2;
+                let uncompressed_size_or_dir_len = utils::slice_to_u128(&data[offset..offset + filesize_or_dir_param_len as usize], ByteOrder::Big);
+
+                Ok(Self::ReadDir {
+                    lfi,
+                    max_block_len,
+                    dfi,
+                    filesize_or_dir_param_len,
+                    uncompressed_size_or_dir_len,
+                })
+            },
+            ModeOfOperation::ResumeFile => {
+                utils::data_length_check(data_len, offset + 1, false)?;
+
+                let lfi = data[offset];
+                offset += 1;
+                utils::data_length_check(data_len, offset + lfi as usize + 9, false)?;
+
+                let max_block_len = utils::slice_to_u128(&data[offset..offset + lfi as usize], ByteOrder::Big);
+                offset += lfi as usize;
+                let dfi = DataFormatIdentifier::from(data[offset]);
+                offset += 1;
+                let file_pos = <[u8; 8]>::try_from(&data[offset..])
+                    .map_err(|_| UdsError::InvalidData(hex::encode(data)))?;
+
+                Ok(Self::ResumeFile {
+                    lfi,
+                    max_block_len,
+                    dfi,
+                    file_pos,
+                })
+            },
+        }
+    }
+
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self.into()
+    }
 }

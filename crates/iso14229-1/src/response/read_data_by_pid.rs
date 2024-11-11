@@ -3,8 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, error::UdsError, Placeholder, response::Code, ResponseData, utils, Service};
-use crate::response::{Response, SubFunction};
+use crate::{Configuration, error::UdsError, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
 
 lazy_static!(
     pub static ref READ_DATA_BY_PERIOD_ID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -16,16 +15,37 @@ lazy_static!(
 );
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct ReadByPeriodIdData {
+pub struct ReadDataByPeriodId {
     pub did: u8,
     pub record: Vec<u8>,
 }
 
-impl<'a> TryFrom<&'a [u8]> for ReadByPeriodIdData {
-    type Error = UdsError;
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
-        let data_len = data.len();
-        utils::data_length_check(data_len, 2, false)?;
+impl ResponseData for ReadDataByPeriodId {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::ReadDataByPeriodId)),
+            None => {
+                let data_len = data.len();
+                utils::data_length_check(data_len, 2, false)?;
+
+                Ok(Response {
+                    service: Service::ReadDataByPeriodId,
+                    negative: false,
+                    sub_func: None,
+                    data: data.to_vec(),
+                })
+            }
+        }
+    }
+
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::ReadDataByPeriodId
+            || response.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
+        }
+
+        let data = &response.data;
         let mut offset = 0;
 
         let did = data[offset];
@@ -34,45 +54,12 @@ impl<'a> TryFrom<&'a [u8]> for ReadByPeriodIdData {
 
         Ok(Self { did, record })
     }
-}
 
-impl Into<Vec<u8>> for ReadByPeriodIdData {
-    fn into(mut self) -> Vec<u8> {
+    #[inline]
+    fn to_vec(mut self, _: &Configuration) -> Vec<u8> {
         let mut result = vec![self.did];
         result.append(&mut self.record);
 
         result
     }
 }
-
-impl ResponseData for ReadByPeriodIdData {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::ReadDataByPeriodId));
-        }
-
-        Self::try_from(data)
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
-pub(crate) fn read_data_by_pid(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = ReadByPeriodIdData::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Response { service, negative: false, sub_func, data })
-}
-

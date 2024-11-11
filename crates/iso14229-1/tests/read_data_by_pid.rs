@@ -13,7 +13,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function();
         assert_eq!(sub_func, None);
-        let data: request::ReadDataByPeriodId = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::ReadDataByPeriodId>(&cfg)?;
         assert_eq!(data, request::ReadDataByPeriodId {
             mode: TransmissionMode::SendAtSlowRate,
             did: vec![0x00],
@@ -23,7 +23,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function();
         assert_eq!(sub_func, None);
-        let data: request::ReadDataByPeriodId = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::ReadDataByPeriodId>(&cfg)?;
         assert_eq!(data, request::ReadDataByPeriodId {
             mode: TransmissionMode::SendAtMediumRate,
             did: vec![0x00],
@@ -33,27 +33,28 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function();
         assert_eq!(sub_func, None);
-        let data: request::ReadDataByPeriodId = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::ReadDataByPeriodId>(&cfg)?;
         assert_eq!(data, request::ReadDataByPeriodId {
             mode: TransmissionMode::SendAtFastRate,
             did: vec![0x00],
         });
 
-        let source = hex::decode("2A04")?;
+        let source = hex::decode("2A0400")?;
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function();
         assert_eq!(sub_func, None);
-        let data: request::ReadDataByPeriodId = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::ReadDataByPeriodId>(&cfg)?;
         assert_eq!(data, request::ReadDataByPeriodId {
             mode: TransmissionMode::StopSending,
-            did: vec![],
+            did: vec![0x00],
         });
 
-        let source = hex::decode("2A0400")?;
+        let source = hex::decode("2A04")?;
         let err = request::Request::try_from_cfg(source, &cfg).unwrap_err();
         match err {
-            UdsError::InvalidParam(v) => {
-                assert_eq!(v, "not empty period_id");
+            UdsError::InvalidDataLength { expect, actual } => {
+                assert_eq!(expect, 2);
+                assert_eq!(actual, 1);
             },
             _ => panic!("unexpected error: {:?}", err),
         }
@@ -69,8 +70,8 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function();
         assert_eq!(sub_func, None);
-        let data: response::ReadByPeriodIdData = response.data::<_, _>(&cfg)?;
-        assert_eq!(data, response::ReadByPeriodIdData {
+        let data = response.data::<response::ReadDataByPeriodId>(&cfg)?;
+        assert_eq!(data, response::ReadDataByPeriodId {
             did: 0x00,
             record: vec![0x00,]
         });

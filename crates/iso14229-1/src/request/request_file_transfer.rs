@@ -37,76 +37,6 @@ pub enum RequestFileTransfer {
     },
 }
 
-impl RequestData for RequestFileTransfer {
-    type SubFunc = ModeOfOperation;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        match sub_func {
-            Some(v) => {
-                let data_len = data.len();
-                utils::data_length_check(data_len, 3, false)?;
-                let mut offset = 0;
-
-                let len = u16::from_be_bytes([data[offset], data[offset + 1]]) as usize;
-                offset += 2;
-                utils::data_length_check(data_len, offset + len + 1, false)?;
-
-                let filepath = String::from_utf8(
-                    data[offset..offset + len].to_vec()
-                ).map_err(|_| UdsError::InvalidData(hex::encode(data)))?;
-                offset += len;
-
-                match v {
-                    ModeOfOperation::AddFile => {
-                        let dfi = DataFormatIdentifier::from(data[offset]);
-                        offset += 1;
-                        let filesize_len = data[offset];
-                        offset += 1;
-                        let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
-                        offset += filesize_len as usize;
-                        let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
-                        Ok(Self::AddFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
-                    },
-                    ModeOfOperation::ReplaceFile => {
-                        let dfi = DataFormatIdentifier::from(data[offset]);
-                        offset += 1;
-                        let filesize_len = data[offset];
-                        offset += 1;
-                        let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
-                        offset += filesize_len as usize;
-                        let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
-                        Ok(Self::ReplaceFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
-                    },
-                    ModeOfOperation::ResumeFile => {
-                        let dfi = DataFormatIdentifier::from(data[offset]);
-                        offset += 1;
-                        let filesize_len = data[offset];
-                        offset += 1;
-                        let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
-                        offset += filesize_len as usize;
-                        let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
-                        Ok(Self::ResumeFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
-                    },
-                    ModeOfOperation::DeleteFile => Ok(Self::DeleteFile { filepath }),
-                    ModeOfOperation::ReadDir => Ok(Self::ReadDir { filepath }),
-                    ModeOfOperation::ReadFile => {
-                        let dfi = DataFormatIdentifier::from(data[offset]);
-
-                        Ok(Self::ReadFile {
-                            filepath,
-                            dfi
-                        })
-                    },
-                }
-            },
-            None => panic!("Sub-function required"),
-        }
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
 impl Into<Vec<u8>> for RequestFileTransfer {
     fn into(self) -> Vec<u8> {
         let mut result = Vec::new();
@@ -167,18 +97,93 @@ impl Into<Vec<u8>> for RequestFileTransfer {
     }
 }
 
-pub(crate) fn request_file_transfer(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_none() {
-        return Err(UdsError::SubFunctionError(service));
+impl RequestData for RequestFileTransfer {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+        match sub_func {
+            Some(sub_func) => {
+                let (suppress_positive, sub_func) = utils::peel_suppress_positive(sub_func);
+
+                let data_len = data.len();
+                utils::data_length_check(data_len, 3, false)?;
+                let len = u16::from_be_bytes([data[0], data[1]]) as usize;
+                match ModeOfOperation::try_from(sub_func)? {
+                    ModeOfOperation::AddFile => utils::data_length_check(data_len, len + 2 + 2, false)?,
+                    ModeOfOperation::DeleteFile => utils::data_length_check(data_len, len + 2, true)?,
+                    ModeOfOperation::ReplaceFile => utils::data_length_check(data_len, len + 2 + 2, false)?,
+                    ModeOfOperation::ReadFile => utils::data_length_check(data_len, len + 2 + 1, true)?,
+                    ModeOfOperation::ReadDir => utils::data_length_check(data_len, len + 2, true)?,
+                    ModeOfOperation::ResumeFile => utils::data_length_check(data_len, len + 2 + 2, false)?,
+                }
+
+                Ok(Request {
+                    service: Service::RequestFileTransfer,
+                    sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                    data: data.to_vec(),
+                })
+            },
+            None => Err(UdsError::SubFunctionError(Service::RequestFileTransfer)),
+        }
     }
 
-    let sf = ModeOfOperation::try_from(sub_func.unwrap().function)?;
-    let _ = RequestFileTransfer::try_parse(data.as_slice(), Some(sf), cfg)?;
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service();
+        if service != Service::RequestFileTransfer
+            || request.sub_func.is_none() {
+            return Err(UdsError::ServiceError(service))
+        }
 
-    Ok(Request { service, sub_func, data })
+        let sub_func: ModeOfOperation = request.sub_function().unwrap().function()?;
+        let data = &request.data;
+        let mut offset = 0;
+        let len = u16::from_be_bytes([data[offset], data[offset + 1]]) as usize;
+        offset += 2;
+        let filepath = String::from_utf8(data[offset..offset + len].to_vec())
+            .map_err(|_| UdsError::InvalidData(hex::encode(data)))?;
+        offset += len;
+
+        match sub_func {
+            ModeOfOperation::AddFile => {
+                let dfi = DataFormatIdentifier::from(data[offset]);
+                offset += 1;
+                let filesize_len = data[offset];
+                offset += 1;
+                let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
+                offset += filesize_len as usize;
+                let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
+                Ok(Self::AddFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
+            }
+            ModeOfOperation::DeleteFile => Ok(Self::DeleteFile { filepath }),
+            ModeOfOperation::ReplaceFile => {
+                let dfi = DataFormatIdentifier::from(data[offset]);
+                offset += 1;
+                let filesize_len = data[offset];
+                offset += 1;
+                let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
+                offset += filesize_len as usize;
+                let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
+                Ok(Self::ReplaceFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
+            }
+            ModeOfOperation::ReadFile => {
+                let dfi = DataFormatIdentifier::from(data[offset]);
+
+                Ok(Self::ReadFile { filepath, dfi })
+            }
+            ModeOfOperation::ReadDir => Ok(Self::ReadDir { filepath }),
+            ModeOfOperation::ResumeFile => {
+                let dfi = DataFormatIdentifier::from(data[offset]);
+                offset += 1;
+                let filesize_len = data[offset];
+                offset += 1;
+                let uncompressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
+                offset += filesize_len as usize;
+                let compressed_size = utils::slice_to_u128(&data[offset..offset + filesize_len as usize], ByteOrder::Big);
+                Ok(Self::ResumeFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
+            }
+        }
+    }
+
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self.into()
+    }
 }

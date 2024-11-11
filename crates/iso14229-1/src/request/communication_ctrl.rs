@@ -22,7 +22,7 @@ impl Into<u16> for NodeId {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CommunicationCtrl {
     pub comm_type: CommunicationType,
     pub node_id: Option<NodeId>,
@@ -48,46 +48,64 @@ impl CommunicationCtrl {
 }
 
 impl RequestData for CommunicationCtrl {
-    type SubFunc = CommunicationCtrlType;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
         match sub_func {
-            Some(v) => {
+            Some(sub_func) => {
+                let (suppress_positive, sub_func) = utils::peel_suppress_positive(sub_func);
                 let data_len = data.len();
-                utils::data_length_check(data_len, 1, false)?;
-
-                let mut offset = 0;
-                let comm_type = data[offset];
-                offset += 1;
-
-                let node_id = match v {
+                match CommunicationCtrlType::try_from(sub_func)? {
                     CommunicationCtrlType::EnableRxAndDisableTxWithEnhancedAddressInformation |
                     CommunicationCtrlType::EnableRxAndTxWithEnhancedAddressInformation => {
-
-                        utils::data_length_check(data_len, offset + 2, true)?;
-
-                        Some(NodeId::try_from(
-                            u16::from_be_bytes([data[offset], data[offset + 1]])
-                        )?)
+                        utils::data_length_check(data_len, 3, true)?;
                     },
-                    _ => None,
+                    _ => utils::data_length_check(data_len, 1, true)?,
                 };
 
-                Ok(Self {
-                    comm_type: CommunicationType(comm_type),
-                    node_id,
+                Ok(Request {
+                    service: Service::CommunicationCtrl,
+                    sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                    data: data.to_vec(),
                 })
             },
-            None => panic!("Sub-function required"),
+            None => Err(UdsError::SubFunctionError(Service::CommunicationCtrl))
         }
     }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
 
-impl Into<Vec<u8>> for CommunicationCtrl {
-    fn into(self) -> Vec<u8> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service;
+        if service != Service::CommunicationCtrl
+            || request.sub_func.is_none() {
+            return Err(UdsError::ServiceError(service));
+        }
+
+        let sub_func: CommunicationCtrlType = request.sub_function().unwrap().function()?;
+
+        let data = &request.data;
+        let data_len = data.len();
+
+        let mut offset = 0;
+        let comm_type = data[offset];
+        offset += 1;
+        let node_id = match sub_func {
+            CommunicationCtrlType::EnableRxAndDisableTxWithEnhancedAddressInformation |
+            CommunicationCtrlType::EnableRxAndTxWithEnhancedAddressInformation => {
+
+                utils::data_length_check(data_len, offset + 2, true)?;
+
+                Some(NodeId::try_from(
+                    u16::from_be_bytes([data[offset], data[offset + 1]])
+                )?)
+            },
+            _ => None,
+        };
+
+        Ok(Self {
+            comm_type: CommunicationType(comm_type),
+            node_id,
+        })
+    }
+
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         let mut result = vec![self.comm_type.0];
         if let Some(v) = self.node_id {
             let v: u16 = v.into();
@@ -96,20 +114,4 @@ impl Into<Vec<u8>> for CommunicationCtrl {
 
         result
     }
-}
-
-pub(crate) fn communication_ctrl(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_none() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let sf = CommunicationCtrlType::try_from(sub_func.unwrap().function)?;
-    let _ = CommunicationCtrl::try_parse(data.as_slice(), Some(sf), cfg)?;
-
-    Ok(Request { service, sub_func, data })
 }

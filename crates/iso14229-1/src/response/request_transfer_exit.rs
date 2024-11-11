@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, UdsError, response::{Code, Response, SubFunction}, Service};
+use crate::{Configuration, UdsError, response::{Code, Response, SubFunction}, Service, ResponseData};
 
 lazy_static!(
     pub static ref REQUEST_TRANSFER_EXIT_NEGATIVES: HashSet<Code>
@@ -15,15 +15,39 @@ lazy_static!(
     ]);
 );
 
-pub(crate) fn request_transfer_exit(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    _: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct RequestTransferExit {
+    pub data: Vec<u8>,
+}
+
+impl ResponseData for RequestTransferExit {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::RequestTransferExit)),
+            None => {
+                
+                Ok(Response {
+                    service: Service::RequestTransferExit,
+                    negative: false,
+                    sub_func: None,
+                    data: data.to_vec(),
+                })
+            }
+        }
     }
 
-    Ok(Response { service, negative: false, sub_func, data })
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::RequestTransferExit
+            || response.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
+        }
+
+        Ok(Self { data: response.data.clone() })
+    }
+
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
+        self.data
+    }
 }

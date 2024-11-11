@@ -1,7 +1,7 @@
 //! request of Service 35
 
 
-use crate::{Configuration, DataFormatIdentifier, UdsError, MemoryLocation, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, DataFormatIdentifier, UdsError, MemoryLocation, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RequestUpload {
@@ -10,15 +10,25 @@ pub struct RequestUpload {
 }
 
 impl RequestData for RequestUpload {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::RequestUpload));
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::RequestUpload)),
+            None => {
+                utils::data_length_check(data.len(), 2, false)?;
+
+                Ok(Request { service: Service::RequestUpload, sub_func: None, data: data.to_vec(), })
+            }
+        }
+    }
+
+    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service();
+        if service != Service::RequestUpload
+            || request.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
         }
 
-        utils::data_length_check(data.len(), 2, false)?;
-
+        let data = &request.data;
         let mut offset = 0;
         let dfi = DataFormatIdentifier(data[offset]);
         offset += 1;
@@ -27,6 +37,7 @@ impl RequestData for RequestUpload {
 
         Ok(Self { dfi, mem_loc })
     }
+
     #[inline]
     fn to_vec(self, cfg: &Configuration) -> Vec<u8> {
         let mut result = vec![self.dfi.0, ];
@@ -34,19 +45,4 @@ impl RequestData for RequestUpload {
 
         result
     }
-}
-
-pub(crate) fn request_upload(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = RequestUpload::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Request { service, sub_func, data })
 }

@@ -58,7 +58,7 @@ pub use routine_ctrl::*;
 mod request_load;           // 0x34|0x35
 pub use request_load::*;
 mod transfer_data;          // 0x36
-pub use transfer_data::TransferData;
+pub use transfer_data::*;
 mod request_transfer_exit;  // 0x37
 pub use request_transfer_exit::*;
 #[cfg(any(feature = "std2013", feature = "std2020"))]

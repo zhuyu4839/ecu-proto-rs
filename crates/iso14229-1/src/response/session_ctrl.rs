@@ -72,6 +72,7 @@ impl<'a> TryFrom<&'a [u8]> for SessionTiming {
 }
 
 impl Into<Vec<u8>> for SessionTiming {
+    #[inline]
     fn into(self) -> Vec<u8> {
         let mut result = self.p2.to_be_bytes().to_vec();
         result.extend(self.p2_star.to_be_bytes());
@@ -79,34 +80,42 @@ impl Into<Vec<u8>> for SessionTiming {
     }
 }
 
-impl ResponseData for SessionTiming {
-    type SubFunc = SessionType;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_none() {
-            return Err(UdsError::SubFunctionError(Service::SessionCtrl));
+#[derive(Debug, Default, Clone, Eq, PartialEq)]
+pub struct SessionCtrl(pub SessionTiming);
+
+impl ResponseData for SessionCtrl {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(sub_func) => {
+                let _ = SessionType::try_from(sub_func)?;
+
+                utils::data_length_check(data.len(), 4, true)?;
+
+                Ok(Response {
+                    service: Service::SessionCtrl,
+                    negative: false,
+                    sub_func: Some(SubFunction::new(sub_func)),
+                    data: data.to_vec(),
+                })
+            },
+            None => Err(UdsError::SubFunctionError(Service::SessionCtrl)),
+        }
+    }
+
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::SessionCtrl
+            || response.sub_func.is_none() {
+            return Err(UdsError::ServiceError(service))
         }
 
-        Self::try_from(data)
+        let timing = SessionTiming::try_from(response.data.as_slice())?;
+
+        Ok(Self(timing))
     }
+
     #[inline]
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
+        self.0.into()
     }
-}
-
-pub(crate) fn session_ctrl(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_none() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let sf = SessionType::try_from(sub_func.unwrap().0)?;
-    let _ = SessionTiming::try_parse(data.as_slice(), Some(sf), cfg)?;
-
-    Ok(Response { service, negative: false, sub_func, data })
 }

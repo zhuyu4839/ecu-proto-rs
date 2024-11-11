@@ -2,33 +2,23 @@
 
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{request, response, CommunicationCtrlType, CommunicationType, Configuration, RequestData, Service, TryFromWithCfg};
+    use iso14229_1::{request, response, CommunicationCtrlType, CommunicationType, Configuration, Service, TryFromWithCfg};
 
     #[test]
     fn test_request() -> anyhow::Result<()> {
-        let source = hex::decode("280203")?;
-
-        let request = request::CommunicationCtrl::new(
-            CommunicationCtrlType::DisableRxAndEnableTx,
-            CommunicationType::NormalCommunicationMessages |
-                CommunicationType::NetworkManagementCommunicationMessages,
-            None,
-        )?;
-        let result: Vec<_> = request.into();
-        assert_eq!(result, source[2..].to_vec());
-
         let cfg = Configuration::default();
-        let request = request::CommunicationCtrl::try_parse(
-            &source[2..],
-            Some(CommunicationCtrlType::DisableRxAndEnableTx),
-            &cfg,
-        )?;
 
-        assert_eq!(request.comm_type, CommunicationType::new(
-            CommunicationType::NormalCommunicationMessages | CommunicationType::NetworkManagementCommunicationMessages,
-            0x00)?
-        );
-        assert_eq!(request.node_id, None);
+        let source = hex::decode("280203")?;
+        let request = request::Request::try_from_cfg(source, &cfg)?;
+        let data = request.data::<request::CommunicationCtrl>(&cfg)?;
+
+        assert_eq!(data,
+                   request::CommunicationCtrl::new(
+                       CommunicationCtrlType::DisableRxAndEnableTx,
+                       CommunicationType::NormalCommunicationMessages | CommunicationType::NetworkManagementCommunicationMessages,
+                       None,
+        )?);
+        assert_eq!(data.node_id, None);
 
         Ok(())
     }
@@ -41,8 +31,8 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function().unwrap();
         assert_eq!(sub_func.function::<CommunicationCtrlType>()?, CommunicationCtrlType::EnableRxAndDisableTx);
-        let data: Vec<u8> = response.data::<_, _>(&cfg)?;
-        assert!(data.is_empty());
+        let data = response.data::<response::CommunicationCtrl>(&cfg)?;
+        assert!(data.data.is_empty());
 
         Ok(())
     }

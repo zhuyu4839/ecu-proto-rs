@@ -24,7 +24,10 @@ mod tests {
         let source = hex::decode("100100")?;
         let err = request::Request::try_from_cfg(source, &cfg).unwrap_err();
         match err {
-            UdsError::InvalidData(v) => assert_eq!(v, "00"),
+            UdsError::InvalidDataLength { expect, actual } => {
+                assert_eq!(expect, 0);
+                assert_eq!(actual, 1);
+            },
             _ => panic!("Expected Error::InvalidData"),
         }
 
@@ -42,9 +45,9 @@ mod tests {
         assert_eq!(response.is_negative(), false);
 
         let cfg = Configuration::default();
-        let session: response::SessionTiming = response.data::<SessionType, _>(&cfg)?;
-        assert_eq!(session.p2_ms(), 50);
-        assert_eq!(session.p2_star_ms(), 5_000);
+        let session = response.data::<response::SessionCtrl>(&cfg)?;
+        assert_eq!(session.0.p2_ms(), 50);
+        assert_eq!(session.0.p2_star_ms(), 5_000);
 
         Ok(())
     }

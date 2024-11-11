@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, DataIdentifier, DIDData, error::UdsError, Placeholder, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
+use crate::{Configuration, DataIdentifier, DIDData, error::UdsError, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
 
 lazy_static!(
     pub static ref READ_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -20,28 +20,54 @@ pub struct ReadDID {
     pub others: Vec<DIDData>,
 }
 
-impl Into<Vec<u8>> for ReadDID {
-    fn into(self) -> Vec<u8> {
-        let mut result: Vec<_> = self.data.into();
-        self.others.into_iter()
-            .for_each(|v| {
-                let mut tmp: Vec<_> = v.into();
-                result.append(&mut tmp);
-            });
-
-        result
-    }
-}
-
 impl ResponseData for ReadDID {
-    type SubFunc = Placeholder;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::ReadDID));
+    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::ReadDID)),
+            None => {
+                let data_len = data.len();
+                let mut offset = 0;
+                utils::data_length_check(data_len, offset + 2, false)?;
+                let did = DataIdentifier::from(
+                    u16::from_be_bytes([data[offset], data[offset + 1]])
+                );
+                offset += 2;
+                let &did_len = cfg.did_cfg.get(&did)
+                    .ok_or(UdsError::DidNotSupported(did))?;
+                utils::data_length_check(data_len, offset + did_len, false)?;
+                offset += did_len;
+
+                while data_len > offset {
+                    utils::data_length_check(data_len, offset + 2, false)?;
+                    let did = DataIdentifier::from(
+                        u16::from_be_bytes([data[offset], data[offset + 1]])
+                    );
+                    offset += 2;
+                    let &did_len = cfg.did_cfg.get(&did)
+                        .ok_or(UdsError::DidNotSupported(did))?;
+                    utils::data_length_check(data_len, offset + did_len, false)?;
+                    offset += did_len;
+                }
+                
+                Ok(Response {
+                    service: Service::ReadDID,
+                    negative: false,
+                    sub_func: None,
+                    data: data.to_vec(),
+                })
+            }
+        }
+    }
+
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::ReadDID
+            || response.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
         }
 
+        let data = &response.data;
         let data_len = data.len();
-        utils::data_length_check(data_len, 2, false)?;
         let mut offset = 0;
 
         let did = DataIdentifier::from(
@@ -50,7 +76,6 @@ impl ResponseData for ReadDID {
         offset += 2;
         let &did_len = cfg.did_cfg.get(&did)
             .ok_or(UdsError::DidNotSupported(did))?;
-        utils::data_length_check(data_len, offset + did_len, false)?;
 
         let context = DIDData {
             did,
@@ -60,15 +85,12 @@ impl ResponseData for ReadDID {
 
         let mut others = Vec::new();
         while data_len > offset {
-            utils::data_length_check(data_len, offset + 2, false)?;
-
             let did = DataIdentifier::from(
                 u16::from_be_bytes([data[offset], data[offset + 1]])
             );
             offset += 2;
             let &did_len = cfg.did_cfg.get(&did)
                 .ok_or(UdsError::DidNotSupported(did))?;
-            utils::data_length_check(data_len, offset + did_len, false)?;
 
             others.push(DIDData {
                 did,
@@ -79,23 +101,16 @@ impl ResponseData for ReadDID {
 
         Ok(Self { data: context, others })
     }
+
     #[inline]
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
+        let mut result: Vec<_> = self.data.into();
+        self.others.into_iter()
+            .for_each(|v| {
+                let mut tmp: Vec<_> = v.into();
+                result.append(&mut tmp);
+            });
+
+        result
     }
-}
-
-pub(crate) fn read_did(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = ReadDID::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Response { service, negative: false, sub_func, data })
 }

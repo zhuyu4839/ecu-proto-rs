@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{request, response, Configuration, Service, TransferData, TryFromWithCfg};
+    use iso14229_1::{request, response, Configuration, Service, TryFromWithCfg};
 
     #[test]
     fn test_request() -> anyhow::Result<()> {
@@ -11,7 +11,7 @@ mod tests {
         let source = hex::decode("360100112233445566778899")?;
         let request = request::Request::try_from_cfg(source, &cfg)?;
         assert_eq!(request.sub_function(), None);
-        let data: TransferData = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::TransferData>(&cfg)?;
         assert_eq!(data.sequence, 0x01);
         assert_eq!(data.data, vec![0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99]);
 
@@ -25,7 +25,7 @@ mod tests {
         let source = hex::decode("760100112233445566778899")?;
         let response = response::Response::try_from_cfg(source, &cfg)?;
         assert_eq!(response.sub_function(), None);
-        let data: TransferData = response.data::<_, _>(&cfg)?;
+        let data = response.data::<response::TransferData>(&cfg)?;
         assert_eq!(data.sequence, 0x01);
         assert_eq!(data.data, vec![0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99]);
 

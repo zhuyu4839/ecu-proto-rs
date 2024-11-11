@@ -3,8 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{AdministrativeParameter, Configuration, error::UdsError, Placeholder, response::Code, ResponseData, Service, SignatureEncryptionCalculation, utils};
-use crate::response::{Response, SubFunction};
+use crate::{AdministrativeParameter, Configuration, error::UdsError, response::{Code, Response, SubFunction}, ResponseData, Service, SignatureEncryptionCalculation, utils};
 
 lazy_static!(
     pub static ref SECURED_DATA_TRANS_NEGATIVES: HashSet<Code>
@@ -116,11 +115,32 @@ pub enum SecuredDataTrans {
     Unsuccessful(SecuredDataTransNegative),
 }
 
-impl<'a> TryFrom<&'a [u8]> for SecuredDataTrans {
-    type Error = UdsError;
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
+impl ResponseData for SecuredDataTrans {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::SecuredDataTrans)),
+            None => {
+                utils::data_length_check(data.len(), 8, false)?;
+
+                Ok(Response {
+                    service: Service::SecuredDataTrans,
+                    negative: false,
+                    sub_func: None,
+                    data: data.to_vec(),
+                })
+            }
+        }
+    }
+
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service;
+        if service != Service::SecuredDataTrans
+            || response.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service));
+        }
+
+        let data = &response.data;
         let data_len = data.len();
-        utils::data_length_check(data_len, 8, false)?;
         let mut offset = 0;
         let apar = AdministrativeParameter::from(u16::from_be_bytes([data[offset], data[offset + 1]]));
         offset += 2;
@@ -177,10 +197,8 @@ impl<'a> TryFrom<&'a [u8]> for SecuredDataTrans {
             ))
         }
     }
-}
 
-impl Into<Vec<u8>> for SecuredDataTrans {
-    fn into(self) -> Vec<u8> {
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         let mut result = Vec::new();
         match self {
             Self::Successful(mut v) => {
@@ -208,36 +226,4 @@ impl Into<Vec<u8>> for SecuredDataTrans {
 
         result
     }
-}
-
-impl ResponseData for SecuredDataTrans {
-    type SubFunc = Placeholder;
-
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::SecuredDataTrans));
-        }
-
-        Self::try_from(data)
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
-pub(crate) fn secured_data_trans(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = SecuredDataTrans::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Response { service, negative: false, sub_func, data })
 }

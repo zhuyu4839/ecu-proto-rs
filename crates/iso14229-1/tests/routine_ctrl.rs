@@ -12,7 +12,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<RoutineCtrlType>()?, RoutineCtrlType::StartRoutine);
-        let data: request::RoutineCtrl = request.data::<RoutineCtrlType, _>(&cfg)?;
+        let data = request.data::<request::RoutineCtrl>(&cfg)?;
         assert_eq!(data.routine_id, CheckProgrammingDependencies);
         assert_eq!(data.option_record, vec![]);
 
@@ -20,7 +20,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<RoutineCtrlType>()?, RoutineCtrlType::StartRoutine);
-        let data: request::RoutineCtrl = request.data::<RoutineCtrlType, _>(&cfg)?;
+        let data = request.data::<request::RoutineCtrl>(&cfg)?;
         assert_eq!(data.routine_id, CheckProgrammingDependencies);
         assert_eq!(data.option_record, hex::decode("112233445566")?);
 
@@ -35,7 +35,7 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function().unwrap();
         assert_eq!(sub_func.function::<RoutineCtrlType>()?, RoutineCtrlType::StartRoutine);
-        let data: response::RoutineCtrl = response.data::<RoutineCtrlType, _>(&cfg)?;
+        let data = response.data::<response::RoutineCtrl>(&cfg)?;
         assert_eq!(data.routine_id, CheckProgrammingDependencies);
         assert_eq!(data.routine_info, None);
         assert_eq!(data.routine_status, vec![]);
@@ -44,7 +44,7 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function().unwrap();
         assert_eq!(sub_func.function::<RoutineCtrlType>()?, RoutineCtrlType::StartRoutine);
-        let data: response::RoutineCtrl = response.data::<RoutineCtrlType, _>(&cfg)?;
+        let data = response.data::<response::RoutineCtrl>(&cfg)?;
 
         assert_eq!(data.routine_id, CheckProgrammingDependencies);
         assert_eq!(data.routine_info, Some(0x11));

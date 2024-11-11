@@ -3,8 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, error::UdsError, MemoryLocation, Placeholder, response::Code, ResponseData, Service};
-use crate::response::{Response, SubFunction};
+use crate::{Configuration, error::UdsError, MemoryLocation, response::{Code, Response, SubFunction}, ResponseData, Service, utils};
 
 lazy_static!(
     pub static ref WRITE_MEM_BY_ADDR_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -21,32 +20,34 @@ lazy_static!(
 pub struct WriteMemByAddr(pub MemoryLocation);
 
 impl ResponseData for WriteMemByAddr {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::WriteMemByAddr));
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::WriteMemByAddr)),
+            None => {
+                utils::data_length_check(data.len(), 3, false)?;
+
+                Ok(Response {
+                    service: Service::WriteMemByAddr,
+                    negative: false,
+                    sub_func: None,
+                    data: data.to_vec(),
+                })
+            }
+        }
+    }
+
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::WriteMemByAddr
+            || response.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
         }
 
-        Ok(Self(MemoryLocation::from_slice(data, cfg)?))
+        Ok(Self(MemoryLocation::from_slice(&response.data, cfg)?))
     }
+
     #[inline]
     fn to_vec(self, cfg: &Configuration) -> Vec<u8> {
         self.0.to_vec(cfg)
     }
-}
-
-pub(crate) fn write_mem_by_addr(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = WriteMemByAddr::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Response { service, negative: false, sub_func, data })
 }

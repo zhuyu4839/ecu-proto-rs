@@ -3,7 +3,7 @@
 
 use crate::{Configuration, UdsError, LinkCtrlMode, LinkCtrlType, request::{Request, SubFunction}, RequestData, utils, Service};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LinkCtrl {
     VerifyModeTransitionWithFixedParameter(LinkCtrlMode), // 0x01
     VerifyModeTransitionWithSpecificParameter(utils::U24), // 0x02
@@ -13,53 +13,68 @@ pub enum LinkCtrl {
 }
 
 impl RequestData for LinkCtrl {
-    type SubFunc = LinkCtrlType;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
         match sub_func {
-            Some(v) => {
+            Some(sub_func) => {
+                let (suppress_positive, sub_func) = utils::peel_suppress_positive(sub_func);
+
                 let data_len = data.len();
-                let offset = 0;
-                match v {
-                    LinkCtrlType::VerifyModeTransitionWithFixedParameter => {
-                        utils::data_length_check(data_len, offset + 1, true)?;
-
-                        Ok(Self::VerifyModeTransitionWithFixedParameter(
-                                LinkCtrlMode::try_from(data[offset])?
-                            ))
-                    },
-                    LinkCtrlType::VerifyModeTransitionWithSpecificParameter => {
-                        utils::data_length_check(data_len, offset + 3, true)?;
-
-                        Ok(Self::VerifyModeTransitionWithSpecificParameter(
-                                utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]])
-                            ))
-                    },
-                    LinkCtrlType::TransitionMode => {
-                        utils::data_length_check(data_len, offset, true)?;
-                        Ok(Self::TransitionMode)
-                    },
-                    LinkCtrlType::VehicleManufacturerSpecific(_) => {
-                        Ok(Self::VehicleManufacturerSpecific(data[offset..].to_vec()))
-                    },
-                    LinkCtrlType::SystemSupplierSpecific(_) => {
-                        Ok(Self::SystemSupplierSpecific(data[offset..].to_vec()))
-                    },
-                    LinkCtrlType::Reserved(_) => {
-                        Ok(Self::SystemSupplierSpecific(data[offset..].to_vec()))
-                    }
+                match LinkCtrlType::try_from(sub_func)? {
+                    LinkCtrlType::VerifyModeTransitionWithFixedParameter => utils::data_length_check(data_len, 1, true)?,
+                    LinkCtrlType::VerifyModeTransitionWithSpecificParameter => utils::data_length_check(data_len, 3, true)?,
+                    LinkCtrlType::TransitionMode => utils::data_length_check(data_len, 0, true)?,
+                    LinkCtrlType::VehicleManufacturerSpecific(_) => {}
+                    LinkCtrlType::SystemSupplierSpecific(_) => {}
+                    LinkCtrlType::Reserved(_) => {}
                 }
+
+                Ok(Request {
+                    service: Service::LinkCtrl,
+                    sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                    data: data.to_vec(),
+                })
             },
-            None => panic!("Sub-function required"),
+            None => Err(UdsError::SubFunctionError(Service::LinkCtrl)),
         }
     }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
 
-impl Into<Vec<u8>> for LinkCtrl {
-    fn into(self) -> Vec<u8> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service();
+        if service != Service::LinkCtrl
+            || request.sub_func.is_none() {
+            return Err(UdsError::ServiceError(service))
+        }
+
+        let sub_func: LinkCtrlType = request.sub_function().unwrap().function()?;
+        let data = &request.data;
+        let offset = 0;
+        match sub_func {
+            LinkCtrlType::VerifyModeTransitionWithFixedParameter => {
+                Ok(Self::VerifyModeTransitionWithFixedParameter(
+                    LinkCtrlMode::try_from(data[offset])?
+                ))
+            },
+            LinkCtrlType::VerifyModeTransitionWithSpecificParameter => {
+                Ok(Self::VerifyModeTransitionWithSpecificParameter(
+                    utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]])
+                ))
+            },
+            LinkCtrlType::TransitionMode => {
+                Ok(Self::TransitionMode)
+            },
+            LinkCtrlType::VehicleManufacturerSpecific(_) => {
+                Ok(Self::VehicleManufacturerSpecific(data[offset..].to_vec()))
+            },
+            LinkCtrlType::SystemSupplierSpecific(_) => {
+                Ok(Self::SystemSupplierSpecific(data[offset..].to_vec()))
+            },
+            LinkCtrlType::Reserved(_) => {
+                Ok(Self::SystemSupplierSpecific(data[offset..].to_vec()))
+            }
+        }
+    }
+
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         let mut result = Vec::new();
 
         match self {
@@ -80,20 +95,4 @@ impl Into<Vec<u8>> for LinkCtrl {
 
         result
     }
-}
-
-pub(crate) fn link_ctrl(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_none() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let sf = LinkCtrlType::try_from(sub_func.unwrap().function)?;
-    let _ = LinkCtrl::try_parse(data.as_slice(), Some(sf), cfg)?;
-
-    Ok(Request { service, sub_func, data })
 }

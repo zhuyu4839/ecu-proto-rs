@@ -12,7 +12,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<DefinitionType>()?, DefinitionType::DefineByIdentifier);
-        let data: request::DynamicallyDefineDID = request.data::<DefinitionType, _>(&cfg)?;
+        let data = request.data::<request::DynamicallyDefineDID>(&cfg)?;
         match data {
             request::DynamicallyDefineDID::DefineByIdentifier {
                 did,
@@ -45,7 +45,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<DefinitionType>()?, DefinitionType::DefineByMemoryAddress);
-        let data: request::DynamicallyDefineDID = request.data::<DefinitionType, _>(&cfg)?;
+        let data = request.data::<request::DynamicallyDefineDID>(&cfg)?;
         match data {
             request::DynamicallyDefineDID::DefineByMemoryAddress {
                 did,
@@ -67,7 +67,7 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<DefinitionType>()?, DefinitionType::ClearDynamicallyDefinedDataIdentifier);
-        let data: request::DynamicallyDefineDID = request.data::<DefinitionType, _>(&cfg)?;
+        let data = request.data::<request::DynamicallyDefineDID>(&cfg)?;
         match data {
             request::DynamicallyDefineDID::ClearDynamicallyDefinedDataIdentifier(v) =>
                 assert_eq!(v, Some(DynamicallyDID::try_from(0xF302)?)),
@@ -85,7 +85,7 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function().unwrap();
         assert_eq!(sub_func.function::<DefinitionType>()?, DefinitionType::DefineByIdentifier);
-        let data: response::DynamicallyDefineDID = response.data::<DefinitionType, _>(&cfg)?;
+        let data = response.data::<response::DynamicallyDefineDID>(&cfg)?;
         assert_eq!(data, response::DynamicallyDefineDID(Some(DynamicallyDID::try_from(0xF302)?)));
 
         Ok(())

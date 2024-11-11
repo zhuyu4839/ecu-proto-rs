@@ -12,14 +12,14 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<SecurityAccessLevel>()?, SecurityAccessLevel::new(0x01)?);
-        let data: request::SecurityAccess = request.data::<SecurityAccessLevel, _>(&cfg)?;
+        let data = request.data::<request::SecurityAccess>(&cfg)?;
         assert_eq!(data, request::SecurityAccess { data: vec![] });
 
         let source = hex::decode("270111223344")?;
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<SecurityAccessLevel>()?, SecurityAccessLevel::new(0x01)?);
-        let data: request::SecurityAccess = request.data::<SecurityAccessLevel, _>(&cfg)?;
+        let data = request.data::<request::SecurityAccess>(&cfg)?;
         assert_eq!(data, request::SecurityAccess { data: vec![0x11, 0x22, 0x33, 0x44] });
 
         Ok(())
@@ -33,7 +33,7 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function().unwrap();
         assert_eq!(sub_func.function::<SecurityAccessLevel>()?, SecurityAccessLevel::new(0x02)?);
-        let data: response::SecurityAccess = response.data::<SecurityAccessLevel, _>(&cfg)?;
+        let data = response.data::<response::SecurityAccess>(&cfg)?;
         assert_eq!(data, response::SecurityAccess { key: vec![0x11, 0x22, 0x33, 0x44] });
 
         Ok(())

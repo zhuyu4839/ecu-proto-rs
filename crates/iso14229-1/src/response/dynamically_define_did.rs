@@ -2,8 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, DefinitionType, DynamicallyDID, UdsError, Placeholder, response::Code, ResponseData, Service};
-use crate::response::{Response, SubFunction};
+use crate::{Configuration, DefinitionType, DynamicallyDID, UdsError, response::{Code, Response, SubFunction}, ResponseData, Service};
 
 lazy_static!(
     pub static ref DYNAMICAL_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -18,9 +17,37 @@ lazy_static!(
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct DynamicallyDefineDID(pub Option<DynamicallyDID>);
 
-impl<'a> TryFrom<&'a [u8]> for DynamicallyDefineDID {
-    type Error = UdsError;
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
+impl ResponseData for DynamicallyDefineDID {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(sub_func) => {
+                let _ = DefinitionType::try_from(sub_func)?;
+
+                let data_len = data.len();
+                match data_len {
+                    0 | 2 => {},
+                    _ => return Err(UdsError::InvalidDataLength { expect: 0, actual: data_len }),
+                }
+
+                Ok(Response {
+                    service: Service::DynamicalDefineDID,
+                    negative: false,
+                    sub_func: Some(SubFunction::new(sub_func)),
+                    data: data.to_vec(),
+                })
+            }
+            None => Err(UdsError::SubFunctionError(Service::DynamicalDefineDID)),
+        }
+    }
+
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service;
+        if service != Service::DynamicalDefineDID
+            || response.sub_func.is_none() {
+            return Err(UdsError::ServiceError(service));
+        }
+
+        let data = &response.data;
         let data_len = data.len();
         let offset = 0;
 
@@ -34,45 +61,12 @@ impl<'a> TryFrom<&'a [u8]> for DynamicallyDefineDID {
 
         Ok(Self(dynamic))
     }
-}
 
-impl Into<Vec<u8>> for DynamicallyDefineDID {
-    fn into(self) -> Vec<u8> {
+    #[inline]
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         match self.0 {
             Some(v) => v.into(),
             None => vec![],
         }
     }
-}
-
-impl ResponseData for DynamicallyDefineDID {
-    type SubFunc = DefinitionType;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_none() {
-            return Err(UdsError::SubFunctionError(Service::DynamicalDefineDID));
-        }
-
-        Self::try_from(data)
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
-pub(crate) fn dyn_define_did(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_none() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let sf = DefinitionType::try_from(sub_func.unwrap().0)?;
-    let _ = DynamicallyDefineDID::try_parse(data.as_slice(), Some(sf), cfg)?;
-
-    Ok(Response { service, negative: false, sub_func, data })
 }

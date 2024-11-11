@@ -3,8 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{ByteOrder, Configuration, error::UdsError, LengthFormatIdentifier, Placeholder, ResponseData, utils, Service};
-use super::{Code, Response, SubFunction};
+use crate::{ByteOrder, Configuration, error::UdsError, LengthFormatIdentifier, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
 
 lazy_static!(
     pub static ref REQUEST_DOWNLOAD_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -41,13 +40,30 @@ impl RequestDownload {
 }
 
 impl ResponseData for RequestDownload {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::RequestDownload));
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::RequestDownload)),
+            None => {
+                utils::data_length_check(data.len(), 2, false)?;
+
+                Ok(Response {
+                    service: Service::RequestDownload,
+                    negative: false,
+                    sub_func: None,
+                    data: data.to_vec(),
+                })
+            }
+        }
+    }
+
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::RequestDownload
+            || response.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
         }
 
+        let data = &response.data;
         let mut offset = 0;
         utils::data_length_check(data.len(), 1, false)?;
         let lfi = LengthFormatIdentifier::try_from(data[offset])?;
@@ -66,30 +82,9 @@ impl ResponseData for RequestDownload {
             max_num_of_block_len,
         })
     }
+
     #[inline]
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        let mut result = vec![self.lfi.0];
-        let mut max_num_of_block_len = self.max_num_of_block_len.to_le_bytes().to_vec();
-        max_num_of_block_len.resize(self.lfi.max_number_of_block_length(), Default::default());
-        max_num_of_block_len.reverse();
-
-        result.append(&mut max_num_of_block_len);
-
-        result
+        todo!()
     }
-}
-
-pub(crate) fn request_download(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = RequestDownload::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Response { service, negative: false, sub_func, data })
 }

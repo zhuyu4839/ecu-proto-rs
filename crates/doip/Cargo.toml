@@ -7,6 +7,11 @@ authors = ["zhuyu <zhuyu4839@gmail.com>"]
 description = "A DoIP protocol."
 homepage = "https://github.com/zhuyu4839/ecu-proto-rs"
 repository = "https://github.com/zhuyu4839/ecu-proto-rs"
+keywords = [
+    "automotive",
+    "UDS",
+    "DoIP"
+]
 
 [dependencies]
 log = { workspace = true }

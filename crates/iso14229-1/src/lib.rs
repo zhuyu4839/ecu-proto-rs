@@ -105,29 +105,12 @@ impl Display for Service {
 /// otherwise return Error
 pub type SecurityAlgo = fn(u8, Vec<u8>, Vec<u8>) -> Result<Option<Vec<u8>>, UdsError>;
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum ByteOrder {
     Big,
+    #[default]
     Little,
     Native,
-}
-
-/// The sub-function placeholder
-#[derive(Debug, Copy, Clone)]
-pub struct Placeholder;
-
-impl TryFrom<u8> for Placeholder{
-    type Error = UdsError;
-    #[inline]
-    fn try_from(_: u8) -> Result<Self, Self::Error> {
-        Ok(Self)
-    }
-}
-
-impl Into<u8> for Placeholder {
-    fn into(self) -> u8 {
-        panic!("The placeholder sub-function is `None`. Should not call this!");
-    }
 }
 
 #[derive(Clone)]
@@ -151,43 +134,19 @@ impl Default for Configuration {
 }
 
 pub trait RequestData {
-    type SubFunc;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError>
+    fn request(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<request::Request, UdsError>;
+    fn try_parse(request: &request::Request, cfg: &Configuration) -> Result<Self, UdsError>
     where
         Self: Sized;
     fn to_vec(self, cfg: &Configuration) -> Vec<u8>;
-}
-
-impl RequestData for Vec<u8> {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        Ok(data.to_vec())
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self
-    }
 }
 
 pub trait ResponseData {
-    type SubFunc;
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, cfg: &Configuration) -> Result<Self, UdsError>
+    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<response::Response, UdsError>;
+    fn try_parse(response: &response::Response, cfg: &Configuration) -> Result<Self, UdsError>
     where
         Self: Sized;
     fn to_vec(self, cfg: &Configuration) -> Vec<u8>;
-}
-
-impl ResponseData for Vec<u8> {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], _: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        Ok(data.to_vec())
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self
-    }
 }
 
 pub trait TryFromWithCfg<T> {

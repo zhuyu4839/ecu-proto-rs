@@ -1,7 +1,7 @@
 //! request of Service 14
 
 
-use crate::{Configuration, UdsError, Placeholder, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, UdsError, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ClearDiagnosticInfo {
@@ -36,13 +36,32 @@ impl ClearDiagnosticInfo {
     }
 }
 
-impl<'a> TryFrom<&'a [u8]> for ClearDiagnosticInfo {
-    type Error = UdsError;
+impl RequestData for ClearDiagnosticInfo {
+    #[inline]
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::ClearDiagnosticInfo)),
+            None => {
+                #[cfg(any(feature = "std2020"))]
+                utils::data_length_check(data.len(), 3, false)?;
+                #[cfg(any(feature = "std2006", feature = "std2013"))]
+                utils::data_length_check(data.len(), 3, true)?;
+
+                Ok(Request { service: Service::ClearDiagnosticInfo, sub_func: None,  data: data.to_vec(), })
+            }
+        }
+    }
 
     #[cfg(any(feature = "std2020"))]
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service();
+        if service != Service::ClearDiagnosticInfo
+            || request.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
+        }
+
+        let data = &request.data;
         let data_len = data.len();
-        utils::data_length_check(data_len, 3, false)?;
         let mut offset = 0;
         let group = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
         offset += 3;
@@ -59,19 +78,20 @@ impl<'a> TryFrom<&'a [u8]> for ClearDiagnosticInfo {
     }
 
     #[cfg(any(feature = "std2006", feature = "std2013"))]
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
-        let data_len = data.len();
-        utils::data_length_check(data_len, 3, true)?;
-        let offset = 0;
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service();
+        if service != Service::ClearDiagnosticInfo
+            || request.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
+        }
 
-        let group = utils::U24::from_be_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+        let data = &request.data;
+        let group = utils::U24::from_be_bytes([0, data[0], data[1], data[2]]);
 
         Ok(Self::new(group))
     }
-}
 
-impl Into<Vec<u8>> for ClearDiagnosticInfo {
-    fn into(self) -> Vec<u8> {
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         #[allow(unused_mut)]
         let mut result: Vec<_> = self.group.into();
         #[cfg(any(feature = "std2020"))]
@@ -81,35 +101,4 @@ impl Into<Vec<u8>> for ClearDiagnosticInfo {
 
         result
     }
-}
-
-impl RequestData for ClearDiagnosticInfo {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::ClearDiagnosticInfo));
-        }
-
-        Self::try_from(data)
-    }
-    #[inline]
-    fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
-    }
-}
-
-pub(crate) fn clear_diag_info(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = ClearDiagnosticInfo::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Request { service, sub_func, data })
 }

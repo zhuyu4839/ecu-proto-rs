@@ -11,7 +11,7 @@ mod tests {
         let source = hex::decode("22F190F180")?;
         let request = request::Request::try_from_cfg(source, &cfg)?;
         assert_eq!(request.sub_function(), None);
-        let data: request::ReadDID = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::ReadDID>(&cfg)?;
         assert_eq!(data.did, DataIdentifier::VIN);
         assert_eq!(data.others, vec![DataIdentifier::BootSoftwareIdentification, ]);
 
@@ -19,7 +19,7 @@ mod tests {
         F181F182F183F184F185F186F187F188F189")?;
         let request = request::Request::try_from_cfg(source, &cfg)?;
         assert_eq!(request.sub_function(), None);
-        let data: request::ReadDID = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::ReadDID>(&cfg)?;
         assert_eq!(data.did, DataIdentifier::VIN);
         assert_eq!(data.others, vec![
             DataIdentifier::BootSoftwareIdentification,
@@ -50,7 +50,7 @@ mod tests {
         )?;
         let response = response::Response::try_from_cfg(source, &cfg)?;
         assert_eq!(response.sub_function(), None);
-        let data: response::ReadDID = response.data::<_, _>(&cfg)?;
+        let data = response.data::<response::ReadDID>(&cfg)?;
         assert_eq!(data.data, DIDData {
                 did: DataIdentifier::VIN,
                 data: hex::decode("4441564443313030394e544c5036313338")?
@@ -87,12 +87,13 @@ mod tests {
 
     #[test]
     fn test_write_request() -> anyhow::Result<()> {
-        let cfg = Configuration::default();
+        let mut cfg = Configuration::default();
+        cfg.did_cfg.insert(DataIdentifier::VIN, 17);
 
         let source = hex::decode("2ef1904441564443313030394e544c5036313338")?;
         let request = request::Request::try_from_cfg(source, &cfg)?;
         assert_eq!(request.sub_function(), None);
-        let data: request::WriteDID = request.data::<_, _>(&cfg)?;
+        let data = request.data::<request::WriteDID>(&cfg)?;
         assert_eq!(data.0, DIDData {
             did: DataIdentifier::VIN,
             data: hex::decode("4441564443313030394e544c5036313338")?,  // 17 bytes
@@ -103,12 +104,13 @@ mod tests {
 
     #[test]
     fn test_write_response() -> anyhow::Result<()> {
-        let cfg = Configuration::default();
+        let mut cfg = Configuration::default();
+        cfg.did_cfg.insert(DataIdentifier::VIN, 17);
 
         let source = hex::decode("6EF190")?;
         let response = response::Response::try_from_cfg(source, &cfg)?;
         assert_eq!(response.sub_function(), None);
-        let data: response::WriteDID = response.data::<_, _>(&cfg)?;
+        let data = response.data::<response::WriteDID>(&cfg)?;
         assert_eq!(data.0, DataIdentifier::VIN);
 
         Ok(())

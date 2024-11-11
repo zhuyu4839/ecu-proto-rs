@@ -3,7 +3,7 @@
 #[cfg(any(feature = "std2006", feature = "std2013"))]
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{request, response, Configuration, Service, TimingParameter, TimingParameterAccessType, TryFromWithCfg};
+    use iso14229_1::{request, response, Configuration, Service, TimingParameterAccessType, TryFromWithCfg};
 
     /// The TimingParameterRequestRecord is only present if timingParameterAccessType = setTimingParametersToGivenValues.
     /// The structure and content of the TimingParameterRequestRecord is data-link-layer-dependent and therefore defined in the
@@ -31,8 +31,8 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<TimingParameterAccessType>()?, TimingParameterAccessType::SetTimingParametersToGivenValues);
-        let data: TimingParameter = request.data::<TimingParameterAccessType, _>(&cfg)?;
-        assert_eq!(data, TimingParameter(vec![0x00]));
+        let data = request.data::<request::AccessTimingParameter>(&cfg)?;
+        assert_eq!(data, request::AccessTimingParameter { data: vec![0x00] });
 
         Ok(())
     }
@@ -49,8 +49,8 @@ mod tests {
         let response = response::Response::try_from_cfg(source, &cfg)?;
         let sub_func = response.sub_function().unwrap();
         assert_eq!(sub_func.function::<TimingParameterAccessType>()?, TimingParameterAccessType::ReadExtendedTimingParameterSet);
-        let data: TimingParameter = response.data::<TimingParameterAccessType, _>(&cfg)?;
-        assert_eq!(data, TimingParameter(vec![0x00]));
+        let data = response.data::<response::AccessTimingParameter>(&cfg)?;
+        assert_eq!(data, response::AccessTimingParameter { data: vec![0x00] });
 
         let source = hex::decode("C302")?;
         let response = response::Response::try_from_cfg(source, &cfg)?;

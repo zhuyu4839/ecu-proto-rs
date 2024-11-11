@@ -1,15 +1,44 @@
 //! request of Service 2E
 
 
-use crate::{Configuration, DataIdentifier, DIDData, UdsError, Placeholder, request::{Request, SubFunction}, RequestData, Service, utils};
+use crate::{Configuration, DataIdentifier, DIDData, UdsError, request::{Request, SubFunction}, RequestData, Service, utils};
 
 /// Service 2E
 pub struct WriteDID(pub DIDData);
 
-impl<'a> TryFrom<&'a [u8]> for WriteDID {
-    type Error = UdsError;
-    fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
-        utils::data_length_check(data.len(), 3, false)?;
+impl RequestData for WriteDID {
+    fn request(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Request, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::WriteDID)),
+            None => {
+                utils::data_length_check(data.len(), 3, false)?;
+                let mut offset = 0;
+                let did = DataIdentifier::from(
+                    u16::from_be_bytes([data[offset], data[offset + 1]])
+                );
+                offset += 2;
+                let &did_len = cfg.did_cfg.get(&did)
+                    .ok_or(UdsError::DidNotSupported(did))?;
+
+                utils::data_length_check(data.len(), offset + did_len, true)?;
+
+                Ok(Request {
+                    service: Service::WriteDID,
+                    sub_func: None,
+                    data: data.to_vec(),
+                })
+            }
+        }
+    }
+
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+        let service = request.service();
+        if service != Service::WriteDID
+            || request.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
+        }
+
+        let data = &request.data;
         let mut offset = 0;
         let did = DataIdentifier::from(
             u16::from_be_bytes([data[offset], data[offset + 1]])
@@ -18,42 +47,9 @@ impl<'a> TryFrom<&'a [u8]> for WriteDID {
 
         Ok(Self(DIDData { did, data: data[offset..].to_vec() }))
     }
-}
 
-impl Into<Vec<u8>> for WriteDID {
-    #[inline]
-    fn into(self) -> Vec<u8> {
-        self.0.into()
-    }
-}
-
-impl RequestData for WriteDID {
-    type SubFunc = Placeholder;
-    #[inline]
-    fn try_parse(data: &[u8], sub_func: Option<Self::SubFunc>, _: &Configuration) -> Result<Self, UdsError> {
-        if sub_func.is_some() {
-            return Err(UdsError::SubFunctionError(Service::WriteDID));
-        }
-
-        Self::try_from(data)
-    }
     #[inline]
     fn to_vec(self, _: &Configuration) -> Vec<u8> {
-        self.into()
+        self.0.into()
     }
-}
-
-pub(crate) fn write_did(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    cfg: &Configuration,
-) -> Result<Request, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
-    }
-
-    let _ = WriteDID::try_parse(data.as_slice(), None, cfg)?;
-
-    Ok(Request { service, sub_func, data })
 }

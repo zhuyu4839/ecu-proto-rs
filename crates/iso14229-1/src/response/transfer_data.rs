@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, UdsError, response::{Code, Response, SubFunction}, Service, utils};
+use crate::{Configuration, UdsError, response::{Code, Response, SubFunction}, Service, utils, ResponseData};
 
 lazy_static!(
     pub static ref TRANSFER_DATA_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -18,17 +18,48 @@ lazy_static!(
     ]);
 );
 
-pub(crate) fn transfer_data(
-    service: Service,
-    sub_func: Option<SubFunction>,
-    data: Vec<u8>,
-    _: &Configuration,
-) -> Result<Response, UdsError> {
-    if sub_func.is_some() {
-        return Err(UdsError::SubFunctionError(service));
+#[derive(Debug, Clone)]
+pub struct TransferData {
+    pub sequence: u8,
+    pub data: Vec<u8>,
+}
+
+impl ResponseData for TransferData {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+        match sub_func {
+            Some(_) => Err(UdsError::SubFunctionError(Service::TransferData)),
+            None => {
+                utils::data_length_check(data.len(), 1, false)?;
+
+                Ok(Response {
+                    service: Service::TransferData,
+                    negative: false,
+                    sub_func: None,
+                    data: data.to_vec(),
+                })
+            }
+        }
     }
 
-    utils::data_length_check(data.len(), 1, false)?;
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+        let service = response.service();
+        if service != Service::TransferData
+            || response.sub_func.is_some() {
+            return Err(UdsError::ServiceError(service))
+        }
 
-    Ok(Response { service, negative: false, sub_func, data })
+        let data = &response.data;
+        let mut offset = 0;
+        let sequence = data[offset];
+        offset += 1;
+
+        Ok(Self { sequence, data: data[offset..].to_vec() })
+    }
+
+    #[inline]
+    fn to_vec(mut self, _: &Configuration) -> Vec<u8> {
+        let mut result = vec![self.sequence];
+        result.append(&mut self.data);
+        result
+    }
 }
