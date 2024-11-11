@@ -108,7 +108,7 @@ where
             let service = Service::SessionCtrl;
             let mut sub_func: u8 = session_type.into();
             if suppress_positive {
-                sub_func |= SUPPRESS_NEGATIVE;
+                sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), vec![], &ctx.config)
                 .map_err(Error::ISO14229Error)?;
@@ -136,7 +136,7 @@ where
             let service = Service::ECUReset;
             let mut sub_func: u8 = reset_type.into();
             if suppress_positive {
-                sub_func |= SUPPRESS_NEGATIVE;
+                sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), vec![], &ctx.config)
                 .map_err(Error::ISO14229Error)?;
@@ -225,11 +225,11 @@ where
             let service = Service::CommunicationCtrl;
             let mut sub_func = ctrl_type.into();
             if suppress_positive {
-                sub_func |= SUPPRESS_NEGATIVE;
+                sub_func |= SUPPRESS_POSITIVE;
             }
             let data = request::CommunicationCtrl::new(ctrl_type, comm_type, node_id)
                 .map_err(Error::ISO14229Error)?;
-            let req = request::Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
+            let req = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
                 .map_err(Error::ISO14229Error)?;
 
             let resp = Self::suppress_positive_sr(ctx, functional, req, suppress_positive)?;
@@ -292,7 +292,7 @@ where
             let service = Service::AccessTimingParam;
             let mut sub_func = access_type.into();
             if suppress_positive {
-                sub_func |= SUPPRESS_NEGATIVE;
+                sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), parameter, &ctx.config)
                 .map_err(Error::ISO14229Error)?;
@@ -343,7 +343,7 @@ where
             let service = Service::CtrlDTCSetting;
             let mut sub_func = setting_type.into();
             if suppress_positive {
-                sub_func |= SUPPRESS_NEGATIVE;
+                sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), parameter, &ctx.config)
                 .map_err(Error::ISO14229Error)?;
@@ -376,7 +376,7 @@ where
             let service = Service::LinkCtrl;
             let mut sub_func = ctrl_type.into();
             if suppress_positive {
-                sub_func |= SUPPRESS_NEGATIVE;
+                sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
                 .map_err(Error::ISO14229Error)?;
@@ -468,7 +468,7 @@ where
             let service = Service::DynamicalDefineDID;
             let mut sub_func = def_type.into();
             if suppress_positive {
-                sub_func |= SUPPRESS_NEGATIVE;
+                sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
                 .map_err(Error::ISO14229Error)?;
@@ -812,7 +812,7 @@ where
         let service = Service::TesterPresent;
         let mut sub_func = test_type.into();
         if suppress_positive {
-            sub_func |= SUPPRESS_NEGATIVE;
+            sub_func |= SUPPRESS_POSITIVE;
         }
         let request = Request::new(service, Some(sub_func), vec![], &ctx.config)
             .map_err(Error::ISO14229Error)?;

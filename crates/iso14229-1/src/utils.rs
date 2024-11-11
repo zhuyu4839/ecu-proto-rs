@@ -1,4 +1,4 @@
-use crate::{ByteOrder, UdsError, SUPPRESS_NEGATIVE};
+use crate::{ByteOrder, UdsError, SUPPRESS_POSITIVE};
 
 /// Add to_vector function and
 /// implement `Debug`, `Copy`, `Clone`, `Eq`, `PartialEq`,
@@ -229,5 +229,5 @@ where
 
 #[inline]
 pub fn peel_suppress_positive(value: u8) -> (bool, u8) {
-    ((value & SUPPRESS_NEGATIVE) == SUPPRESS_NEGATIVE, value & 0x7F)
+    ((value & SUPPRESS_POSITIVE) == SUPPRESS_POSITIVE, value & 0x7F)
 }

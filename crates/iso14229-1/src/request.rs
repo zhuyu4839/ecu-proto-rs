@@ -72,7 +72,7 @@ mod request_file_transfer;  // 0x38
 #[cfg(any(feature = "std2013", feature = "std2020"))]
 pub use request_file_transfer::*;
 
-use crate::{Configuration, error::UdsError, RequestData, Service, utils, request, TryFromWithCfg};
+use crate::{Configuration, error::UdsError, RequestData, Service, utils, request, TryFromWithCfg, SUPPRESS_POSITIVE};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SubFunction {
@@ -107,7 +107,7 @@ impl Into<u8> for SubFunction {
         let mut result = self.function;
         if let Some(v) = self.suppress_positive {
             if v {
-                result |= 0x80;
+                result |= SUPPRESS_POSITIVE;
             }
         }
 
