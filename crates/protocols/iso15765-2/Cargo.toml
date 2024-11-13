@@ -1,0 +1,13 @@
+[package]
+name = "iso15765-2"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+log = { workspace = true }
+thiserror = { workspace = true }
+bitflags = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+hex = { workspace = true }
