@@ -1,6 +1,8 @@
 mod context;
 
+#[cfg(not(feature = "async"))]
 mod synchronous;
+#[cfg(not(feature = "async"))]
 pub use synchronous::*;
 
 use std::{fmt::Display, hash::Hash};
@@ -14,15 +16,13 @@ pub trait Client {
     // type Device;
     type Error;
 
-    // fn new()
-
     fn update_address(&mut self,
                       channel: Self::Channel,
                       address: Address
     ) -> ResultWrapper<(), Self::Error>;
     fn update_security_algo(&mut self,
                             channel: Self::Channel,
-                            algo: SecurityAlgo<Self::Error>
+                            algo: SecurityAlgo
     ) -> ResultWrapper<(), Self::Error>;
     fn add_data_identifier(&mut self,
                            channel: Self::Channel,

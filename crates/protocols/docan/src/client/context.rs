@@ -2,7 +2,7 @@ use std::{collections::VecDeque, sync::{Arc, Mutex}, time::{Duration, Instant}};
 use iso14229_1::Configuration;
 use iso15765_2::{IsoTpError, IsoTpEvent, IsoTpEventListener};
 use rs_can::isotp::{CanIsoTp, P2Context};
-use crate::{Error, SecurityAlgo};
+use crate::SecurityAlgo;
 
 #[derive(Debug, Default, Clone)]
 pub struct IsoTpBuffer {
@@ -60,7 +60,7 @@ impl IsoTpListener {
 }
 
 impl IsoTpListener {
-    #[cfg(feature = "tokio")]
+    #[cfg(feature = "async")]
     pub async fn async_timer(&mut self, response_pending: bool) -> Result<Vec<u8>, IsoTpError> {
         let tov = if response_pending {
             self.p2_ctx.p2_star_ms()
@@ -167,5 +167,5 @@ pub struct Context<C: Clone + Eq, F> {
     pub(crate) iso_tp: CanIsoTp<C, F>,
     pub(crate) listener: IsoTpListener,
     pub(crate) config: Configuration,
-    pub(crate) security_algo: Option<SecurityAlgo<Error>>,
+    pub(crate) security_algo: Option<SecurityAlgo>,
 }

@@ -88,23 +88,6 @@ impl Display for Service {
     }
 }
 
-// /// SecurityAlgo
-// ///
-// /// # Params
-// ///
-// /// #1 level of security
-// ///
-// /// #2 seed
-// ///
-// /// #3 salt or other params
-// ///
-// /// # Return
-// ///
-// /// if all seed is 0x00, return None
-// /// else all seed is not 0xFF return algo data,
-// /// otherwise return Error
-// pub type SecurityAlgo = fn(u8, Vec<u8>, Vec<u8>) -> Result<Option<Vec<u8>>, UdsError>;
-
 #[derive(Debug, Default, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum ByteOrder {
     Big,
@@ -115,7 +98,6 @@ pub enum ByteOrder {
 
 #[derive(Debug, Clone)]
 pub struct Configuration {
-    // pub security_algo: Option<SecurityAlgo>,
     pub did_cfg: HashMap<DataIdentifier, usize>,
     pub bo_addr: ByteOrder,
     pub bo_mem_size: ByteOrder,
@@ -125,7 +107,6 @@ impl Default for Configuration {
     /// ISO 14229-2 default using big-endian.
     fn default() -> Self {
         Self {
-            // security_algo: None,
             did_cfg: Default::default(),
             bo_addr: ByteOrder::Big,
             bo_mem_size: ByteOrder::Big,

@@ -1,21 +1,17 @@
 use std::fmt::Display;
 use std::hash::Hash;
-use iso15765_2::{can::frame::Frame as CanFrame, device::SyncDevice};
+use rs_can::{CanDriver, Frame, Listener};
+use rs_can::isotp::{Address, IsoTpAdapter};
 
-pub struct SyncServer<D, Device, C, F>
-where
-    D: SyncDevice<Device = Device, Channel = C, Id = u32, Frame = F>,
-    C: Clone + Eq,
-    F: CanFrame<Channel = C>,
-{
-    device: D,
+pub struct SyncServer<D, C, F> {
+    adapter: IsoTpAdapter<D, C, F>,
 }
 
-impl<D, Device, C, F> SyncServer<D, Device, C, F>
+impl<D, C, F> SyncServer<D, C, F>
 where
-    D: SyncDevice<Device = Device, Channel = C, Id = u32, Frame = F>,
+    D: CanDriver<Channel = C, Frame = F> + Clone + Send + 'static,
     C: Display + Clone + Hash + Eq + 'static,
-    F: CanFrame<Channel = C> + Clone + 'static
+    F: Frame<Channel = C> + Clone + 'static
 {
 
 

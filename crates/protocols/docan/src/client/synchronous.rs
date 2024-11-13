@@ -38,7 +38,10 @@ where
             Box::new(listener.clone())
         );
 
-        self.adapter.register_listener(format!("UDS-{}", channel), Box::new(iso_tp.clone()));
+        self.adapter.register_listener(
+            format!("UDSClient-{}", channel),
+            Box::new(iso_tp.clone())
+        );
         self.context.insert(channel, Context {
             iso_tp,
             listener,
@@ -183,7 +186,7 @@ where
         })
     }
 
-    fn update_security_algo(&mut self, channel: Self::Channel, algo: SecurityAlgo<Self::Error>) -> ResultWrapper<(), Self::Error> {
+    fn update_security_algo(&mut self, channel: Self::Channel, algo: SecurityAlgo) -> ResultWrapper<(), Self::Error> {
         self.context_util(channel, |ctx| {
             ctx.security_algo = Some(algo);
 

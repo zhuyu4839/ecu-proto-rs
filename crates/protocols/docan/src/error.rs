@@ -1,8 +1,12 @@
 use iso15765_2::IsoTpError;
 use iso14229_1::{Service, response::Code};
+use rs_can::CanError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    #[error("{0}")]
+    DeviceError(CanError),
+
     #[error("{0}")]
     ISO14229Error(iso14229_1::UdsError),
 
@@ -20,6 +24,9 @@ pub enum Error {
 
     #[error("{0}")]
     IsoTpError(IsoTpError),
+
+    #[error("UDS - security algorithm error: {0}")]
+    SecurityAlgoError(String),
 
     #[error("UDS - other error: {0}")]
     OtherError(String),

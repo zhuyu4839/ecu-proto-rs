@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::ffi::{c_char, c_void, CStr, CString};
-use iso15765_2::{can::Frame, device::Driver};
-use rs_can::CanFilter;
-use rs_can::error::CanError;
+use rs_can::{CanDriver, CanError, CanFilter, Frame};
 use crate::api::*;
 use crate::constant;
 use crate::CanMessage;
@@ -264,10 +262,9 @@ impl NiCan {
     }
 }
 
-impl Driver for NiCan {
-    type Error = CanError;
-    type C = String;
-    type F = CanMessage;
+impl CanDriver for NiCan {
+    type Channel = String;
+    type Frame = CanMessage;
 
     #[inline]
     fn opened_channels(&self) -> Vec<Self::C> {
@@ -282,12 +279,12 @@ impl Driver for NiCan {
     }
 
     #[inline]
-    fn transmit(&self, msg: Self::F, _: Option<u32>) -> Result<(), Self::Error> {
+    fn transmit(&self, msg: Self::Frame, _: Option<u32>) -> Result<(), CanError> {
         self.transmit_can(msg)
     }
 
     #[inline]
-    fn receive(&self, channel: Self::C, timeout: Option<u32>) -> Result<Vec<Self::F>, Self::Error> {
+    fn receive(&self, channel: Self::Channel, timeout: Option<u32>) -> Result<Vec<Self::Frame>, CanError> {
         self.receive_can(channel, timeout)
     }
 
@@ -315,7 +312,8 @@ mod tests {
     use super::NiCan;
     use crate::CanMessage;
     use std::time::Duration;
-    use iso15765_2::{can::{{Frame, Id}, driver::SyncCan}, device::Driver};
+    use rs_can::{CanDriver, Frame, Id};
+    use rs_can::isotp::IsoTpAdapter;
 
     #[ignore]   // device required
     #[test]
@@ -356,15 +354,15 @@ mod tests {
         let mut driver = NiCan::new();
         driver.open(channel, vec![], 500_000, true)?;
 
-        let mut uni = SyncCan::new(driver.clone());
-        uni.sync_start(100);
+        let mut adapter = IsoTpAdapter::new(driver.clone());
+        adapter.start(100);
 
         let data = vec![0x02, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00];
         let mut count = 0;
         loop {
             let mut msg = CanMessage::new(Id::from(0x7DF), data.as_slice()).unwrap();
             msg.set_channel(channel.into());
-            uni.sender().send(msg)?;
+            adapter.sender().send(msg)?;
 
             std::thread::sleep(Duration::from_millis(100));
 
@@ -374,7 +372,7 @@ mod tests {
             }
         }
 
-        uni.stop();
+        adapter.stop();
         driver.shutdown();
 
         Ok(())

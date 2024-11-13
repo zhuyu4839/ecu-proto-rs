@@ -1,28 +1,28 @@
-use docan::client::SyncClient;
+use docan::{Client, SyncClient};
 use iso14229_1::SessionType;
-use iso15765_2::can::{Address, driver::SyncCan};
 use nican::{CanMessage, NiCan};
+use rs_can::isotp::{Address, AddressType, IsoTpAdapter};
 
 const CHANNEL: &'static str = "CAN0";
 
-type DriverClient = (SyncCan<NiCan, String, CanMessage>, SyncClient<NiCan, String, CanMessage>);
+type DriverClient = (IsoTpAdapter<NiCan, String, CanMessage>, SyncClient<NiCan, String, CanMessage>);
 
 fn init_device() -> anyhow::Result<DriverClient> {
     let mut device = NiCan::new();
     device.open(CHANNEL, vec![], 500_000, true)?;
 
-    let mut driver = SyncCan::new(device);
-    let mut client = SyncClient::new(driver.clone());
+    let mut adapter = IsoTpAdapter::new(device);
+    let mut client = SyncClient::new(adapter.clone(), None);
 
     client.init_channel(CHANNEL.into(), Address {
         tx_id: 0x7E0,
         rx_id: 0x7E8,
         fid: 0x7DF,
-    }, None)?;
+    })?;
 
-    driver.sync_start(100);
+    adapter.start(100);
 
-    Ok((driver, client))
+    Ok((adapter, client))
 }
 
 fn main() -> anyhow::Result<()> {
@@ -34,7 +34,7 @@ fn main() -> anyhow::Result<()> {
         fid: 0x7DF,
     })?;
 
-    client.session_ctrl(CHANNEL.into(), SessionType::Extended, false, false)?;
+    client.session_ctrl(CHANNEL.into(), SessionType::Extended, false, AddressType::Physical)?;
 
     driver.stop();
 

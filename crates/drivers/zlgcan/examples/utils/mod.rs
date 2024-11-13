@@ -6,28 +6,22 @@ use zlgcan::device::ZCanDeviceType;
 use zlgcan::driver::{ZCanDriver, ZDevice};
 use docan::{Client, Error, SyncClient};
 use iso14229_1::{AddressAndLengthFormatIdentifier, RoutineCtrlType, TesterPresentType};
-use rs_can::isotp::{Address, AddressType, IsoTpAdapter};
+use rs_can::{CanError, isotp::{Address, AddressType, IsoTpAdapter}};
 
 pub const CHANNEL: u8 = 0;
 
-pub fn init_device() -> Result<ZCanDriver, Error> {
+pub fn init_device() -> Result<ZCanDriver, CanError> {
     let dev_type = ZCanDeviceType::ZCAN_USBCANFD_200U;
-    let mut device = ZCanDriver::new(dev_type as u32, 0, None)
-        .map_err(|e| Error::OtherError(e.to_string()))?;
-    device.open()
-        .map_err(|e| Error::OtherError(e.to_string()))?;
+    let mut device = ZCanDriver::new(dev_type as u32, 0, None)?;
+    device.open()?;
 
-    let factory = CanChlCfgFactory::new()
-        .map_err(|e| Error::OtherError(e.to_string()))?;
+    let factory = CanChlCfgFactory::new()?;
     let ch1_cfg = factory.new_can_chl_cfg(dev_type as u32, ZCanChlType::CAN as u8, ZCanChlMode::Normal as u8, 500_000,
-                                          CanChlCfgExt::default())
-        .map_err(|e| Error::OtherError(e.to_string()))?;
+                                          CanChlCfgExt::default())?;
     let ch2_cfg = factory.new_can_chl_cfg(dev_type as u32, ZCanChlType::CAN as u8, ZCanChlMode::Normal as u8, 500_000,
-                                          CanChlCfgExt::default())
-        .map_err(|e| Error::OtherError(e.to_string()))?;
+                                          CanChlCfgExt::default())?;
     let cfg = vec![ch1_cfg, ch2_cfg];
-    device.init_can_chl(cfg)
-        .map_err(|e| Error::OtherError(e.to_string()))?;
+    device.init_can_chl(cfg)?;
 
     Ok(device)
 }
@@ -36,7 +30,8 @@ pub fn init_client() -> Result<(
     IsoTpAdapter<ZCanDriver, u8, CanMessage>,
     SyncClient<ZCanDriver, u8, CanMessage>,
 ), Error> {
-    let device = init_device()?;
+    let device = init_device()
+        .map_err(Error::DeviceError)?;
     std::thread::sleep(std::time::Duration::from_millis(100));
     let mut adapter = IsoTpAdapter::new(device.clone());
 

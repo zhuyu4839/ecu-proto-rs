@@ -1,3 +1,6 @@
+// mod synchronous;
+// pub use synchronous::*;
+
 use std::{collections::HashMap, fmt::Display, hash::Hash};
 use iso14229_1::{DataIdentifier, SessionType};
 use rs_can::{isotp::{Address, P2Context}, ResultWrapper};
@@ -13,7 +16,7 @@ pub trait Server {
         address: Address,
         p2_ctx: P2Context,
         did_cfg: HashMap<DataIdentifier, usize>,
-        security_algo: SecurityAlgo<Self::Error>,
+        security_algo: SecurityAlgo,
     ) -> ResultWrapper<Self, Self::Error>
     where
         Self: Sized;
@@ -32,12 +35,12 @@ pub trait Server {
 
     fn communication_control(&self, channel: Self::Channel) -> ResultWrapper<(), Self::Error>;
 
-    #[cfg(feature = "uds-std2020")]
+    #[cfg(feature = "std2020")]
     fn authentication(&self, channel: Self::Channel) -> ResultWrapper<(), Self::Error>;
 
     fn tester_present(&self, channel: Self::Channel) -> ResultWrapper<(), Self::Error>;
 
-    #[cfg(any(feature = "uds-std2006", feature = "uds-std2013"))]
+    #[cfg(any(feature = "std2006", feature = "std2013"))]
     fn access_timing_parameter(&self, channel: Self::Channel) -> ResultWrapper<(), Self::Error>;
 
     fn secured_data_transmit(&self, channel: Self::Channel) -> ResultWrapper<(), Self::Error>;
@@ -84,5 +87,3 @@ pub trait Server {
 
     fn service_stop(&self, channel: Self::Channel) -> ResultWrapper<(), Self::Error>;
 }
-
-

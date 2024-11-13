@@ -1,6 +1,6 @@
 use std::time::Duration;
-use iso15765_2::{can::{Frame, Id}, device::Driver};
 use nican::{CanMessage, NiCan};
+use rs_can::{CanDriver, Frame, Id};
 
 fn main() -> anyhow::Result<()> {
     let channel = "CAN0";

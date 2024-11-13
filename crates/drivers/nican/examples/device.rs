@@ -1,6 +1,6 @@
 use std::time::Duration;
-use iso15765_2::can::{Id, Frame};
 use nican::{CanMessage, NiCan};
+use rs_can::{Frame, Id};
 
 fn main() -> anyhow::Result<()> {
     let channel = "CAN0";
