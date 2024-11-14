@@ -89,6 +89,8 @@ fn test_io_control() -> anyhow::Result<()> {
         fid: 0x7DF,
     })?;
     client.update_security_algo(CHANNEL, uds_security_algo)?;
+    let did = DataIdentifier::from(0x4101);
+    client.add_data_identifier(0, did, 2)?;
 
     client.session_ctrl(CHANNEL, SessionType::Extended, false, AddressType::Physical)?;
     let result = client.security_access(CHANNEL, 1, vec![])?;
@@ -99,10 +101,10 @@ fn test_io_control() -> anyhow::Result<()> {
 
     let result = client.io_control(
         0,
-        DataIdentifier::from(0x4101),
+        did,
         IOCtrlParameter::ShortTermAdjustment,
-        vec![0x00, 0x40],
         vec![0xff, 0xff],
+        vec![0x00, 0xff],
     )?;
     print!("io control response: {:?}", result);
 
@@ -120,6 +122,7 @@ fn main() -> anyhow::Result<()> {
         fid: 0x7DF,
     })?;
     client.update_security_algo(CHANNEL, uds_security_algo)?;
+    client.add_data_identifier(CHANNEL, DataIdentifier::ProgrammingDate, 4)?;
 
     client.session_ctrl(CHANNEL, SessionType::Extended, false, AddressType::Functional)?;
 
