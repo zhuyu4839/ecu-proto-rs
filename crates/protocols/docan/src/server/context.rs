@@ -1,13 +1,12 @@
 use std::{fmt::Display, time::Duration, thread};
 use iso14229_1::{request::{self, Request}, response::{self, Response, Code}, *};
 use iso15765_2::{IsoTpEvent, IsoTpEventListener};
-use rs_can::{Frame, isotp::{AddressType, CanIsoTp, P2Context}};
+use rs_can::{Frame, isotp::{AddressType, CanIsoTp}};
 use crate::{buffer::IsoTpBuffer, DoCanError, SecurityAlgo, };
 
 #[derive(Debug, Default, Clone)]
 pub struct IsoTpListener {
     pub(crate) buffer: IsoTpBuffer,
-    pub(crate) p2_ctx: P2Context,
 }
 
 impl IsoTpEventListener for IsoTpListener {

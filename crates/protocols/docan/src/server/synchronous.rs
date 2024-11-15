@@ -19,7 +19,6 @@ where
     pub fn new(adapter: IsoTpAdapter<D, C, F>, channel: C, address: Address) -> Self {
         let listener = IsoTpListener {
             buffer: Default::default(),
-            p2_ctx: Default::default(),
         };
         let iso_tp = CanIsoTp::new(
             channel.clone(),
