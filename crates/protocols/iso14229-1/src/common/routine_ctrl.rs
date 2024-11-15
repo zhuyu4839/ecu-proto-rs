@@ -1,7 +1,7 @@
 //! Commons of Service 31
 
 
-use crate::{constant::ISO_SAE_RESERVED, error::UdsError, Service, utils};
+use crate::{constant::ISO_SAE_RESERVED, error::Iso14229Error, Service, utils};
 use crate::enum_extend;
 
 enum_extend! (

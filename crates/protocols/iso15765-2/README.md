@@ -23,7 +23,7 @@ To use **iso15765-2** in your Rust project, add it as a dependency in your `Carg
 
 ```toml
 [dependencies]
-iso15765-2 = { version="lastest-version", features = ["default", "tokio"] }
+iso15765-2 = { version="lastest-version" }
 ```
 
 ## Contributing

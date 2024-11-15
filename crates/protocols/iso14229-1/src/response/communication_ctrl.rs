@@ -3,7 +3,7 @@
 use std::collections::HashSet;
 use lazy_static::lazy_static;
 use crate::response::{Code, Response, SubFunction};
-use crate::{utils, CommunicationCtrlType, Configuration, UdsError, Service, ResponseData};
+use crate::{utils, CommunicationCtrlType, Configuration, Iso14229Error, Service, ResponseData};
 
 lazy_static!(
     pub static ref COMMUNICATION_CTRL_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -20,7 +20,7 @@ pub struct CommunicationCtrl {
 }
 
 impl ResponseData for CommunicationCtrl {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 let _ = CommunicationCtrlType::try_from(sub_func)?;
@@ -34,15 +34,15 @@ impl ResponseData for CommunicationCtrl {
                     data: vec![],
                 })
             },
-            None => Err(UdsError::SubFunctionError(Service::CommunicationCtrl))
+            None => Err(Iso14229Error::SubFunctionError(Service::CommunicationCtrl))
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service;
         if service != Service::CommunicationCtrl
             || response.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service));
+            return Err(Iso14229Error::ServiceError(service));
         }
 
         // let sub_func: CommunicationCtrlType = response.sub_function().unwrap().function()?;

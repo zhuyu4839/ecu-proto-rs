@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, thiserror::Error)]
-pub enum IsoTpError {
+pub enum Iso15765Error {
     #[error("ISO 15765-2 - device error")]
     DeviceError,
 

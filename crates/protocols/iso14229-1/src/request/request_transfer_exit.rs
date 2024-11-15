@@ -1,6 +1,6 @@
 //! request of Service 37
 
-use crate::{UdsError, request::{Request, SubFunction}, Service, utils, Configuration, RequestData};
+use crate::{Iso14229Error, request::{Request, SubFunction}, Service, utils, Configuration, RequestData};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RequestTransferExit {
@@ -8,9 +8,9 @@ pub struct RequestTransferExit {
 }
 
 impl RequestData for RequestTransferExit {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::RequestTransferExit)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::RequestTransferExit)),
             None => {
                 // utils::data_length_check(data.len(), 0, true)?;
 
@@ -23,11 +23,11 @@ impl RequestData for RequestTransferExit {
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::RequestTransferExit
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         Ok(Self { data: request.data.clone() })

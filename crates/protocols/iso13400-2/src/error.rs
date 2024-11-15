@@ -1,6 +1,6 @@
 
 #[derive(Debug, thiserror::Error)]
-pub enum DoIpError {
+pub enum Iso13400Error {
     #[error("ISO 13400-2 - invalid length: {actual} expect at least or equal {expected}")]
     InvalidLength { actual: usize, expected: usize },
     #[error("ISO 13400-2 - invalid data length: {actual} expect at least or equal {expected}")]

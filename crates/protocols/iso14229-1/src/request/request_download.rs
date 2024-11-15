@@ -1,7 +1,7 @@
 //! request of Service 34
 
 
-use crate::{Configuration, DataFormatIdentifier, UdsError, MemoryLocation, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, DataFormatIdentifier, Iso14229Error, MemoryLocation, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct RequestDownload {
@@ -10,9 +10,9 @@ pub struct RequestDownload {
 }
 
 impl RequestData for RequestDownload {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::RequestDownload)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::RequestDownload)),
             None => {
                 utils::data_length_check(data.len(), 2, false)?;
 
@@ -21,11 +21,11 @@ impl RequestData for RequestDownload {
         }
     }
 
-    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::RequestDownload
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;

@@ -1,15 +1,15 @@
 //! request of Service 24
 
 
-use crate::{Configuration, DataIdentifier, UdsError, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, DataIdentifier, Iso14229Error, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct ReadScalingDID(pub DataIdentifier);
 
 impl RequestData for ReadScalingDID {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::ReadScalingDID)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::ReadScalingDID)),
             None => {
                 utils::data_length_check(data.len(), 2, true)?;
 
@@ -18,11 +18,11 @@ impl RequestData for ReadScalingDID {
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::ReadScalingDID
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;

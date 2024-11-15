@@ -1,46 +1,8 @@
-use std::{collections::VecDeque, sync::{Arc, Mutex}, time::{Duration, Instant}};
+use std::time::{Duration, Instant};
 use iso14229_1::Configuration;
-use iso15765_2::{IsoTpError, IsoTpEvent, IsoTpEventListener};
+use iso15765_2::{Iso15765Error, IsoTpEvent, IsoTpEventListener};
 use rs_can::isotp::{CanIsoTp, P2Context};
-use crate::SecurityAlgo;
-
-#[derive(Debug, Default, Clone)]
-pub struct IsoTpBuffer {
-    inner: Arc<Mutex<VecDeque<IsoTpEvent>>>,
-}
-
-impl IsoTpBuffer {
-    #[inline]
-    fn clear(&self) {
-        match self.inner.lock() {
-            Ok(mut buffer) => buffer.clear(),
-            Err(_) => {
-                log::warn!("UDS - failed to acquire write lock for `IsoTpBuffer::clear`");
-            },
-        }
-    }
-
-    #[inline]
-    fn set(&self, event: IsoTpEvent) {
-        match self.inner.lock() {
-            Ok(mut buffer) => buffer.push_back(event),
-            Err(_) => {
-                log::warn!("UDS - failed to acquire write lock for `IsoTpBuffer::set`");
-            },
-        }
-    }
-
-    #[inline]
-    fn get(&self) -> Option<IsoTpEvent> {
-        match self.inner.lock() {
-            Ok(mut buffer) => buffer.pop_front(),
-            Err(_) => {
-                log::warn!("UDS - failed to acquire write lock for `IsoTpBuffer::get`");
-                None
-            },
-        }
-    }
-}
+use crate::{SecurityAlgo, buffer::IsoTpBuffer};
 
 #[derive(Debug, Default, Clone)]
 pub struct IsoTpListener {
@@ -61,7 +23,7 @@ impl IsoTpListener {
 
 impl IsoTpListener {
     #[cfg(feature = "async")]
-    pub async fn async_timer(&mut self, response_pending: bool) -> Result<Vec<u8>, IsoTpError> {
+    pub async fn async_timer(&mut self, response_pending: bool) -> Result<Vec<u8>, Iso15765Error> {
         let tov = if response_pending {
             self.p2_ctx.p2_star_ms()
         }
@@ -77,7 +39,7 @@ impl IsoTpListener {
 
             if start.elapsed() > timeout {
                 self.clear_buffer();
-                return Err(IsoTpError::Timeout { value: tov, unit: "ms" })
+                return Err(Iso15765Error::Timeout { value: tov, unit: "ms" })
             }
 
             match self.from_buffer() {
@@ -86,7 +48,7 @@ impl IsoTpListener {
                         start = Instant::now();
                     },
                     IsoTpEvent::DataReceived(data) => {
-                        log::trace!("UDS - data received: {}", hex::encode(&data));
+                        log::trace!("DoCAN - data received: {}", hex::encode(&data));
                         return Ok(data);
                     },
                     IsoTpEvent::ErrorOccurred(e) => {
@@ -101,7 +63,7 @@ impl IsoTpListener {
         }
     }
 
-    pub fn sync_timer(&mut self, response_pending: bool) -> Result<Vec<u8>, IsoTpError> {
+    pub fn sync_timer(&mut self, response_pending: bool) -> Result<Vec<u8>, Iso15765Error> {
         let tov = if response_pending {
             self.p2_ctx.p2_star_ms()
         }
@@ -117,7 +79,7 @@ impl IsoTpListener {
 
             if start.elapsed() > timeout {
                 self.clear_buffer();
-                return Err(IsoTpError::Timeout { value: tov, unit: "ms" });
+                return Err(Iso15765Error::Timeout { value: tov, unit: "ms" });
             }
 
             match self.buffer_data() {
@@ -126,7 +88,10 @@ impl IsoTpListener {
                         start = Instant::now();
                     },
                     IsoTpEvent::DataReceived(data) => {
-                        log::trace!("UDS - data received: {}", hex::encode(&data));
+                        if data.is_empty() {
+                            continue;
+                        }
+                        log::trace!("DoCANClient - data received: {}", hex::encode(&data));
                         return Ok(data);
                     },
                     IsoTpEvent::ErrorOccurred(e) => {

@@ -1,15 +1,15 @@
 //! Commons of Service 27
 
 
-use crate::{Configuration, UdsError, RequestData, ResponseData, utils, Service};
+use crate::{Configuration, Iso14229Error, RequestData, ResponseData, utils, Service};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SecurityAccessLevel(pub(crate) u8);
 
 impl SecurityAccessLevel {
-    pub fn new(level: u8) -> Result<Self, UdsError> {
+    pub fn new(level: u8) -> Result<Self, Iso14229Error> {
         if level < 1 || level > 0x7D {
-            return Err(UdsError::InvalidParam(format!("access level: {}", level)));
+            return Err(Iso14229Error::InvalidParam(format!("access level: {}", level)));
         }
 
         Ok(Self(level))
@@ -17,7 +17,7 @@ impl SecurityAccessLevel {
 }
 
 impl TryFrom<u8> for SecurityAccessLevel {
-    type Error = UdsError;
+    type Error = Iso14229Error;
     #[inline]
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         Self::new(value)

@@ -1,7 +1,7 @@
 //! request of Service 22
 
 
-use crate::{Configuration, UdsError, DataIdentifier, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, Iso14229Error, DataIdentifier, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone)]
 pub struct ReadDID {
@@ -19,9 +19,9 @@ impl ReadDID {
 }
 
 impl RequestData for ReadDID {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::ReadDID)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::ReadDID)),
             None => {
                 let data_len = data.len();
                 let mut offset = 0;
@@ -37,11 +37,11 @@ impl RequestData for ReadDID {
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::ReadDID
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;

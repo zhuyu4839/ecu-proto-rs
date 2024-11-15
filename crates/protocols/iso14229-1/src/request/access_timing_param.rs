@@ -1,6 +1,6 @@
 //! request of Service 83
 
-use crate::{UdsError, request::{Request, SubFunction}, Service, TimingParameterAccessType, Configuration, RequestData, utils};
+use crate::{Iso14229Error, request::{Request, SubFunction}, Service, TimingParameterAccessType, Configuration, RequestData, utils};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct AccessTimingParameter {
@@ -8,7 +8,7 @@ pub struct AccessTimingParameter {
 }
 
 impl RequestData for AccessTimingParameter {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 let (suppress_positive, sub_func) = utils::peel_suppress_positive(sub_func);
@@ -17,7 +17,7 @@ impl RequestData for AccessTimingParameter {
                 match TimingParameterAccessType::try_from(sub_func)? {
                     TimingParameterAccessType::SetTimingParametersToGivenValues => {
                         if data.is_empty() {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
 
                         Ok(Request {
@@ -28,7 +28,7 @@ impl RequestData for AccessTimingParameter {
                     }
                     _ => {
                         if !data.is_empty() {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
 
                         Ok(Request {
@@ -39,15 +39,15 @@ impl RequestData for AccessTimingParameter {
                     }
                 }
             },
-            None => Err(UdsError::SubFunctionError(Service::AccessTimingParam)),
+            None => Err(Iso14229Error::SubFunctionError(Service::AccessTimingParam)),
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::AccessTimingParam
             || request.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         Ok(Self { data: request.data.clone() })

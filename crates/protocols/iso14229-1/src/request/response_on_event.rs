@@ -2,7 +2,7 @@
 
 
 use bitfield_struct::bitfield;
-use crate::{Configuration, UdsError, enum_extend, EventType, request::{Request, SubFunction}, RequestData, ResponseOnEventType, Service};
+use crate::{Configuration, Iso14229Error, enum_extend, EventType, request::{Request, SubFunction}, RequestData, ResponseOnEventType, Service};
 
 enum_extend!(
     /// Table 142 — Comparison logic parameter definition
@@ -119,9 +119,9 @@ impl Into<Vec<u8>> for ResponseOnEvent {
 }
 
 impl RequestData for ResponseOnEvent {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::ResponseOnEvent)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::ResponseOnEvent)),
             None => {
 
                 Ok(Request { service: Service::ResponseOnEvent, sub_func: None, data: data.to_vec(), })
@@ -129,14 +129,14 @@ impl RequestData for ResponseOnEvent {
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::ResponseOnEvent
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
-        Err(UdsError::NotImplement)
+        Err(Iso14229Error::NotImplement)
     }
 
     #[inline]

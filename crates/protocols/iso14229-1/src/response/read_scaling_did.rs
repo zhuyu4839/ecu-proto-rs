@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use bitfield_struct::bitfield;
 use lazy_static::lazy_static;
 use crate::{enum_extend, Service};
-use crate::{Configuration, DataIdentifier, error::UdsError, response::{Code, Response, SubFunction}, ResponseData, utils};
+use crate::{Configuration, DataIdentifier, error::Iso14229Error, response::{Code, Response, SubFunction}, ResponseData, utils};
 
 lazy_static!(
     pub static ref READ_SCALING_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -120,9 +120,9 @@ pub struct ReadScalingDID {
 }
 
 impl ResponseData for ReadScalingDID {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::ReadScalingDID)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::ReadScalingDID)),
             None => {
                 let data_len = data.len();
                 utils::data_length_check(data_len, 2, false)?;
@@ -137,11 +137,11 @@ impl ResponseData for ReadScalingDID {
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::ReadScalingDID
             || response.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &response.data;

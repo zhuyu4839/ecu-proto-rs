@@ -1,7 +1,7 @@
 //! request of Service 84
 
 
-use crate::{AdministrativeParameter, Configuration, UdsError, request::{Request, SubFunction}, RequestData, SignatureEncryptionCalculation, utils, Service};
+use crate::{AdministrativeParameter, Configuration, Iso14229Error, request::{Request, SubFunction}, RequestData, SignatureEncryptionCalculation, utils, Service};
 
 #[derive(Debug, Clone)]
 pub struct SecuredDataTrans {
@@ -22,9 +22,9 @@ impl SecuredDataTrans {
         service: u8,
         service_data: Vec<u8>,
         signature_data: Vec<u8>,
-    ) -> Result<Self, UdsError> {
+    ) -> Result<Self, Iso14229Error> {
         if signature_data.len() > u16::MAX as usize {
-            return Err(UdsError::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
+            return Err(Iso14229Error::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
         }
 
         if !apar.is_request() {
@@ -44,9 +44,9 @@ impl SecuredDataTrans {
 }
 
 impl RequestData for SecuredDataTrans {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::SecuredDataTrans)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::SecuredDataTrans)),
             None => {
                 utils::data_length_check(data.len(), 8, false)?;
 
@@ -59,11 +59,11 @@ impl RequestData for SecuredDataTrans {
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::SecuredDataTrans
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;
@@ -72,7 +72,7 @@ impl RequestData for SecuredDataTrans {
         let apar = AdministrativeParameter::from(u16::from_be_bytes([data[offset], data[offset + 1]]));
         offset += 2;
         if !apar.is_request() {
-            return Err(UdsError::InvalidData(hex::encode(data)));
+            return Err(Iso14229Error::InvalidData(hex::encode(data)));
         }
         let signature = SignatureEncryptionCalculation::try_from(data[offset])?;
         offset += 1;

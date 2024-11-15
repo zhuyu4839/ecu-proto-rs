@@ -1,12 +1,12 @@
 use std::{collections::HashMap, fmt::Display, hash::Hash, time::Duration};
 use iso14229_1::{response::{self, Response, Code}, request::{self, Request}, *};
 use iso14229_1::utils::U24;
-use iso15765_2::{IsoTpError, IsoTpEventListener};
+use iso15765_2::{Iso15765Error, IsoTpEventListener};
 use rs_can::{CanDriver, isotp::{Address, AddressType, CanIsoTp, IsoTpAdapter}, Frame, ResultWrapper};
-use crate::{client::context::{Context, IsoTpListener}, Client, Error, SecurityAlgo};
+use crate::{client::context::{Context, IsoTpListener}, Client, DoCanError, SecurityAlgo};
 
 #[derive(Clone)]
-pub struct SyncClient<D, C, F>
+pub struct DoCanClient<D, C, F>
 where
     C: Clone + Eq,
 {
@@ -15,7 +15,7 @@ where
     p2_offset: u64,
 }
 
-impl<D, C, F> SyncClient<D, C, F>
+impl<D, C, F> DoCanClient<D, C, F>
 where
     D: CanDriver<Channel = C, Frame = F> + Clone + Send + 'static,
     C: Display + Clone + Hash + Eq + 'static,
@@ -29,7 +29,7 @@ where
         }
     }
 
-    pub fn init_channel(&mut self, channel: C, address: Address,) -> Result<(), Error> {
+    pub fn init_channel(&mut self, channel: C, address: Address,) -> Result<(), DoCanError> {
         let listener = IsoTpListener::new(Default::default(), self.p2_offset);
         let iso_tp = CanIsoTp::new(
             channel.clone(),
@@ -39,7 +39,7 @@ where
         );
 
         self.adapter.register_listener(
-            format!("UDSClient-{}", channel),
+            format!("DoCANClient-{}", channel),
             Box::new(iso_tp.clone())
         );
         self.context.insert(channel, Context {
@@ -59,25 +59,25 @@ where
     #[inline]
     fn context_util<R>(&mut self,
                        channel: C,
-                       callback: impl FnOnce(&mut Context<C, F>) -> Result<R, Error>
-    ) -> Result<R, Error> {
+                       callback: impl FnOnce(&mut Context<C, F>) -> Result<R, DoCanError>
+    ) -> Result<R, DoCanError> {
         match self.context.get_mut(&channel) {
             Some(ctx) => callback(ctx),
-            None => Err(Error::OtherError(format!("channel: {} is not initialized", channel))),
+            None => Err(DoCanError::OtherError(format!("channel: {} is not initialized", channel))),
         }
     }
 
-    fn response_service_check(response: &Response, target: Service) -> Result<bool, Error> {
+    fn response_service_check(response: &Response, target: Service) -> Result<bool, DoCanError> {
         let service = response.service();
         if response.is_negative() {
             let nrc_code = response.nrc_code()
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
             match nrc_code {
                 Code::RequestCorrectlyReceivedResponsePending => Ok(true),
-                _ => Err(Error::NRCError { service, code: nrc_code }),
+                _ => Err(DoCanError::NRCError { service, code: nrc_code }),
             }
         } else if service != target {
-            Err(Error::UnexpectedResponse { expect: target, actual: service })
+            Err(DoCanError::UnexpectedResponse { expect: target, actual: service })
         }
         else {
             Ok(false)
@@ -88,17 +88,17 @@ where
                             addr_type: AddressType,
                             request: Request,
                             suppress_positive: bool,
-    ) -> Result<Option<Response>, Error> {
+    ) -> Result<Option<Response>, DoCanError> {
         match Self::send_and_response(ctx, addr_type, request) {
             Ok(r) => Ok(Some(r)),
             Err(e) => match e {
-                Error::IsoTpError(e) => match e {
-                    IsoTpError::Timeout {..} => if suppress_positive {
+                DoCanError::IsoTpError(e) => match e {
+                    Iso15765Error::Timeout {..} => if suppress_positive {
                         Ok(None)
                     } else {
-                        Err(Error::IsoTpError(e))
+                        Err(DoCanError::IsoTpError(e))
                     },
-                    _ => Err(Error::IsoTpError(e)),
+                    _ => Err(DoCanError::IsoTpError(e)),
                 }
                 _ => Err(e),
             }
@@ -108,46 +108,46 @@ where
     fn send_and_response(ctx: &mut Context<C, F>,
                          addr_type: AddressType,
                          request: Request,
-    ) -> Result<Response, Error>  {
+    ) -> Result<Response, DoCanError>  {
         ctx.listener.clear_buffer();
         let service = request.service();
         ctx.iso_tp.write(addr_type, request.into())
-            .map_err(Error::IsoTpError)?;
+            .map_err(DoCanError::IsoTpError)?;
 
         let data = ctx.listener.sync_timer(false)
-            .map_err(Error::IsoTpError)?;
+            .map_err(DoCanError::IsoTpError)?;
         let mut response = Response::try_from_cfg(data, &ctx.config)
-            .map_err(Error::ISO14229Error)?;
+            .map_err(DoCanError::ISO14229Error)?;
         while Self::response_service_check(&response, service)? {
-            log::debug!("UDS - tester present when {:?}", Code::RequestCorrectlyReceivedResponsePending);
+            log::debug!("DoCANClient - tester present when {:?}", Code::RequestCorrectlyReceivedResponsePending);
             let (_, request) =
                 Self::tester_present_request(ctx, TesterPresentType::Zero, true)?;
             ctx.iso_tp.write(addr_type, request.into())
-                .map_err(Error::IsoTpError)?;
+                .map_err(DoCanError::IsoTpError)?;
 
             let data = ctx.listener.sync_timer(true)
-                .map_err(Error::IsoTpError)?;
+                .map_err(DoCanError::IsoTpError)?;
 
             response = Response::try_from_cfg(data, &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
         }
 
         Ok(response)
     }
 
-    fn sub_func_check(response: &Response, source: u8, service: Service) -> Result<(), Error> {
+    fn sub_func_check(response: &Response, source: u8, service: Service) -> Result<(), DoCanError> {
         match response.sub_function() {
             Some(v) => {
                 // let source: u8 = session_type.into();
                 let target = v.origin();
                 if target != source {
-                    Err(Error::UnexpectedSubFunction { service, expect: source, actual: target })
+                    Err(DoCanError::UnexpectedSubFunction { service, expect: source, actual: target })
                 }
                 else {
                     Ok(())
                 }
             },
-            None => Err(Error::OtherError(format!("response of service `{}` got an empty sub-function", service))),
+            None => Err(DoCanError::OtherError(format!("response of service `{}` got an empty sub-function", service))),
         }
     }
 
@@ -156,27 +156,27 @@ where
         ctx: &Context<C, F>,
         test_type: TesterPresentType,
         suppress_positive: bool,
-    ) -> Result<(Service, Request), Error> {
+    ) -> Result<(Service, Request), DoCanError> {
         let service = Service::TesterPresent;
         let mut sub_func = test_type.into();
         if suppress_positive {
             sub_func |= SUPPRESS_POSITIVE;
         }
         let request = Request::new(service, Some(sub_func), vec![], &ctx.config)
-            .map_err(Error::ISO14229Error)?;
+            .map_err(DoCanError::ISO14229Error)?;
 
         Ok((service, request))
     }
 }
 
-impl<D, C, F> Client for SyncClient<D, C, F>
+impl<D, C, F> Client for DoCanClient<D, C, F>
 where
     D: CanDriver<Channel = C, Frame = F> + Clone + Send + 'static,
     C: Display + Clone + Hash + Eq + 'static,
     F: Frame<Channel = C> + Clone + Send + Display + 'static
 {
     type Channel = C;
-    type Error = Error;
+    type Error = DoCanError;
 
     fn update_address(&mut self, channel: Self::Channel, address: Address) -> ResultWrapper<(), Self::Error> {
         self.context_util(channel, |ctx| {
@@ -234,13 +234,13 @@ where
                 sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), vec![], &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             if let Some(response) = Self::suppress_positive_sr(ctx, addr_type, request, suppress_positive)? {
                 Self::sub_func_check(&response, r#type.into(), service)?;
 
                 let timing = response.data::<response::SessionCtrl>(&ctx.config)
-                    .map_err(Error::ISO14229Error)?
+                    .map_err(DoCanError::ISO14229Error)?
                     .0;
                 ctx.listener.update_p2_ctx(timing.p2, timing.p2_star);
             }
@@ -257,13 +257,13 @@ where
                 sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), vec![], &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             if let Some(response) = Self::suppress_positive_sr(ctx, addr_type, request, suppress_positive)? {
                 Self::sub_func_check(&response, r#type.into(), service)?;
 
                 let resp = response.data::<response::ECUReset>(&ctx.config)
-                    .map_err(Error::ISO14229Error)?;
+                    .map_err(DoCanError::ISO14229Error)?;
                 if let Some(seconds) = resp.second {
                     std::thread::sleep(Duration::from_secs(seconds as u64));
                 }
@@ -277,7 +277,7 @@ where
         self.context_util(channel, |ctx| {
             let service = Service::SecurityAccess;
             let request = Request::new(service, Some(level), params, &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
@@ -292,7 +292,7 @@ where
             if let Some(algo) = ctx.security_algo {
                 let service = Service::SecurityAccess;
                 let req = Request::new(service, Some(level), params, &ctx.config)
-                    .map_err(Error::ISO14229Error)?;
+                    .map_err(DoCanError::ISO14229Error)?;
 
                 let resp = Self::send_and_response(ctx, AddressType::Physical, req)?;
                 Self::sub_func_check(&resp, level, service)?;
@@ -301,7 +301,7 @@ where
                 match algo(level, seed, salt)? {
                     Some(data) => {
                         let request = Request::new(service, Some(level + 1), data, &ctx.config)
-                            .map_err(Error::ISO14229Error)?;
+                            .map_err(DoCanError::ISO14229Error)?;
                         let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
                         Self::sub_func_check(&response, level + 1, service)
@@ -310,7 +310,7 @@ where
                 }
             }
             else {
-                Err(Error::OtherError("security algorithm required".into()))
+                Err(DoCanError::OtherError("security algorithm required".into()))
             }
         })
     }
@@ -323,9 +323,9 @@ where
                 sub_func |= SUPPRESS_POSITIVE;
             }
             let data = request::CommunicationCtrl::new(ctrl_type, comm_type, node_id)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
             let req = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let resp = Self::suppress_positive_sr(ctx, addr_type, req, suppress_positive)?;
 
@@ -342,13 +342,13 @@ where
         self.context_util(channel, |ctx| {
             let service = Service::Authentication;
             let request = Request::new(service, Some(auth_task.into()), data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
             Self::sub_func_check(&response, auth_task.into(), service)?;
 
             response.data::<response::Authentication>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
@@ -376,14 +376,14 @@ where
                 sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), parameter, &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::suppress_positive_sr(ctx, AddressType::Physical, request, suppress_positive)?;
 
             match response {
                 Some(v) => {
                     Self::sub_func_check(&v, r#type.into(), service)?;
-                    Ok(Some(v.data(&ctx.config).map_err(Error::ISO14229Error)?))
+                    Ok(Some(v.data(&ctx.config).map_err(DoCanError::ISO14229Error)?))
                 },
                 None => Ok(None)
             }
@@ -395,14 +395,14 @@ where
             let data = request::SecuredDataTrans::new(
                 apar, signature, anti_replay_cnt, service, service_data, signature_data
             )
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
             let request = Request::new(Service::SecuredDataTrans, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
             response.data::<response::SecuredDataTrans>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
@@ -414,7 +414,7 @@ where
                 sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), parameter, &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::suppress_positive_sr(ctx, AddressType::Physical, request, suppress_positive)?;
 
@@ -428,7 +428,7 @@ where
 
     fn response_on_event(&mut self, channel: Self::Channel) -> ResultWrapper<(), Self::Error> {
         self.context_util(channel, |_| {
-            Err(Error::NotImplement(Service::ResponseOnEvent))
+            Err(DoCanError::NotImplement(Service::ResponseOnEvent))
         })
     }
 
@@ -440,7 +440,7 @@ where
                 sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::suppress_positive_sr(ctx, AddressType::Physical, request, suppress_positive)?;
 
@@ -456,12 +456,12 @@ where
         self.context_util(channel, |ctx| {
             let data = request::ReadDID::new(did, others);
             let request = Request::new(Service::ReadDID, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
             response.data::<response::ReadDID>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
@@ -469,7 +469,7 @@ where
         self.context_util(channel, |ctx| {
             let data = request::ReadMemByAddr(mem_loc);
             let request = Request::new(Service::ReadMemByAddr, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
@@ -481,26 +481,26 @@ where
         self.context_util(channel, |ctx| {
             let data = request::ReadScalingDID(did);
             let request = Request::new(Service::ReadScalingDID, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
             response.data::<response::ReadScalingDID>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
     fn read_data_by_period_identifier(&mut self, channel: Self::Channel, mode: request::TransmissionMode, did: Vec<u8>) -> ResultWrapper<response::ReadDataByPeriodId, Self::Error> {
         self.context_util(channel, |ctx| {
             let data = request::ReadDataByPeriodId::new(mode, did)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
             let request = Request::new(Service::ReadDataByPeriodId, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
             response.data::<response::ReadDataByPeriodId>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
@@ -512,7 +512,7 @@ where
                 sub_func |= SUPPRESS_POSITIVE;
             }
             let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::suppress_positive_sr(ctx, AddressType::Physical, request, suppress_positive)?;
 
@@ -520,7 +520,7 @@ where
                 Some(v) => {
                     Self::sub_func_check(&v, r#type.into(), service)?;
                     Ok(Some(v.data(&ctx.config)
-                        .map_err(Error::ISO14229Error)?))
+                        .map_err(DoCanError::ISO14229Error)?))
                 },
                 None => Ok(None)
             }
@@ -531,7 +531,7 @@ where
         self.context_util(channel, |ctx| {
             let data = request::WriteDID(DIDData { did, data });
             let request = Request::new(Service::WriteDID, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let _ = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
@@ -542,14 +542,14 @@ where
     fn write_memory_by_address(&mut self, channel: Self::Channel, alfi: AddressAndLengthFormatIdentifier, mem_addr: u128, mem_size: u128, record: Vec<u8>) -> ResultWrapper<response::WriteMemByAddr, Self::Error> {
         self.context_util(channel, |ctx| {
             let data = request::WriteMemByAddr::new(alfi, mem_addr, mem_size, record)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
             let request = Request::new(Service::WriteMemByAddr, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
             response.data::<response::WriteMemByAddr>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
@@ -560,7 +560,7 @@ where
             #[cfg(any(feature = "std2006", feature = "std2013"))]
             let data = request::ClearDiagnosticInfo::new(group);
             let request = Request::new(Service::ClearDiagnosticInfo, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let _ = Self::send_and_response(ctx, addr_type, request)?;
 
@@ -572,27 +572,27 @@ where
         self.context_util(channel, |ctx| {
             let service = Service::ReadDTCInfo;
             let request = Request::new(service, Some(r#type.into()), data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
             Self::sub_func_check(&response, r#type.into(), service)?;
 
             response.data::<response::DTCInfo>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
     fn io_control(&mut self, channel: Self::Channel, did: DataIdentifier, param: IOCtrlParameter, state: Vec<u8>, mask: Vec<u8>) -> ResultWrapper<response::IOCtrl, Self::Error> {
         self.context_util(channel, |ctx| {
             let data = request::IOCtrl::new(did, param, state, mask, &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
             let request = Request::new(Service::IOCtrl, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
             response.data::<response::IOCtrl>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
@@ -601,13 +601,13 @@ where
             let service = Service::RoutineCtrl;
             let data = request::RoutineCtrl { routine_id: RoutineId(routine_id), option_record };
             let request = Request::new(service, Some(r#type.into()), data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
             Self::sub_func_check(&response, r#type.into(), service)?;
 
             response.data::<response::RoutineCtrl>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
@@ -616,15 +616,15 @@ where
             let data = request::RequestDownload {
                 dfi: dfi.unwrap_or_default(),
                 mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)
-                    .map_err(Error::ISO14229Error)?
+                    .map_err(DoCanError::ISO14229Error)?
             };
             let request = Request::new(Service::RequestDownload, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
             response.data::<response::RequestDownload>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
@@ -633,15 +633,15 @@ where
             let data = request::RequestUpload {
                 dfi: dfi.unwrap_or_default(),
                 mem_loc: MemoryLocation::new(alfi, mem_addr, mem_size)
-                    .map_err(Error::ISO14229Error)?
+                    .map_err(DoCanError::ISO14229Error)?
             };
             let request = Request::new(Service::RequestDownload, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
             response.data::<response::RequestUpload>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 
@@ -649,15 +649,15 @@ where
         self.context_util(channel, |ctx| {
             let data = response::TransferData { sequence, data };
             let request = Request::new(Service::TransferData, None, data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
             let data = response.data::<response::TransferData>(&ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             if data.sequence != sequence {
-                return Err(Error::UnexpectedTransferSequence { expect: sequence, actual: data.sequence })
+                return Err(DoCanError::UnexpectedTransferSequence { expect: sequence, actual: data.sequence })
             }
 
             Ok(data)
@@ -667,7 +667,7 @@ where
     fn request_transfer_exit(&mut self, channel: Self::Channel, parameter: Vec<u8>) -> ResultWrapper<Vec<u8>, Self::Error> {
         self.context_util(channel, |ctx| {
             let request = Request::new(Service::RequestTransferExit, None, parameter, &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
 
@@ -680,13 +680,13 @@ where
             let service = Service::RequestFileTransfer;
             let sub_func = operation.into();
             let request = Request::new(service, Some(sub_func), data.to_vec(&ctx.config), &ctx.config)
-                .map_err(Error::ISO14229Error)?;
+                .map_err(DoCanError::ISO14229Error)?;
 
             let response = Self::send_and_response(ctx, AddressType::Physical, request)?;
             Self::sub_func_check(&response, operation.into(), service)?;
 
             response.data::<response::RequestFileTransfer>(&ctx.config)
-                .map_err(Error::ISO14229Error)
+                .map_err(DoCanError::ISO14229Error)
         })
     }
 }

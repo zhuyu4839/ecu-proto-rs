@@ -1,7 +1,7 @@
 //! request of Service 87
 
 
-use crate::{Configuration, UdsError, LinkCtrlMode, LinkCtrlType, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, Iso14229Error, LinkCtrlMode, LinkCtrlType, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum LinkCtrl {
@@ -13,7 +13,7 @@ pub enum LinkCtrl {
 }
 
 impl RequestData for LinkCtrl {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 let (suppress_positive, sub_func) = utils::peel_suppress_positive(sub_func);
@@ -30,19 +30,19 @@ impl RequestData for LinkCtrl {
 
                 Ok(Request {
                     service: Service::LinkCtrl,
-                    sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                    sub_func: Some(SubFunction::new(sub_func, suppress_positive)),
                     data: data.to_vec(),
                 })
             },
-            None => Err(UdsError::SubFunctionError(Service::LinkCtrl)),
+            None => Err(Iso14229Error::SubFunctionError(Service::LinkCtrl)),
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::LinkCtrl
             || request.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let sub_func: LinkCtrlType = request.sub_function().unwrap().function()?;

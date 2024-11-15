@@ -1,7 +1,7 @@
 //! request of Service 14
 
 
-use crate::{Configuration, UdsError, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, Iso14229Error, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ClearDiagnosticInfo {
@@ -38,9 +38,9 @@ impl ClearDiagnosticInfo {
 
 impl RequestData for ClearDiagnosticInfo {
     #[inline]
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::ClearDiagnosticInfo)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::ClearDiagnosticInfo)),
             None => {
                 #[cfg(any(feature = "std2020"))]
                 utils::data_length_check(data.len(), 3, false)?;
@@ -53,11 +53,11 @@ impl RequestData for ClearDiagnosticInfo {
     }
 
     #[cfg(any(feature = "std2020"))]
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::ClearDiagnosticInfo
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;
@@ -78,11 +78,11 @@ impl RequestData for ClearDiagnosticInfo {
     }
 
     #[cfg(any(feature = "std2006", feature = "std2013"))]
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::ClearDiagnosticInfo
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;

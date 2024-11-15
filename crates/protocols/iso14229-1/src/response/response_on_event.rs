@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, error::UdsError, response::{Code, Response, SubFunction}, ResponseData, Service};
+use crate::{Configuration, error::Iso14229Error, response::{Code, Response, SubFunction}, ResponseData, Service};
 
 lazy_static!(
     pub static ref RESPONSE_ON_EVENT_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -21,9 +21,9 @@ pub struct ResponseOnEvent {
 
 #[allow(unused_variables)]
 impl ResponseData for ResponseOnEvent {
-    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
-            Some(sub_func) => Err(UdsError::SubFunctionError(Service::ResponseOnEvent)),
+            Some(sub_func) => Err(Iso14229Error::SubFunctionError(Service::ResponseOnEvent)),
             None => {
 
                 Ok(Response {
@@ -36,8 +36,8 @@ impl ResponseData for ResponseOnEvent {
         }
     }
 
-    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
-        Err(UdsError::NotImplement)
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, Iso14229Error> {
+        Err(Iso14229Error::NotImplement)
     }
 
     #[inline]

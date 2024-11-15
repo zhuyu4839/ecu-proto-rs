@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{DTCSettingType, UdsError, response::{Code, Response, SubFunction}, Service, utils, Configuration, ResponseData};
+use crate::{DTCSettingType, Iso14229Error, response::{Code, Response, SubFunction}, Service, utils, Configuration, ResponseData};
 
 lazy_static!(
     pub static ref CTRL_DTC_SETTING_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -19,7 +19,7 @@ pub struct CtrlDTCSetting {
 }
 
 impl ResponseData for CtrlDTCSetting {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 let _ = DTCSettingType::try_from(sub_func)?;
@@ -33,15 +33,15 @@ impl ResponseData for CtrlDTCSetting {
                     data: vec![],
                 })
             },
-            None => Err(UdsError::SubFunctionError(Service::CtrlDTCSetting)),
+            None => Err(Iso14229Error::SubFunctionError(Service::CtrlDTCSetting)),
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service;
         if service != Service::CtrlDTCSetting
             || response.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service));
+            return Err(Iso14229Error::ServiceError(service));
         }
 
         // let sub_func: DTCSettingType = request.sub_function().unwrap().function()?;

@@ -1,6 +1,6 @@
 //! response of Service 38
 
-use crate::{ByteOrder, Configuration, error::UdsError, DataFormatIdentifier, ModeOfOperation, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{ByteOrder, Configuration, error::Iso14229Error, DataFormatIdentifier, ModeOfOperation, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum RequestFileTransfer {
@@ -38,7 +38,7 @@ pub enum RequestFileTransfer {
 }
 
 impl RequestData for RequestFileTransfer {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 let (suppress_positive, sub_func) = utils::peel_suppress_positive(sub_func);
@@ -57,19 +57,19 @@ impl RequestData for RequestFileTransfer {
 
                 Ok(Request {
                     service: Service::RequestFileTransfer,
-                    sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                    sub_func: Some(SubFunction::new(sub_func, suppress_positive)),
                     data: data.to_vec(),
                 })
             },
-            None => Err(UdsError::SubFunctionError(Service::RequestFileTransfer)),
+            None => Err(Iso14229Error::SubFunctionError(Service::RequestFileTransfer)),
         }
     }
 
-    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::RequestFileTransfer
             || request.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let sub_func: ModeOfOperation = request.sub_function().unwrap().function()?;
@@ -78,7 +78,7 @@ impl RequestData for RequestFileTransfer {
         let len = u16::from_be_bytes([data[offset], data[offset + 1]]) as usize;
         offset += 2;
         let filepath = String::from_utf8(data[offset..offset + len].to_vec())
-            .map_err(|_| UdsError::InvalidData(hex::encode(data)))?;
+            .map_err(|_| Iso14229Error::InvalidData(hex::encode(data)))?;
         offset += len;
 
         match sub_func {

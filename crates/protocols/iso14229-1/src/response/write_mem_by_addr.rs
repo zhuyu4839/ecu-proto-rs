@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, error::UdsError, MemoryLocation, response::{Code, Response, SubFunction}, ResponseData, Service, utils};
+use crate::{Configuration, error::Iso14229Error, MemoryLocation, response::{Code, Response, SubFunction}, ResponseData, Service, utils};
 
 lazy_static!(
     pub static ref WRITE_MEM_BY_ADDR_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -20,9 +20,9 @@ lazy_static!(
 pub struct WriteMemByAddr(pub MemoryLocation);
 
 impl ResponseData for WriteMemByAddr {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::WriteMemByAddr)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::WriteMemByAddr)),
             None => {
                 utils::data_length_check(data.len(), 3, false)?;
 
@@ -36,11 +36,11 @@ impl ResponseData for WriteMemByAddr {
         }
     }
 
-    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::WriteMemByAddr
             || response.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         Ok(Self(MemoryLocation::from_slice(&response.data, cfg)?))

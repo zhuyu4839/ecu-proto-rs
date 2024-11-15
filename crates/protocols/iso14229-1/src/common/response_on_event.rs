@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{constant::POSITIVE_OFFSET, error::UdsError, Service};
+use crate::{constant::POSITIVE_OFFSET, error::Iso14229Error, Service};
 use crate::enum_extend;
 
 lazy_static!(

@@ -1,7 +1,7 @@
 //! request of Service 3D
 
 
-use crate::{AddressAndLengthFormatIdentifier, Configuration, UdsError, MemoryLocation, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{AddressAndLengthFormatIdentifier, Configuration, Iso14229Error, MemoryLocation, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct WriteMemByAddr {
@@ -16,9 +16,9 @@ impl WriteMemByAddr {
         mem_addr: u128,
         mem_size: u128,
         data: Vec<u8>,
-    ) -> Result<Self, UdsError> {
+    ) -> Result<Self, Iso14229Error> {
         if data.len() != mem_size as usize {
-            return Err(UdsError::InvalidParam("the length of data must be equal to mem_size and the mem_size must rather than 0".to_string()));
+            return Err(Iso14229Error::InvalidParam("the length of data must be equal to mem_size and the mem_size must rather than 0".to_string()));
         }
 
         Ok(Self {
@@ -39,9 +39,9 @@ impl WriteMemByAddr {
 }
 
 impl RequestData for WriteMemByAddr {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::WriteMemByAddr)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::WriteMemByAddr)),
             None => {
                 utils::data_length_check(data.len(), 5, false)?;
 
@@ -50,11 +50,11 @@ impl RequestData for WriteMemByAddr {
         }
     }
 
-    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::WriteMemByAddr
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;

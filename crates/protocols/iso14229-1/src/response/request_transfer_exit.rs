@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, UdsError, response::{Code, Response, SubFunction}, Service, ResponseData};
+use crate::{Configuration, Iso14229Error, response::{Code, Response, SubFunction}, Service, ResponseData};
 
 lazy_static!(
     pub static ref REQUEST_TRANSFER_EXIT_NEGATIVES: HashSet<Code>
@@ -21,9 +21,9 @@ pub struct RequestTransferExit {
 }
 
 impl ResponseData for RequestTransferExit {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::RequestTransferExit)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::RequestTransferExit)),
             None => {
                 
                 Ok(Response {
@@ -36,11 +36,11 @@ impl ResponseData for RequestTransferExit {
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::RequestTransferExit
             || response.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         Ok(Self { data: response.data.clone() })

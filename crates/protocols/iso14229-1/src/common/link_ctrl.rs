@@ -1,6 +1,6 @@
 //! Commons of Service 87
 
-use crate::{enum_extend, UdsError, utils};
+use crate::{enum_extend, Iso14229Error, utils};
 
 enum_extend!(
     pub enum LinkCtrlMode {
@@ -36,7 +36,7 @@ pub enum LinkCtrlType {
 }
 
 impl TryFrom<u8> for LinkCtrlType {
-    type Error = UdsError;
+    type Error = Iso14229Error;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
@@ -47,7 +47,7 @@ impl TryFrom<u8> for LinkCtrlType {
             0x40..=0x5F => Ok(Self::VehicleManufacturerSpecific(value)),
             0x60..=0x7E => Ok(Self::SystemSupplierSpecific(value)),
             0x7F => Ok(Self::Reserved(value)),
-            v => Err(UdsError::ReservedError(v.to_string())),
+            v => Err(Iso14229Error::ReservedError(v.to_string())),
         }
     }
 }

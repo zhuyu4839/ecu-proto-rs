@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{utils, Configuration, UdsError, LinkCtrlType, response::{Code, Response, SubFunction}, Service, ResponseData};
+use crate::{utils, Configuration, Iso14229Error, LinkCtrlType, response::{Code, Response, SubFunction}, Service, ResponseData};
 
 lazy_static!(
     pub static ref LINK_CTRL_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -20,7 +20,7 @@ pub struct LinkCtrl {
 }
 
 impl ResponseData for LinkCtrl {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 let _ = LinkCtrlType::try_from(sub_func)?;
@@ -34,15 +34,15 @@ impl ResponseData for LinkCtrl {
                     data: data.to_vec(),
                 })
             },
-            None => Err(UdsError::SubFunctionError(Service::LinkCtrl)),
+            None => Err(Iso14229Error::SubFunctionError(Service::LinkCtrl)),
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::LinkCtrl
             || response.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         // let sub_func: LinkCtrlType = response.sub_function().unwrap().function()?;

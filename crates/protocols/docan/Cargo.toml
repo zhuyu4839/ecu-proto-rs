@@ -38,7 +38,7 @@ optional = true
 [features]
 async = ["tokio"]
 
-default = ["std2020", "client"]
+default = ["std2020", "client", "server"]
 
 client = ["rs-can/isotp-std2004"]
 server = ["rs-can/isotp-std2004"]

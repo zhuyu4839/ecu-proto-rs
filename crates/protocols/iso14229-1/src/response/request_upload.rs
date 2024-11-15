@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{ByteOrder, Configuration, error::UdsError, LengthFormatIdentifier, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
+use crate::{ByteOrder, Configuration, error::Iso14229Error, LengthFormatIdentifier, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
 
 lazy_static!(
     pub static ref REQUEST_UPLOAD_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -25,9 +25,9 @@ pub struct RequestUpload {
 impl RequestUpload {
     pub fn new(
         max_num_of_block_len: u128
-    ) -> Result<Self, UdsError> {
+    ) -> Result<Self, Iso14229Error> {
         if max_num_of_block_len == 0 {
-            return Err(UdsError::InvalidParam("`maxNumberOfBlockLength` must be rather than 0".to_string()));
+            return Err(Iso14229Error::InvalidParam("`maxNumberOfBlockLength` must be rather than 0".to_string()));
         }
 
         let lfi = utils::length_of_u_type(max_num_of_block_len) as u8;
@@ -40,9 +40,9 @@ impl RequestUpload {
 }
 
 impl ResponseData for RequestUpload {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::RequestUpload)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::RequestUpload)),
             None => {
                 utils::data_length_check(data.len(), 1, false)?;
 
@@ -56,11 +56,11 @@ impl ResponseData for RequestUpload {
         }
     }
 
-    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::RequestUpload
             || response.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &response.data;
@@ -73,7 +73,7 @@ impl ResponseData for RequestUpload {
 
         let max_num_of_block_len = utils::slice_to_u128(remain, cfg.bo_mem_size);
         if max_num_of_block_len == 0 {
-            return Err(UdsError::InvalidParam("`maxNumberOfBlockLength` must be rather than 0".to_string()));
+            return Err(Iso14229Error::InvalidParam("`maxNumberOfBlockLength` must be rather than 0".to_string()));
         }
 
         Ok(Self {

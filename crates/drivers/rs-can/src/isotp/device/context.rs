@@ -1,4 +1,4 @@
-use iso15765_2::{FlowControlContext, IsoTpError, IsoTpEvent, ISO_TP_CONSECUTIVE_SEQUENCE_START};
+use iso15765_2::{FlowControlContext, Iso15765Error, IsoTpEvent, ISO_TP_CONSECUTIVE_SEQUENCE_START};
 use crate::isotp::P2Context;
 
 #[derive(Debug, Default, Clone)]
@@ -52,9 +52,9 @@ impl IsoTpContext {
         self.consecutive.length = Some(length);
         self.consecutive.buffer.append(&mut data);
     }
-    pub(crate) fn append_consecutive(&mut self, sequence: u8, mut data: Vec<u8>) -> Result<IsoTpEvent, IsoTpError> {
+    pub(crate) fn append_consecutive(&mut self, sequence: u8, mut data: Vec<u8>) -> Result<IsoTpEvent, Iso15765Error> {
         if self.consecutive.length.is_none() {
-            return Err(IsoTpError::MixFramesError);
+            return Err(Iso15765Error::MixFramesError);
         }
 
         let target = match self.consecutive.sequence {
@@ -66,7 +66,7 @@ impl IsoTpContext {
         };
         self.consecutive.sequence = Some(target);
         if sequence != target {
-            return Err(IsoTpError::InvalidSequence { expect: target, actual: sequence });
+            return Err(Iso15765Error::InvalidSequence { expect: target, actual: sequence });
         }
 
         self.consecutive.buffer.append(&mut data);

@@ -85,7 +85,7 @@ pub enum IsoTpEvent {
     Wait,
     FirstFrameReceived,
     DataReceived(Vec<u8>),
-    ErrorOccurred(IsoTpError),
+    ErrorOccurred(Iso15765Error),
 }
 
 pub trait IsoTpEventListener {
@@ -122,7 +122,7 @@ impl Into<u8> for FrameType {
 }
 
 impl TryFrom<u8> for FrameType {
-    type Error = IsoTpError;
+    type Error = Iso15765Error;
     #[inline]
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value & 0xF0 {
@@ -130,7 +130,7 @@ impl TryFrom<u8> for FrameType {
             0x10 => Ok(Self::First),
             0x20 => Ok(Self::Consecutive),
             0x30 => Ok(Self::FlowControl),
-            v => Err(IsoTpError::InvalidParam(format!("`frame type`({})", v))),
+            v => Err(Iso15765Error::InvalidParam(format!("`frame type`({})", v))),
         }
     }
 }
@@ -146,13 +146,13 @@ pub enum FlowControlState {
 }
 
 impl TryFrom<u8> for FlowControlState {
-    type Error = IsoTpError;
+    type Error = Iso15765Error;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0x00 => Ok(Self::Continues),
             0x01 => Ok(Self::Wait),
             0x02 => Ok(Self::Overload),
-            v => Err(IsoTpError::InvalidParam(format!("`state` ({})", v))),
+            v => Err(Iso15765Error::InvalidParam(format!("`state` ({})", v))),
         }
     }
 }
@@ -185,10 +185,10 @@ impl FlowControlContext {
         state: FlowControlState,
         block_size: u8,
         st_min: u8,
-    ) -> Result<Self, IsoTpError> {
+    ) -> Result<Self, Iso15765Error> {
         match st_min {
             0x80..=0xF0 |
-            0xFA..=0xFF => Err(IsoTpError::InvalidStMin(st_min)),
+            0xFA..=0xFF => Err(Iso15765Error::InvalidStMin(st_min)),
             v => Ok(Self { state, block_size, st_min: v }),
         }
     }

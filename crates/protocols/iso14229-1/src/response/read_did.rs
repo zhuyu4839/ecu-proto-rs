@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, DataIdentifier, DIDData, error::UdsError, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
+use crate::{Configuration, DataIdentifier, DIDData, error::Iso14229Error, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
 
 lazy_static!(
     pub static ref READ_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -21,9 +21,9 @@ pub struct ReadDID {
 }
 
 impl ResponseData for ReadDID {
-    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::ReadDID)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::ReadDID)),
             None => {
                 let data_len = data.len();
                 let mut offset = 0;
@@ -33,7 +33,7 @@ impl ResponseData for ReadDID {
                 );
                 offset += 2;
                 let &did_len = cfg.did_cfg.get(&did)
-                    .ok_or(UdsError::DidNotSupported(did))?;
+                    .ok_or(Iso14229Error::DidNotSupported(did))?;
                 utils::data_length_check(data_len, offset + did_len, false)?;
                 offset += did_len;
 
@@ -44,7 +44,7 @@ impl ResponseData for ReadDID {
                     );
                     offset += 2;
                     let &did_len = cfg.did_cfg.get(&did)
-                        .ok_or(UdsError::DidNotSupported(did))?;
+                        .ok_or(Iso14229Error::DidNotSupported(did))?;
                     utils::data_length_check(data_len, offset + did_len, false)?;
                     offset += did_len;
                 }
@@ -59,11 +59,11 @@ impl ResponseData for ReadDID {
         }
     }
 
-    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::ReadDID
             || response.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &response.data;
@@ -75,7 +75,7 @@ impl ResponseData for ReadDID {
         );
         offset += 2;
         let &did_len = cfg.did_cfg.get(&did)
-            .ok_or(UdsError::DidNotSupported(did))?;
+            .ok_or(Iso14229Error::DidNotSupported(did))?;
 
         let context = DIDData {
             did,
@@ -90,7 +90,7 @@ impl ResponseData for ReadDID {
             );
             offset += 2;
             let &did_len = cfg.did_cfg.get(&did)
-                .ok_or(UdsError::DidNotSupported(did))?;
+                .ok_or(Iso14229Error::DidNotSupported(did))?;
 
             others.push(DIDData {
                 did,

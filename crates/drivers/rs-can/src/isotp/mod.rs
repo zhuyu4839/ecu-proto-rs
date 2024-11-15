@@ -4,7 +4,7 @@ mod device;
 pub use device::*;
 mod standard;
 
-use iso15765_2::{FlowControlContext, FlowControlState, FrameType, IsoTpError, ISO_TP_DEFAULT_BLOCK_SIZE, ISO_TP_DEFAULT_ST_MIN};
+use iso15765_2::{FlowControlContext, FlowControlState, FrameType, Iso15765Error, ISO_TP_DEFAULT_BLOCK_SIZE, ISO_TP_DEFAULT_ST_MIN};
 
 use crate::{CAN_FRAME_MAX_SIZE, DEFAULT_PADDING};
 
@@ -74,11 +74,9 @@ impl P2Context {
 }
 
 impl Default for P2Context {
+    #[inline]
     fn default() -> Self {
-        Self {
-            p2: P2_MAX,
-            p2_star: P2_STAR_MAX,
-        }
+        Self::new(P2_MAX, P2_STAR_MAX)
     }
 }
 
@@ -109,12 +107,12 @@ impl From<&IsoTpFrame> for FrameType {
 unsafe impl Send for IsoTpFrame {}
 
 impl IsoTpFrame {
-    pub fn decode<T: AsRef<[u8]>>(data: T) -> Result<Self, IsoTpError> {
+    pub fn decode<T: AsRef<[u8]>>(data: T) -> Result<Self, Iso15765Error> {
         let data = data.as_ref();
         let length = data.len();
         match length {
-            0 => Err(IsoTpError::EmptyPdu),
-            1..=2 => Err(IsoTpError::InvalidPdu(data.to_vec())),
+            0 => Err(Iso15765Error::EmptyPdu),
+            1..=2 => Err(Iso15765Error::InvalidPdu(data.to_vec())),
             3.. => {
                 let byte0 = data[0];
                 match FrameType::try_from(byte0)? {
@@ -169,12 +167,12 @@ impl IsoTpFrame {
     }
 
     #[inline]
-    pub fn from_data<T: AsRef<[u8]>>(data: T) -> Result<Vec<Self>, IsoTpError> {
+    pub fn from_data<T: AsRef<[u8]>>(data: T) -> Result<Vec<Self>, Iso15765Error> {
         standard::from_data(data.as_ref())
     }
 
     #[inline]
-    pub fn single_frame<T: AsRef<[u8]>>(data: T) -> Result<Self, IsoTpError> {
+    pub fn single_frame<T: AsRef<[u8]>>(data: T) -> Result<Self, Iso15765Error> {
         standard::new_single(data)
     }
 
@@ -182,7 +180,7 @@ impl IsoTpFrame {
     pub fn flow_ctrl_frame(state: FlowControlState,
                            block_size: u8,
                            st_min: u8,
-    ) -> Result<Self, IsoTpError> {
+    ) -> Result<Self, Iso15765Error> {
         Ok(Self::FlowControlFrame(
             FlowControlContext::new(state, block_size, st_min)?
         ))

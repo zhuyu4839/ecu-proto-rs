@@ -1,7 +1,7 @@
 //! request of Service 2A
 
 
-use crate::{Configuration, enum_extend, UdsError, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, enum_extend, Iso14229Error, request::{Request, SubFunction}, RequestData, utils, Service};
 
 enum_extend!(
     /// Table C.10 — transmissionMode parameter definitions
@@ -22,9 +22,9 @@ impl ReadDataByPeriodId {
     pub fn new(
         mode: TransmissionMode,
         did: Vec<u8>
-    ) -> Result<Self, UdsError> {
+    ) -> Result<Self, Iso14229Error> {
         if did.is_empty() {
-            return Err(UdsError::InvalidParam("empty period_id".to_string()));
+            return Err(Iso14229Error::InvalidParam("empty period_id".to_string()));
         }
 
         Ok(Self { mode, did })
@@ -42,9 +42,9 @@ impl ReadDataByPeriodId {
 }
 
 impl RequestData for ReadDataByPeriodId {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::ReadDataByPeriodId)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::ReadDataByPeriodId)),
             None => {
                 utils::data_length_check(data.len(), 2, false)?;
 
@@ -53,11 +53,11 @@ impl RequestData for ReadDataByPeriodId {
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::ReadDataByPeriodId
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;

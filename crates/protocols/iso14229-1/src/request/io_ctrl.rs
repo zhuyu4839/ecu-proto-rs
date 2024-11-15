@@ -1,7 +1,7 @@
 //! request of Service 2F
 
 
-use crate::{Configuration, UdsError, IOCtrlParameter, IOCtrlOption, DataIdentifier, request::{Request, SubFunction}, RequestData, utils, Service};
+use crate::{Configuration, Iso14229Error, IOCtrlParameter, IOCtrlOption, DataIdentifier, request::{Request, SubFunction}, RequestData, utils, Service};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IOCtrl {
@@ -17,18 +17,18 @@ impl IOCtrl {
         state: Vec<u8>,
         mask: Vec<u8>,
         cfg: &Configuration,
-    ) -> Result<Self, UdsError> {
+    ) -> Result<Self, Iso14229Error> {
         match param {
             IOCtrlParameter::ReturnControlToEcu |
             IOCtrlParameter::ResetToDefault |
             IOCtrlParameter::FreezeCurrentState => {
                 if !state.is_empty() {
-                    return Err(UdsError::InvalidParam("expected empty `controlState`".to_string()));
+                    return Err(Iso14229Error::InvalidParam("expected empty `controlState`".to_string()));
                 }
             }
             IOCtrlParameter::ShortTermAdjustment => {
                 let &did_len = cfg.did_cfg.get(&did)
-                    .ok_or(UdsError::DidNotSupported(did))?;
+                    .ok_or(Iso14229Error::DidNotSupported(did))?;
 
                 utils::data_length_check(state.len(), did_len, false)?;
             },
@@ -58,9 +58,9 @@ impl IOCtrl {
 }
 
 impl RequestData for IOCtrl {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::IOCtrl)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::IOCtrl)),
             None => {
                 utils::data_length_check(data.len(), 3, false)?;
 
@@ -69,11 +69,11 @@ impl RequestData for IOCtrl {
         }
     }
 
-    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::IOCtrl
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;
@@ -88,7 +88,7 @@ impl RequestData for IOCtrl {
         let param = IOCtrlParameter::try_from(data[offset])?;
         offset += 1;
         let &did_len = cfg.did_cfg.get(&did)
-            .ok_or(UdsError::DidNotSupported(did))?;
+            .ok_or(Iso14229Error::DidNotSupported(did))?;
         utils::data_length_check(data_len, offset + did_len, false)?;
         let state = data[offset..offset + did_len].to_vec();
         offset += did_len;

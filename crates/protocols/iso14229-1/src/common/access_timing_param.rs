@@ -1,6 +1,6 @@
 //! Commons of Service 83
 
-use crate::{Configuration, enum_extend, UdsError, RequestData, ResponseData, Service};
+use crate::{Configuration, enum_extend, Iso14229Error, RequestData, ResponseData, Service};
 
 enum_extend!(
     pub enum TimingParameterAccessType {

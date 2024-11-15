@@ -4,7 +4,7 @@
 use std::collections::HashSet;
 use lazy_static::lazy_static;
 use crate::{enum_extend, Service};
-use crate::{Configuration, DataIdentifier, DTCReportType, error::UdsError, response::Code, ResponseData, utils};
+use crate::{Configuration, DataIdentifier, DTCReportType, error::Iso14229Error, response::Code, ResponseData, utils};
 use crate::response::{Response, SubFunction};
 
 lazy_static!(
@@ -544,7 +544,7 @@ impl Into<Vec<u8>> for DTCInfo {
 }
 
 impl ResponseData for DTCInfo {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 let data_len = data.len();
@@ -554,21 +554,21 @@ impl ResponseData for DTCInfo {
                     DTCReportType::ReportDTCByStatusMask => {
                         utils::data_length_check(data_len, 1, false)?;
                         if (data_len - 1) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     DTCReportType::ReportDTCSnapshotIdentification => {
                         if (data_len % 4) != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     DTCReportType::ReportDTCSnapshotRecordByDTCNumber =>
                         utils::data_length_check(data_len, 4, false)?,
                     DTCReportType::ReportDTCStoredDataByRecordNumber => {
-                        return Err(UdsError::NotImplement);
+                        return Err(Iso14229Error::NotImplement);
                     }
                     DTCReportType::ReportDTCExtDataRecordByDTCNumber => {
-                        return Err(UdsError::NotImplement);
+                        return Err(Iso14229Error::NotImplement);
                     }
                     DTCReportType::ReportNumberOfDTCBySeverityMaskRecord =>
                         utils::data_length_check(data_len, 4, true)?,
@@ -576,44 +576,44 @@ impl ResponseData for DTCInfo {
                         utils::data_length_check(data_len, 7, false)?,
                     DTCReportType::ReportSeverityInformationOfDTC => {
                         if (data_len - 1) % 6 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     DTCReportType::ReportSupportedDTC => {
                         utils::data_length_check(data_len, 5, false)?;
                         if (data_len - 1) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     DTCReportType::ReportFirstTestFailedDTC => {
                         utils::data_length_check(data_len, 5, false)?;
                         if (data_len - 1) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     DTCReportType::ReportFirstConfirmedDTC => {
                         utils::data_length_check(data_len, 5, false)?;
                         if (data_len - 1) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     DTCReportType::ReportMostRecentTestFailedDTC => {
                         utils::data_length_check(data_len, 5, false)?;
                         if (data_len - 1) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     DTCReportType::ReportMostRecentConfirmedDTC => {
                         utils::data_length_check(data_len, 5, false)?;
                         if (data_len - 1) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     #[cfg(any(feature = "std2006", feature = "std2013"))]
                     DTCReportType::ReportMirrorMemoryDTCByStatusMask => {
                         utils::data_length_check(data_len, 5, false)?;
                         if (data_len - 1) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     #[cfg(any(feature = "std2006", feature = "std2013"))]
@@ -629,30 +629,30 @@ impl ResponseData for DTCInfo {
                     DTCReportType::ReportEmissionsOBDDTCByStatusMask => {
                         utils::data_length_check(data_len, 5, false)?;
                         if (data_len - 1) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     DTCReportType::ReportDTCFaultDetectionCounter => {
                         utils::data_length_check(data_len, 4, false)?;
                         if data_len % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     DTCReportType::ReportDTCWithPermanentStatus => {
                         utils::data_length_check(data_len, 5, false)?;
                         if (data_len - 1) % 4 != 0{
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     #[cfg(any(feature = "std2013", feature = "std2020"))]
                     DTCReportType::ReportDTCExtDataRecordByRecordNumber => {
-                        return Err(UdsError::NotImplement);
+                        return Err(Iso14229Error::NotImplement);
                     }
                     #[cfg(any(feature = "std2013", feature = "std2020"))]
                     DTCReportType::ReportUserDefMemoryDTCByStatusMask => {
                         utils::data_length_check(data_len, 2, false)?;
                         if (data_len - 2) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     #[cfg(any(feature = "std2013", feature = "std2020"))]
@@ -660,7 +660,7 @@ impl ResponseData for DTCInfo {
                         utils::data_length_check(data_len, 5, false)?,
                     #[cfg(any(feature = "std2013", feature = "std2020"))]
                     DTCReportType::ReportUserDefMemoryDTCExtDataRecordByDTCNumber => {
-                        return Err(UdsError::NotImplement);
+                        return Err(Iso14229Error::NotImplement);
                     }
                     #[cfg(any(feature = "std2020"))]
                     DTCReportType::ReportSupportedDTCExtDataRecord =>
@@ -669,20 +669,20 @@ impl ResponseData for DTCInfo {
                     DTCReportType::ReportWWHOBDDTCByMaskRecord => {
                         utils::data_length_check(data_len, 4, false)?;
                         if (data_len - 4) % 5 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     #[cfg(any(feature = "std2013", feature = "std2020"))]
                     DTCReportType::ReportWWHOBDDTCWithPermanentStatus => {
                         if (data_len - 3) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                     #[cfg(any(feature = "std2020"))]
                     DTCReportType::ReportDTCInformationByDTCReadinessGroupIdentifier => {
                         utils::data_length_check(data_len, 4, false)?;
                         if (data_len - 4) % 4 != 0 {
-                            return Err(UdsError::InvalidData(hex::encode(data)));
+                            return Err(Iso14229Error::InvalidData(hex::encode(data)));
                         }
                     }
                 }
@@ -694,15 +694,15 @@ impl ResponseData for DTCInfo {
                     data: data.to_vec(),
                 })
             },
-            None => Err(UdsError::SubFunctionError(Service::ReadDTCInfo)),
+            None => Err(Iso14229Error::SubFunctionError(Service::ReadDTCInfo)),
         }
     }
 
-    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::ReadDTCInfo
             || response.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let sub_func: DTCReportType = response.sub_function().unwrap().function()?;
@@ -789,7 +789,7 @@ impl ResponseData for DTCInfo {
                         );
                         offset += 2;
                         let &did_data_len = cfg.did_cfg.get(&did)
-                            .ok_or(UdsError::DidNotSupported(did))?;
+                            .ok_or(Iso14229Error::DidNotSupported(did))?;
 
                         utils::data_length_check(data_len, offset + did_data_len, false)?;
 
@@ -811,10 +811,10 @@ impl ResponseData for DTCInfo {
                 })
             }
             DTCReportType::ReportDTCStoredDataByRecordNumber => {
-                Err(UdsError::NotImplement)
+                Err(Iso14229Error::NotImplement)
             }
             DTCReportType::ReportDTCExtDataRecordByDTCNumber => {
-                Err(UdsError::NotImplement)
+                Err(Iso14229Error::NotImplement)
             }
             DTCReportType::ReportNumberOfDTCBySeverityMaskRecord => {
                 let avl_mask = data[offset];
@@ -833,7 +833,7 @@ impl ResponseData for DTCInfo {
                 let avl_mask = data[offset];
                 offset += 1;
                 if (data_len - offset) % 6 != 0 {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
 
                 let severity = data[offset];
@@ -1041,7 +1041,7 @@ impl ResponseData for DTCInfo {
                     DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
                     DTCFormatIdentifier::ISO_11992_4_DTCFormat => {}
                     DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 =>
-                        return Err(UdsError::InvalidData(hex::encode(data))),
+                        return Err(Iso14229Error::InvalidData(hex::encode(data))),
                 }
                 let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
 
@@ -1063,7 +1063,7 @@ impl ResponseData for DTCInfo {
                     DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
                     DTCFormatIdentifier::ISO_11992_4_DTCFormat => {}
                     DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 =>
-                        return Err(UdsError::InvalidData(hex::encode(data))),
+                        return Err(Iso14229Error::InvalidData(hex::encode(data))),
                 }
                 let count = u16::from_be_bytes([data[offset], data[offset + 1]]);
 
@@ -1129,7 +1129,7 @@ impl ResponseData for DTCInfo {
             }
             #[cfg(any(feature = "std2013", feature = "std2020"))]
             DTCReportType::ReportDTCExtDataRecordByRecordNumber => {
-                Err(UdsError::NotImplement)
+                Err(Iso14229Error::NotImplement)
             }
             #[cfg(any(feature = "std2013", feature = "std2020"))]
             DTCReportType::ReportUserDefMemoryDTCByStatusMask => {
@@ -1177,7 +1177,7 @@ impl ResponseData for DTCInfo {
                         );
                         offset += 2;
                         let &did_data_len = cfg.did_cfg.get(&did)
-                            .ok_or(UdsError::DidNotSupported(did))?;
+                            .ok_or(Iso14229Error::DidNotSupported(did))?;
 
                         utils::data_length_check(data_len, offset + did_data_len, false)?;
 
@@ -1203,7 +1203,7 @@ impl ResponseData for DTCInfo {
             }
             #[cfg(any(feature = "std2013", feature = "std2020"))]
             DTCReportType::ReportUserDefMemoryDTCExtDataRecordByDTCNumber => {
-                Err(UdsError::NotImplement)
+                Err(Iso14229Error::NotImplement)
             }
             #[cfg(any(feature = "std2020"))]
             DTCReportType::ReportSupportedDTCExtDataRecord => {
@@ -1212,7 +1212,7 @@ impl ResponseData for DTCInfo {
                 let number = data[offset];
                 offset += 1;
                 if number < 0x01 || number > 0xFD {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
                 utils::data_length_check(data_len, offset + 4 * number as usize, false)?;
 
@@ -1236,7 +1236,7 @@ impl ResponseData for DTCInfo {
                 let func_gid = data[offset];
                 offset += 1;
                 if func_gid > 0xFE {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
 
                 let status_avl_mask = data[offset];
@@ -1248,7 +1248,7 @@ impl ResponseData for DTCInfo {
                 match fid {
                     DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
                     DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 => {}
-                    _ => return Err(UdsError::InvalidData(hex::encode(data))),
+                    _ => return Err(Iso14229Error::InvalidData(hex::encode(data))),
                 }
 
                 let mut records = Vec::new();
@@ -1273,7 +1273,7 @@ impl ResponseData for DTCInfo {
                     let func_gid = data[offset];
                     offset += 1;
                     if func_gid > 0xFE {
-                        return Err(UdsError::InvalidData(hex::encode(data)));
+                        return Err(Iso14229Error::InvalidData(hex::encode(data)));
                     }
 
                     let status_avl_mask = data[offset];
@@ -1283,7 +1283,7 @@ impl ResponseData for DTCInfo {
                     match fid {
                         DTCFormatIdentifier::SAE_J1939_73_DTCFormat => {}
                         DTCFormatIdentifier::SAE_J2012_DA_DTCFormat_04 => {}
-                        _ => return Err(UdsError::InvalidData(hex::encode(data))),
+                        _ => return Err(Iso14229Error::InvalidData(hex::encode(data))),
                     }
 
                     let mut records = Vec::new();
@@ -1305,7 +1305,7 @@ impl ResponseData for DTCInfo {
                 let func_gid = data[offset];
                 offset += 1;
                 if func_gid > 0xFE {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
 
                 let status_avl_mask = data[offset];
@@ -1316,7 +1316,7 @@ impl ResponseData for DTCInfo {
                 let readiness_gid = data[offset];
                 offset += 1;
                 if readiness_gid > 0xFE {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
 
                 let mut records = Vec::new();

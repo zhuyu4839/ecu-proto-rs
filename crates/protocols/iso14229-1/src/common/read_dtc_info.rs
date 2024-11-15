@@ -1,7 +1,7 @@
 //! Commons of Service 19
 
 use bitflags::bitflags;
-use crate::{enum_extend, UdsError};
+use crate::{enum_extend, Iso14229Error};
 
 bitflags! {
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]

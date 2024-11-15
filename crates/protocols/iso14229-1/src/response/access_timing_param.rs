@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{UdsError, response::{Code, Response, SubFunction}, Service, TimingParameterAccessType, Configuration, ResponseData};
+use crate::{Iso14229Error, response::{Code, Response, SubFunction}, Service, TimingParameterAccessType, Configuration, ResponseData};
 
 lazy_static!(
     pub static ref ACCESS_TIMING_PARAM_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -19,13 +19,13 @@ pub struct AccessTimingParameter {
 }
 
 impl ResponseData for AccessTimingParameter {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 match TimingParameterAccessType::try_from(sub_func)? {
                     TimingParameterAccessType::ReadExtendedTimingParameterSet => {
                         if data.is_empty() {
-                            Err(UdsError::InvalidData(hex::encode(data)))
+                            Err(Iso14229Error::InvalidData(hex::encode(data)))
                         }
                         else {
                             Ok(())
@@ -33,7 +33,7 @@ impl ResponseData for AccessTimingParameter {
                     }
                     _ => {
                         if !data.is_empty() {
-                            Err(UdsError::InvalidData(hex::encode(data)))
+                            Err(Iso14229Error::InvalidData(hex::encode(data)))
                         }
                         else {
                             Ok(())
@@ -48,15 +48,15 @@ impl ResponseData for AccessTimingParameter {
                     data: data.to_vec(),
                 })
             },
-            None => Err(UdsError::SubFunctionError(Service::AccessTimingParam)),
+            None => Err(Iso14229Error::SubFunctionError(Service::AccessTimingParam)),
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::AccessTimingParam
             || response.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         Ok(Self { data: response.data.clone() })

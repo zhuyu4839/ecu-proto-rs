@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{DataIdentifier, UdsError, response::{Code, Response, SubFunction}, Service, utils, ResponseData, Configuration, DIDData};
+use crate::{DataIdentifier, Iso14229Error, response::{Code, Response, SubFunction}, Service, utils, ResponseData, Configuration, DIDData};
 
 lazy_static!(
     pub static ref WRITE_DID_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -18,9 +18,9 @@ lazy_static!(
 pub struct WriteDID(pub DataIdentifier);
 
 impl ResponseData for WriteDID {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::WriteDID)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::WriteDID)),
             None => {
                 let data_len = data.len();
                 utils::data_length_check(data_len, 2, true)?;
@@ -35,11 +35,11 @@ impl ResponseData for WriteDID {
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::WriteDID
             || response.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &response.data;

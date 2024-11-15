@@ -1,15 +1,15 @@
 //! request of Service 2E
 
 
-use crate::{Configuration, DataIdentifier, DIDData, UdsError, request::{Request, SubFunction}, RequestData, Service, utils};
+use crate::{Configuration, DataIdentifier, DIDData, Iso14229Error, request::{Request, SubFunction}, RequestData, Service, utils};
 
 /// Service 2E
 pub struct WriteDID(pub DIDData);
 
 impl RequestData for WriteDID {
-    fn request(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::WriteDID)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::WriteDID)),
             None => {
                 utils::data_length_check(data.len(), 3, false)?;
                 let mut offset = 0;
@@ -18,7 +18,7 @@ impl RequestData for WriteDID {
                 );
                 offset += 2;
                 let &did_len = cfg.did_cfg.get(&did)
-                    .ok_or(UdsError::DidNotSupported(did))?;
+                    .ok_or(Iso14229Error::DidNotSupported(did))?;
 
                 utils::data_length_check(data.len(), offset + did_len, true)?;
 
@@ -31,11 +31,11 @@ impl RequestData for WriteDID {
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::WriteDID
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;

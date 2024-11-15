@@ -1,7 +1,7 @@
 //! request of Service 29
 
 
-use crate::{AlgorithmIndicator, AuthenticationTask, Configuration, UdsError, NotNullableData, NullableData, parse_algo_indicator, parse_not_nullable, parse_nullable, RequestData, Service, utils};
+use crate::{AlgorithmIndicator, AuthenticationTask, Configuration, Iso14229Error, NotNullableData, NullableData, parse_algo_indicator, parse_not_nullable, parse_nullable, RequestData, Service, utils};
 use crate::request::{Request, SubFunction};
 
 #[derive(Debug, Clone)]
@@ -118,7 +118,7 @@ impl Into<Vec<u8>> for Authentication {
 }
 
 impl RequestData for Authentication {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 let (suppress_positive, sub_func) = utils::peel_suppress_positive(sub_func);
@@ -138,19 +138,19 @@ impl RequestData for Authentication {
 
                 Ok(Request {
                     service: Service::Authentication,
-                    sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                    sub_func: Some(SubFunction::new(sub_func, suppress_positive)),
                     data: data.to_vec()
                 })
             },
-            None => Err(UdsError::SubFunctionError(Service::Authentication)),
+            None => Err(Iso14229Error::SubFunctionError(Service::Authentication)),
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service;
         if service != Service::Authentication
             || request.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service));
+            return Err(Iso14229Error::ServiceError(service));
         }
         let sub_func: AuthenticationTask = request.sub_function().unwrap().function()?;
 

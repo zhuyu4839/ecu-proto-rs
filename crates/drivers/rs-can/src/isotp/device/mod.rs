@@ -3,7 +3,7 @@ pub use adapter::*;
 mod context;
 
 use std::{any::Any, fmt::Display, sync::{Arc, Mutex, mpsc::Sender}, time::{Duration, Instant}, thread};
-use iso15765_2::{FlowControlContext, FlowControlState, IsoTpError, IsoTpEvent, IsoTpEventListener, IsoTpState, TIMEOUT_AS_ISO15765_2, TIMEOUT_CR_ISO15765_2};
+use iso15765_2::{FlowControlContext, FlowControlState, Iso15765Error, IsoTpEvent, IsoTpEventListener, IsoTpState, TIMEOUT_AS_ISO15765_2, TIMEOUT_CR_ISO15765_2};
 use context::IsoTpContext;
 use crate::{Frame, Id, Listener};
 use crate::isotp::{Address, AddressType, IsoTpFrame, DEFAULT_P2_START_MS};
@@ -53,7 +53,7 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
         }
     }
 
-    pub fn write(&self, addr_type: AddressType, data: Vec<u8>) -> Result<(), IsoTpError> {
+    pub fn write(&self, addr_type: AddressType, data: Vec<u8>) -> Result<(), Iso15765Error> {
         self.state_append(IsoTpState::Idle);
         self.context_reset();
         log::trace!("ISO-TP - Sending: {}", hex::encode(&data));
@@ -66,13 +66,13 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
                 AddressType::Physical => Ok(address.tx_id),
                 AddressType::Functional => Ok(address.fid)
             },
-            Err(_) => Err(IsoTpError::ContextError("can't get address context".into())),
+            Err(_) => Err(Iso15765Error::ContextError("can't get address context".into())),
         }?;
         let mut need_flow_ctrl = frame_len > 1;
         let mut index = 0;
         for frame in frames {
             let mut frame = F::from_iso_tp(can_id, frame, None)
-                .ok_or(IsoTpError::ConvertError {
+                .ok_or(Iso15765Error::ConvertError {
                     src: "iso-tp frame",
                     target: "can-frame",
                 })?;
@@ -89,7 +89,7 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
             self.sender.send(frame)
                 .map_err(|e| {
                     log::warn!("ISO-TP - transmit failed: {:?}", e);
-                    IsoTpError::DeviceError
+                    Iso15765Error::DeviceError
                 })?;
         }
 
@@ -119,7 +119,7 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
                         log::warn!("ISO-TP - transmit failed: {:?}", e);
                         self.state_append(IsoTpState::Error);
 
-                        self.iso_tp_event(IsoTpEvent::ErrorOccurred(IsoTpError::DeviceError));
+                        self.iso_tp_event(IsoTpEvent::ErrorOccurred(Iso15765Error::DeviceError));
                     },
                 }
             },
@@ -151,7 +151,7 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
             }
             FlowControlState::Overload => {
                 self.state_append(IsoTpState::Error);
-                self.iso_tp_event(IsoTpEvent::ErrorOccurred(IsoTpError::OverloadFlow));
+                self.iso_tp_event(IsoTpEvent::ErrorOccurred(Iso15765Error::OverloadFlow));
                 return;
             }
         }
@@ -179,7 +179,7 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
         }
     }
 
-    fn write_waiting(&self, index: &mut usize) -> Result<(), IsoTpError> {
+    fn write_waiting(&self, index: &mut usize) -> Result<(), Iso15765Error> {
         match self.context.lock() {
             Ok(ctx) => {
                 if let Some(ctx) = &ctx.flow_ctrl {
@@ -197,18 +197,18 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
 
                 Ok(())
             },
-            Err(_) => Err(IsoTpError::ContextError("can't get `context`".into()))
+            Err(_) => Err(Iso15765Error::ContextError("can't get `context`".into()))
         }?;
 
         let start = Instant::now();
         loop {
             if self.state_contains(IsoTpState::Error) {
-                return Err(IsoTpError::DeviceError);
+                return Err(Iso15765Error::DeviceError);
             }
 
             if self.state_contains(IsoTpState::Sending) {
                 if start.elapsed() > Duration::from_millis(TIMEOUT_AS_ISO15765_2 as u64) {
-                    return Err(IsoTpError::Timeout { value: TIMEOUT_AS_ISO15765_2 as u64, unit: "ms" });
+                    return Err(Iso15765Error::Timeout { value: TIMEOUT_AS_ISO15765_2 as u64, unit: "ms" });
                 }
             }
             else if self.state_contains(IsoTpState::WaitBusy) {
@@ -219,12 +219,12 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
                     Err(_) => DEFAULT_P2_START_MS,
                 };
                 if start.elapsed() > Duration::from_millis(p2_star) {
-                    return Err(IsoTpError::Timeout { value: p2_star, unit: "ms" });
+                    return Err(Iso15765Error::Timeout { value: p2_star, unit: "ms" });
                 }
             }
             else if self.state_contains(IsoTpState::WaitFlowCtrl) {
                 if start.elapsed() > Duration::from_millis(TIMEOUT_CR_ISO15765_2 as u64) {
-                    return Err(IsoTpError::Timeout { value: TIMEOUT_CR_ISO15765_2 as u64, unit: "ms" });
+                    return Err(Iso15765Error::Timeout { value: TIMEOUT_CR_ISO15765_2 as u64, unit: "ms" });
                 }
             }
             else {
@@ -235,12 +235,12 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
         Ok(())
     }
 
-    fn append_consecutive(&self, sequence: u8, data: Vec<u8>) -> Result<IsoTpEvent, IsoTpError> {
+    fn append_consecutive(&self, sequence: u8, data: Vec<u8>) -> Result<IsoTpEvent, Iso15765Error> {
         match self.context.lock() {
             Ok(mut context) => {
                 context.append_consecutive(sequence, data)
             },
-            Err(_) => Err(IsoTpError::ContextError("can't get `context`".into()))
+            Err(_) => Err(Iso15765Error::ContextError("can't get `context`".into()))
         }
     }
 

@@ -16,9 +16,9 @@ pub trait Listener<C, F: Frame>: Any + Send {
     fn on_frame_received(&self, channel: C, frames: &[F]);
 }
 
-pub trait CanDriver {
+pub trait CanDriver: Clone {
     type Channel: Display;
-    type Frame: Frame;
+    type Frame: Frame<Channel = Self::Channel>;
     #[inline]
     fn is_closed(&self) -> bool {
         self.opened_channels().is_empty()

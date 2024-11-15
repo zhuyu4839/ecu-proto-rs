@@ -1,4 +1,4 @@
-use crate::{constant::*, request, response, DoIpError};
+use crate::{constant::*, request, response, Iso13400Error};
 
 /// Table 16 — Generic DoIP header structure at line #48(ISO 13400-2-2019)
 #[repr(u8)]
@@ -46,17 +46,17 @@ impl From<u8> for Version {
 }
 
 impl TryFrom<&[u8]> for Version {
-    type Error = DoIpError;
+    type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
         if data_len < SIZE_OF_VERSION {
-            return Err(DoIpError::InvalidLength { actual: data_len, expected: SIZE_OF_VERSION });
+            return Err(Iso13400Error::InvalidLength { actual: data_len, expected: SIZE_OF_VERSION });
         }
 
         let version = data[0];
         let reverse = data[1];
         if !version != reverse {
-            return Err(DoIpError::InvalidVersion { version, reverse });
+            return Err(Iso13400Error::InvalidVersion { version, reverse });
         }
 
         Ok(Self::from(version))
@@ -549,12 +549,12 @@ impl Into<Vec<u8>> for Message {
 }
 
 impl TryFrom<&[u8]> for Message {
-    type Error = DoIpError;
+    type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();
         let expected = SIZE_OF_VERSION + SIZE_OF_DATA_TYPE;
         if data_len < expected {
-            return Err(DoIpError::InvalidLength { actual: data_len, expected });
+            return Err(Iso13400Error::InvalidLength { actual: data_len, expected });
         }
 
         let mut offset = 0;
@@ -595,7 +595,7 @@ impl TryFrom<&[u8]> for Message {
                 Ok(Payload::DiagnosticPositive(response::DiagnosticPositive::try_from(&data[offset..])?)),
             TCP_RESP_DIAGNOSTIC_NEGATIVE =>
                 Ok(Payload::DiagnosticNegative(response::DiagnosticNegative::try_from(&data[offset..])?)),
-            _ => Err(DoIpError::InvalidPayloadType(payload_type)),
+            _ => Err(Iso13400Error::InvalidPayloadType(payload_type)),
         }?;
 
         Ok(Self { version, payload })

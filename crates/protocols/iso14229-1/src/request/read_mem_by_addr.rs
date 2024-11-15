@@ -1,15 +1,15 @@
 //! request of Service 23
 
 
-use crate::{Configuration, UdsError, MemoryLocation, request::{Request, SubFunction}, RequestData, Service, utils};
+use crate::{Configuration, Iso14229Error, MemoryLocation, request::{Request, SubFunction}, RequestData, Service, utils};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ReadMemByAddr(pub MemoryLocation);
 
 impl RequestData for ReadMemByAddr {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::ReadMemByAddr)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::ReadMemByAddr)),
             None => {
                 utils::data_length_check(data.len(), 3, false)?;
 
@@ -18,11 +18,11 @@ impl RequestData for ReadMemByAddr {
         }
     }
 
-    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::ReadMemByAddr
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;

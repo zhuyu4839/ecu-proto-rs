@@ -1,5 +1,5 @@
 use derive_getters::Getters;
-use crate::{constant::*, DoIpError, LogicAddress, RoutingActiveType, utils};
+use crate::{constant::*, Iso13400Error, LogicAddress, RoutingActiveType, utils};
 
 /****** --- UDP --- ********/
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -13,7 +13,7 @@ impl VehicleID {
 }
 
 impl TryFrom<&[u8]> for VehicleID {
-    type Error = DoIpError;
+    type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let _ = utils::data_len_check(data, Self::length(), true)?;
 
@@ -48,7 +48,7 @@ impl VehicleIDWithEID {
 }
 
 impl TryFrom<&[u8]> for VehicleIDWithEID {
-    type Error = DoIpError;
+    type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, offset) = utils::data_len_check(data, Self::length(), true)?;
         let eid: [u8; SIZE_OF_ID] = data[offset..offset+Self::length()].try_into().unwrap();
@@ -75,10 +75,10 @@ pub struct VehicleIDWithVIN {     // 0x0003
 
 impl VehicleIDWithVIN {
     #[must_use]
-    pub fn new(vin: String) -> Result<Self, DoIpError> {
+    pub fn new(vin: String) -> Result<Self, Iso13400Error> {
         let vin_len = vin.as_bytes().len();
         if vin_len != Self::length() {
-            return Err(DoIpError::InvalidLength { actual: vin_len, expected: Self::length() });
+            return Err(Iso13400Error::InvalidLength { actual: vin_len, expected: Self::length() });
         }
 
         Ok(Self { vin })
@@ -91,7 +91,7 @@ impl VehicleIDWithVIN {
 }
 
 impl TryFrom<&[u8]> for VehicleIDWithVIN {
-    type Error = DoIpError;
+    type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, offset) = utils::data_len_check(data, Self::length(), true)?;
         let vin = match String::from_utf8(data[offset..].to_vec()) {
@@ -128,7 +128,7 @@ impl EntityStatus {
 }
 
 impl TryFrom<&[u8]> for EntityStatus {
-    type Error = DoIpError;
+    type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let _ = utils::data_len_check(data, Self::length(), true)?;
 
@@ -157,7 +157,7 @@ impl DiagnosticPowerMode {
 }
 
 impl TryFrom<&[u8]> for DiagnosticPowerMode {
-    type Error = DoIpError;
+    type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let _ = utils::data_len_check(data, Self::length(), true)?;
 
@@ -203,7 +203,7 @@ impl RoutingActive {
 }
 
 impl TryFrom<&[u8]> for RoutingActive {
-    type Error = DoIpError;
+    type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (data_len, mut offset) = utils::data_len_check(data, Self::length(), false)?;
         let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
@@ -217,7 +217,7 @@ impl TryFrom<&[u8]> for RoutingActive {
         let user_def = match data_len - offset {
             0 => Ok(None),
             4 => Ok(Some(u32::from_be_bytes(data[offset..offset+4].try_into().unwrap()))),
-            _ => Err(DoIpError::InvalidLength { actual: data_len, expected: Self::length()+4 }),
+            _ => Err(Iso13400Error::InvalidLength { actual: data_len, expected: Self::length()+4 }),
         }?;
 
         Ok(Self { src_addr, active, reserved, user_def } )
@@ -255,7 +255,7 @@ impl AliveCheck {
 }
 
 impl TryFrom<&[u8]> for AliveCheck {
-    type Error = DoIpError;
+    type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let _ = utils::data_len_check(data, Self::length(), true)?;
 
@@ -301,7 +301,7 @@ impl Diagnostic {
 }
 
 impl TryFrom<&[u8]> for Diagnostic {
-    type Error = DoIpError;
+    type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let (_, mut offset) = utils::data_len_check(data, Self::length(), false)?;
         let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());

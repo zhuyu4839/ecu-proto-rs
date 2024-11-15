@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{AdministrativeParameter, Configuration, error::UdsError, response::{Code, Response, SubFunction}, ResponseData, Service, SignatureEncryptionCalculation, utils};
+use crate::{AdministrativeParameter, Configuration, error::Iso14229Error, response::{Code, Response, SubFunction}, ResponseData, Service, SignatureEncryptionCalculation, utils};
 
 lazy_static!(
     pub static ref SECURED_DATA_TRANS_NEGATIVES: HashSet<Code>
@@ -46,9 +46,9 @@ impl SecuredDataTransPositive {
         response: u8,
         response_params: Vec<u8>,
         signature_data: Vec<u8>,
-    ) -> Result<Self, UdsError> {
+    ) -> Result<Self, Iso14229Error> {
         if signature_data.len() > u16::MAX as usize {
-            return Err(UdsError::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
+            return Err(Iso14229Error::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
         }
 
         if apar.is_request() {
@@ -89,9 +89,9 @@ impl SecuredDataTransNegative {
         service: u8,
         response: u8,
         signature_data: Vec<u8>,
-    ) -> Result<Self, UdsError> {
+    ) -> Result<Self, Iso14229Error> {
         if signature_data.len() > u16::MAX as usize {
-            return Err(UdsError::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
+            return Err(Iso14229Error::InvalidParam("length of `Signature/MAC Byte` is out of range".to_string()));
         }
 
         if apar.is_request() {
@@ -116,9 +116,9 @@ pub enum SecuredDataTrans {
 }
 
 impl ResponseData for SecuredDataTrans {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::SecuredDataTrans)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::SecuredDataTrans)),
             None => {
                 utils::data_length_check(data.len(), 8, false)?;
 
@@ -132,11 +132,11 @@ impl ResponseData for SecuredDataTrans {
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service;
         if service != Service::SecuredDataTrans
             || response.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service));
+            return Err(Iso14229Error::ServiceError(service));
         }
 
         let data = &response.data;
@@ -145,7 +145,7 @@ impl ResponseData for SecuredDataTrans {
         let apar = AdministrativeParameter::from(u16::from_be_bytes([data[offset], data[offset + 1]]));
         offset += 2;
         if apar.is_request() {
-            return Err(UdsError::InvalidData(hex::encode(data)));
+            return Err(Iso14229Error::InvalidData(hex::encode(data)));
         }
         let signature = SignatureEncryptionCalculation::try_from(data[offset])?;
         offset += 1;

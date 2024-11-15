@@ -1,7 +1,7 @@
 //! Commons of Service 34|35
 
 
-use crate::UdsError;
+use crate::Iso14229Error;
 
 /// This parameter is a one-byte value with each nibble encoded separately:
 /// ⎯ bit 7 - 4: length (number of bytes) of the maxNumberOfBlockLength parameter;
@@ -13,9 +13,9 @@ pub struct LengthFormatIdentifier(pub(crate) u8);
 
 impl LengthFormatIdentifier {
     #[inline]
-    pub fn new(value: u8) -> Result<Self, UdsError>{
+    pub fn new(value: u8) -> Result<Self, Iso14229Error>{
         if value > 0x0F {
-            return Err(UdsError::InvalidParam("`LengthFormatIdentifier` must be between 0x00 and 0xF0".to_string()));
+            return Err(Iso14229Error::InvalidParam("`LengthFormatIdentifier` must be between 0x00 and 0xF0".to_string()));
         }
 
         Ok(Self(value << 4))
@@ -34,10 +34,10 @@ impl Into<u8> for LengthFormatIdentifier {
 }
 
 impl TryFrom<u8> for LengthFormatIdentifier {
-    type Error = UdsError;
+    type Error = Iso14229Error;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         if value > 0xF0 {
-            return Err(UdsError::InvalidParam("`LengthFormatIdentifier` must be between 0x00 and 0xF0".to_string()));
+            return Err(Iso14229Error::InvalidParam("`LengthFormatIdentifier` must be between 0x00 and 0xF0".to_string()));
         }
 
         Ok(Self(value))
@@ -84,7 +84,7 @@ impl Into<u8> for DataFormatIdentifier {
 pub struct AddressAndLengthFormatIdentifier(u8);
 
 impl AddressAndLengthFormatIdentifier {
-    pub fn new(addr_len: u8, size_len: u8) -> Result<Self, UdsError> {
+    pub fn new(addr_len: u8, size_len: u8) -> Result<Self, Iso14229Error> {
         let value = (size_len << 4) | addr_len;
         Self::try_from(value)
     }
@@ -107,11 +107,11 @@ impl Into<u8> for AddressAndLengthFormatIdentifier {
 }
 
 impl TryFrom<u8> for AddressAndLengthFormatIdentifier {
-    type Error = UdsError;
+    type Error = Iso14229Error;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         if value & 0x0F == 0
             || value & 0xF0 == 0 {
-            return Err(UdsError::InvalidParam("all field of `AddressAndLengthFormatIdentifier` must be rather than 0".into()));
+            return Err(Iso14229Error::InvalidParam("all field of `AddressAndLengthFormatIdentifier` must be rather than 0".into()));
         }
 
         Ok(Self(value))

@@ -1,6 +1,6 @@
 //! Commons of Service 38
 
-use crate::{enum_extend, UdsError};
+use crate::{enum_extend, Iso14229Error};
 
 enum_extend! (
     pub enum ModeOfOperation {

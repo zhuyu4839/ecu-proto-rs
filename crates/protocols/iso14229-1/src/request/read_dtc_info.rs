@@ -1,7 +1,7 @@
 //! request of Service 19
 
 
-use crate::{Configuration, DTCReportType, UdsError, request::{Request, SubFunction}, RequestData, Service, utils};
+use crate::{Configuration, DTCReportType, Iso14229Error, request::{Request, SubFunction}, RequestData, Service, utils};
 
 #[derive(Debug, Clone)]
 pub struct DTCExtDataRecord {
@@ -210,7 +210,7 @@ impl Into<Vec<u8>> for DTCInfo {
 }
 
 impl RequestData for DTCInfo {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func { 
             Some(sub_func) => {
                 let (suppress_positive, sub_func) = utils::peel_suppress_positive(sub_func);
@@ -263,19 +263,19 @@ impl RequestData for DTCInfo {
 
                 Ok(Request {
                     service: Service::ReadDTCInfo,
-                    sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                    sub_func: Some(SubFunction::new(sub_func, suppress_positive)),
                     data: data.to_vec()
                 })
             },
-            None => Err(UdsError::SubFunctionError(Service::ReadDTCInfo)),
+            None => Err(Iso14229Error::SubFunctionError(Service::ReadDTCInfo)),
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::ReadDTCInfo
             || request.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let sub_func: DTCReportType = request.sub_function().unwrap().function()?;
@@ -364,7 +364,7 @@ impl RequestData for DTCInfo {
             DTCReportType::ReportDTCExtDataRecordByRecordNumber => {
                 let extra_num = data[offset];
                 if extra_num > 0xEF {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
 
                 Ok(Self::ReportDTCExtDataRecordByRecordNumber {
@@ -404,7 +404,7 @@ impl RequestData for DTCInfo {
             DTCReportType::ReportSupportedDTCExtDataRecord => {
                 let extra_num = data[offset];
                 if extra_num < 1 || extra_num > 0xFD {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
 
                 Ok(Self::ReportSupportedDTCExtDataRecord {
@@ -416,7 +416,7 @@ impl RequestData for DTCInfo {
                 let func_gid = data[offset];
                 offset += 1;
                 if func_gid > 0xFE {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
 
                 Ok(Self::ReportWWHOBDDTCByMaskRecord {
@@ -429,7 +429,7 @@ impl RequestData for DTCInfo {
             DTCReportType::ReportWWHOBDDTCWithPermanentStatus => {
                 let func_gid = data[offset];
                 if func_gid > 0xFE {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
 
                 Ok(Self::ReportWWHOBDDTCWithPermanentStatus {
@@ -441,12 +441,12 @@ impl RequestData for DTCInfo {
                 let func_gid = data[offset];
                 offset += 1;
                 if func_gid > 0xFE {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
 
                 let readiness_gid = data[offset];
                 if readiness_gid > 0xFE {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
 
                 Ok(Self::ReportDTCInformationByDTCReadinessGroupIdentifier {

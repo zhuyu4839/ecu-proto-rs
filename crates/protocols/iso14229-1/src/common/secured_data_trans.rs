@@ -3,7 +3,7 @@
 
 use std::ops::{BitAnd, BitXorAssign};
 use bitfield_struct::bitfield;
-use crate::{UdsError, utils};
+use crate::{Iso14229Error, utils};
 
 
 /// Table 490 — Definition of Administrative Parameter
@@ -112,13 +112,13 @@ pub enum SignatureEncryptionCalculation {
 }
 
 impl TryFrom<u8> for SignatureEncryptionCalculation {
-    type Error = UdsError;
+    type Error = Iso14229Error;
     #[inline]
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0x00..=0x7F => Ok(Self::VehicleManufacturerSpecific(value)),
             0x80..=0x8F => Ok(Self::SystemSupplier(value)),
-            v => Err(UdsError::ReservedError(v.to_string())),
+            v => Err(Iso14229Error::ReservedError(v.to_string())),
         }
     }
 }

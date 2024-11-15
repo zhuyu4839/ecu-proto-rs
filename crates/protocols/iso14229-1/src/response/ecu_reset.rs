@@ -2,7 +2,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, ECUResetType, UdsError, response::{Code, Response, SubFunction}, ResponseData, Service, utils};
+use crate::{Configuration, ECUResetType, Iso14229Error, response::{Code, Response, SubFunction}, ResponseData, Service, utils};
 
 lazy_static!(
     pub static ref ECU_RESET_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -30,7 +30,7 @@ impl Into<Vec<u8>> for ECUReset {
 }
 
 impl ResponseData for ECUReset {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 let data_len = data.len();
@@ -46,15 +46,15 @@ impl ResponseData for ECUReset {
                     data: data.to_vec(),
                 })
             },
-            None => Err(UdsError::SubFunctionError(Service::ECUReset)),
+            None => Err(Iso14229Error::SubFunctionError(Service::ECUReset)),
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::ECUReset
             || response.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let sub_func: ECUResetType = response.sub_function().unwrap().function()?;

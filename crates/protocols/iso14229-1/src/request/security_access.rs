@@ -1,6 +1,6 @@
 //! request of Service 27
 
-use crate::{Configuration, UdsError, request::{Request, SubFunction}, Service, SecurityAccessLevel, RequestData};
+use crate::{Configuration, Iso14229Error, request::{Request, SubFunction}, Service, SecurityAccessLevel, RequestData};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SecurityAccess {
@@ -8,24 +8,24 @@ pub struct SecurityAccess {
 }
 
 impl RequestData for SecurityAccess {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
             Some(level) => {
                 Ok(Request {
                     service: Service::SecurityAccess,
-                    sub_func: Some(SubFunction::new(level, None)),
+                    sub_func: Some(SubFunction::new(level, false)),
                     data: data.to_vec(),
                 })
             }
-            None => Err(UdsError::SubFunctionError(Service::SecurityAccess)),
+            None => Err(Iso14229Error::SubFunctionError(Service::SecurityAccess)),
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::SecurityAccess
             || request.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         Ok(Self { data: request.data.clone() })

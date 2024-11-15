@@ -1,4 +1,4 @@
-use crate::{ByteOrder, UdsError, SUPPRESS_POSITIVE};
+use crate::{ByteOrder, Iso14229Error, SUPPRESS_POSITIVE};
 
 /// Add to_vector function and
 /// implement `Debug`, `Copy`, `Clone`, `Eq`, `PartialEq`,
@@ -6,7 +6,7 @@ use crate::{ByteOrder, UdsError, SUPPRESS_POSITIVE};
 ///
 /// Example:
 /// ```rust
-/// use iso14229_1::{enum_extend, UdsError};
+/// use iso14229_1::{enum_extend, Iso14229Error};
 ///
 /// enum_extend!(
 ///     pub enum AccessType {
@@ -57,7 +57,7 @@ macro_rules! enum_extend {
         }
 
         impl TryFrom<$value_type> for $enum_name {
-            type Error = UdsError;
+            type Error = Iso14229Error;
             #[inline]
             fn try_from(value: $value_type) -> Result<Self, Self::Error> {
                match value {
@@ -65,7 +65,7 @@ macro_rules! enum_extend {
                         $(#[$variant_meta])*
                         $value => Ok(Self::$variant),
                     )*
-                    _ => Err(UdsError::ReservedError(value.to_string()))
+                    _ => Err(Iso14229Error::ReservedError(value.to_string()))
                 }
             }
         }
@@ -97,7 +97,7 @@ impl U24 {
 }
 
 impl<'a> TryFrom<&'a [u8]> for U24 {
-    type Error = UdsError;
+    type Error = Iso14229Error;
 
     #[inline]
     fn try_from(data: &'a [u8]) -> Result<Self, Self::Error> {
@@ -134,15 +134,15 @@ impl Into<u32> for U24 {
 }
 
 #[inline]
-pub(crate) fn data_length_check(actual: usize, expect: usize, equal: bool) -> Result<(), UdsError> {
+pub(crate) fn data_length_check(actual: usize, expect: usize, equal: bool) -> Result<(), Iso14229Error> {
     if equal {
         if actual != expect {
-            return Err(UdsError::InvalidDataLength { expect, actual });
+            return Err(Iso14229Error::InvalidDataLength { expect, actual });
         }
     }
     else {
         if actual < expect {
-            return Err(UdsError::InvalidDataLength { expect, actual });
+            return Err(Iso14229Error::InvalidDataLength { expect, actual });
         }
     }
 

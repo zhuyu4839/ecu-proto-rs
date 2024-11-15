@@ -2,7 +2,7 @@
 
 #[cfg(test)]
 mod tests {
-    use iso14229_1::{request, response, Configuration, ECUResetType, UdsError, Service, TryFromWithCfg};
+    use iso14229_1::{request, response, Configuration, ECUResetType, Iso14229Error, Service, TryFromWithCfg};
 
     #[test]
     fn test_request() -> anyhow::Result<()> {
@@ -23,7 +23,7 @@ mod tests {
         let source = hex::decode("110100")?;
         let err = request::Request::try_from_cfg(source, &cfg).unwrap_err();
         match err {
-            UdsError::InvalidDataLength { expect, actual } => {
+            Iso14229Error::InvalidDataLength { expect, actual } => {
                 assert_eq!(expect, 0);
                 assert_eq!(actual, 1);
             },
@@ -45,7 +45,7 @@ mod tests {
         let source = hex::decode("5104")?;
         let err = response::Response::try_from_cfg(source, &cfg).unwrap_err();
         match err {
-            UdsError::InvalidDataLength { expect, actual } => {
+            Iso14229Error::InvalidDataLength { expect, actual } => {
                 assert_eq!(expect, 1);
                 assert_eq!(actual, 0);
             },

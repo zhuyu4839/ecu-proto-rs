@@ -1,6 +1,6 @@
 //! Commons of Service 11
 
-use crate::{UdsError, utils};
+use crate::{Iso14229Error, utils};
 
 #[repr(u8)]
 #[derive(Default, Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
@@ -17,7 +17,7 @@ pub enum ECUResetType {
 }
 
 impl TryFrom<u8> for ECUResetType {
-    type Error = UdsError;
+    type Error = Iso14229Error;
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0x01 => Ok(Self::HardReset),
@@ -29,7 +29,7 @@ impl TryFrom<u8> for ECUResetType {
             0x40..=0x5F => Ok(Self::VehicleManufacturerSpecific(value)),
             0x60..=0x7E => Ok(Self::SystemSupplierSpecific(value)),
             0x7F => Ok(Self::Reserved(value)),
-            v => Err(UdsError::ReservedError(v.to_string())),
+            v => Err(Iso14229Error::ReservedError(v.to_string())),
         }
     }
 }

@@ -10,6 +10,8 @@ mod server;
 #[cfg(feature = "server")]
 pub use server::*;
 
+pub(crate) mod buffer;
+
 /// ISO-TP address format.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AddressFormat {
@@ -38,4 +40,4 @@ pub enum AddressFormat {
 /// if all seed is 0x00, return None
 /// else all seed is not 0xFF return algo data,
 /// otherwise return Error
-pub type SecurityAlgo = fn(u8, Vec<u8>, Vec<u8>) -> Result<Option<Vec<u8>>, Error>;
+pub type SecurityAlgo = fn(u8, Vec<u8>, Vec<u8>) -> Result<Option<Vec<u8>>, DoCanError>;

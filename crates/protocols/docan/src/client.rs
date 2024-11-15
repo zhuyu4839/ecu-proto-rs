@@ -5,14 +5,13 @@ mod synchronous;
 #[cfg(not(feature = "async"))]
 pub use synchronous::*;
 
-use std::{fmt::Display, hash::Hash};
 use iso14229_1::{request, response, *};
 use rs_can::isotp::{Address, AddressType};
 use rs_can::ResultWrapper;
 use crate::{SecurityAlgo};
 
 pub trait Client {
-    type Channel: Display + Clone + Eq + PartialEq + Hash;
+    type Channel;
     // type Device;
     type Error;
 

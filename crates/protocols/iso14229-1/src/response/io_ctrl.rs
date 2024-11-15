@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, DataIdentifier, UdsError, IOCtrlOption, IOCtrlParameter, response::{Code, Response, SubFunction}, ResponseData, Service, utils};
+use crate::{Configuration, DataIdentifier, Iso14229Error, IOCtrlOption, IOCtrlParameter, response::{Code, Response, SubFunction}, ResponseData, Service, utils};
 
 lazy_static!(
     pub static ref IO_CTRL_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -35,9 +35,9 @@ impl IOCtrl {
 }
 
 impl ResponseData for IOCtrl {
-    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::IOCtrl)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::IOCtrl)),
             None => {
                 let data_len = data.len();
                 utils::data_length_check(data_len, 2, false)?;
@@ -49,7 +49,7 @@ impl ResponseData for IOCtrl {
                 offset += 2;
 
                 let &did_len = cfg.did_cfg.get(&did)
-                    .ok_or(UdsError::DidNotSupported(did))?;
+                    .ok_or(Iso14229Error::DidNotSupported(did))?;
                 utils::data_length_check(data_len, offset + did_len, false)?;
 
                 Ok(Response {
@@ -62,11 +62,11 @@ impl ResponseData for IOCtrl {
         }
     }
 
-    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::IOCtrl
             || response.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &response.data;
@@ -81,7 +81,7 @@ impl ResponseData for IOCtrl {
         let ctrl_type = IOCtrlParameter::try_from(data[offset])?;
         offset += 1;
         let &record_len = cfg.did_cfg.get(&did)
-            .ok_or(UdsError::DidNotSupported(did))?;
+            .ok_or(Iso14229Error::DidNotSupported(did))?;
 
         utils::data_length_check(data_len, offset + record_len, true)?;
 

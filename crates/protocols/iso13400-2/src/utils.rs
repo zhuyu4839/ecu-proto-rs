@@ -1,27 +1,27 @@
 use crate::constant::SIZE_OF_LENGTH;
-use crate::DoIpError;
+use crate::Iso13400Error;
 
-pub(crate) fn data_len_check(data: &[u8], struct_len: usize, equal: bool) -> Result<(usize, usize), DoIpError> {
+pub(crate) fn data_len_check(data: &[u8], struct_len: usize, equal: bool) -> Result<(usize, usize), Iso13400Error> {
     let data_len = data.len();
     let expected = SIZE_OF_LENGTH + struct_len;
     if equal {
         if data_len != expected {
-            return Err(DoIpError::InvalidLength { actual: data_len, expected });
+            return Err(Iso13400Error::InvalidLength { actual: data_len, expected });
         }
 
         let length = u32::from_be_bytes(data[..SIZE_OF_LENGTH].try_into().unwrap()) as usize;
         if length != struct_len {
-            return Err(DoIpError::InvalidDataLen { actual: length, expected: struct_len });
+            return Err(Iso13400Error::InvalidDataLen { actual: length, expected: struct_len });
         }
     }
     else {
         if data_len < expected {
-            return Err(DoIpError::InvalidLength { actual: data_len, expected });
+            return Err(Iso13400Error::InvalidLength { actual: data_len, expected });
         }
 
         let length = u32::from_be_bytes(data[..SIZE_OF_LENGTH].try_into().unwrap()) as usize;
         if length < struct_len {
-            return Err(DoIpError::InvalidDataLen { actual: length, expected: struct_len });
+            return Err(Iso13400Error::InvalidDataLen { actual: length, expected: struct_len });
         }
     }
 

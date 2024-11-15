@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{ByteOrder, Configuration, DataFormatIdentifier, error::UdsError, LengthFormatIdentifier, ModeOfOperation, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
+use crate::{ByteOrder, Configuration, DataFormatIdentifier, error::Iso14229Error, LengthFormatIdentifier, ModeOfOperation, response::{Code, Response, SubFunction}, ResponseData, utils, Service};
 
 lazy_static!(
     pub static ref REQUEST_FILE_TRANSFER_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -115,7 +115,7 @@ pub enum RequestFileTransfer {
 }
 
 impl ResponseData for RequestFileTransfer {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
             Some(sub_func) => {
                 let data_len = data.len();
@@ -135,15 +135,15 @@ impl ResponseData for RequestFileTransfer {
                     data: data.to_vec(),
                 })
             }
-            None => Err(UdsError::SubFunctionError(Service::RequestFileTransfer)),
+            None => Err(Iso14229Error::SubFunctionError(Service::RequestFileTransfer)),
         }
     }
 
-    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::RequestFileTransfer
             || response.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let sub_func: ModeOfOperation = response.sub_function().unwrap().function()?;
@@ -225,7 +225,7 @@ impl ResponseData for RequestFileTransfer {
                 let dfi = data[offset];
                 offset += 1;
                 if dfi != 0x00 {
-                    return Err(UdsError::InvalidData(hex::encode(data)));
+                    return Err(Iso14229Error::InvalidData(hex::encode(data)));
                 }
                 let dfi = DataFormatIdentifier(dfi);
 
@@ -253,7 +253,7 @@ impl ResponseData for RequestFileTransfer {
                 let dfi = DataFormatIdentifier::from(data[offset]);
                 offset += 1;
                 let file_pos = <[u8; 8]>::try_from(&data[offset..])
-                    .map_err(|_| UdsError::InvalidData(hex::encode(data)))?;
+                    .map_err(|_| Iso14229Error::InvalidData(hex::encode(data)))?;
 
                 Ok(Self::ResumeFile {
                     lfi,

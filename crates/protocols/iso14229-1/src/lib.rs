@@ -115,16 +115,16 @@ impl Default for Configuration {
 }
 
 pub trait RequestData {
-    fn request(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<request::Request, UdsError>;
-    fn try_parse(request: &request::Request, cfg: &Configuration) -> Result<Self, UdsError>
+    fn request(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<request::Request, Iso14229Error>;
+    fn try_parse(request: &request::Request, cfg: &Configuration) -> Result<Self, Iso14229Error>
     where
         Self: Sized;
     fn to_vec(self, cfg: &Configuration) -> Vec<u8>;
 }
 
 pub trait ResponseData {
-    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<response::Response, UdsError>;
-    fn try_parse(response: &response::Response, cfg: &Configuration) -> Result<Self, UdsError>
+    fn response(data: &[u8], sub_func: Option<u8>, cfg: &Configuration) -> Result<response::Response, Iso14229Error>;
+    fn try_parse(response: &response::Response, cfg: &Configuration) -> Result<Self, Iso14229Error>
     where
         Self: Sized;
     fn to_vec(self, cfg: &Configuration) -> Vec<u8>;

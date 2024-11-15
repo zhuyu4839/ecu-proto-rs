@@ -1,6 +1,6 @@
 //! Commons of Service 2F
 
-use crate::{enum_extend, UdsError};
+use crate::{enum_extend, Iso14229Error};
 
 enum_extend!(
     pub enum IOCtrlParameter {

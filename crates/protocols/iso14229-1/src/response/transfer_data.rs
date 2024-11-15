@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, UdsError, response::{Code, Response, SubFunction}, Service, utils, ResponseData};
+use crate::{Configuration, Iso14229Error, response::{Code, Response, SubFunction}, Service, utils, ResponseData};
 
 lazy_static!(
     pub static ref TRANSFER_DATA_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -25,9 +25,9 @@ pub struct TransferData {
 }
 
 impl ResponseData for TransferData {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::TransferData)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::TransferData)),
             None => {
                 utils::data_length_check(data.len(), 1, false)?;
 
@@ -41,11 +41,11 @@ impl ResponseData for TransferData {
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::TransferData
             || response.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &response.data;

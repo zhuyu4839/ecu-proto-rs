@@ -72,18 +72,18 @@ mod request_file_transfer;  // 0x38
 #[cfg(any(feature = "std2013", feature = "std2020"))]
 pub use request_file_transfer::*;
 
-use crate::{Configuration, error::UdsError, RequestData, Service, utils, request, TryFromWithCfg, SUPPRESS_POSITIVE};
+use crate::{Configuration, error::Iso14229Error, RequestData, Service, utils, request, TryFromWithCfg, SUPPRESS_POSITIVE};
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SubFunction {
     function: u8,
-    suppress_positive: Option<bool>,
+    suppress_positive: bool,
 }
 
 impl SubFunction {
     pub fn new(
         function: u8,
-        suppress_positive: Option<bool>,
+        suppress_positive: bool,
     ) -> Self {
         Self {
             function,
@@ -92,12 +92,12 @@ impl SubFunction {
     }
 
     #[inline]
-    pub fn function<T: TryFrom<u8, Error = UdsError>>(&self) -> Result<T, UdsError> {
+    pub fn function<T: TryFrom<u8, Error =Iso14229Error>>(&self) -> Result<T, Iso14229Error> {
         T::try_from(self.function)
     }
 
     #[inline]
-    pub const fn is_suppress_positive(&self) -> Option<bool> {
+    pub const fn is_suppress_positive(&self) -> bool {
         self.suppress_positive
     }
 }
@@ -105,10 +105,8 @@ impl SubFunction {
 impl Into<u8> for SubFunction {
     fn into(self) -> u8 {
         let mut result = self.function;
-        if let Some(v) = self.suppress_positive {
-            if v {
-                result |= SUPPRESS_POSITIVE;
-            }
+        if self.suppress_positive {
+            result |= SUPPRESS_POSITIVE;
         }
 
         result
@@ -128,7 +126,7 @@ impl Request {
         sub_func: Option<u8>,
         data: Vec<u8>,
         cfg: &Configuration,
-    ) -> Result<Self, UdsError> {
+    ) -> Result<Self, Iso14229Error> {
         match service {
             Service::SessionCtrl => SessionCtrl::request(&data, sub_func, cfg),
             Service::ECUReset => ECUReset::request(&data, sub_func, cfg),
@@ -160,7 +158,7 @@ impl Request {
             Service::CtrlDTCSetting => CtrlDTCSetting::request(&data, sub_func, cfg),
             Service::ResponseOnEvent => ResponseOnEvent::request(&data, sub_func, cfg),
             Service::LinkCtrl => LinkCtrl::request(&data, sub_func, cfg),
-            Service::NRC => Err(UdsError::OtherError("got an NRC service from request".into())),
+            Service::NRC => Err(Iso14229Error::OtherError("got an NRC service from request".into())),
         }
     }
 
@@ -180,7 +178,7 @@ impl Request {
     }
 
     #[inline]
-    pub fn data<T>(&self, cfg: &Configuration) -> Result<T, UdsError>
+    pub fn data<T>(&self, cfg: &Configuration) -> Result<T, Iso14229Error>
     where
         T: RequestData,
     {
@@ -194,7 +192,7 @@ impl Request {
         mut offset: usize,
         service: Service,
         cfg: &Configuration
-    ) -> Result<Self, UdsError> {
+    ) -> Result<Self, Iso14229Error> {
         utils::data_length_check(data_len, offset + 1, false)?;
         let sub_func = data[offset];
         offset += 1;
@@ -218,7 +216,7 @@ impl Into<Vec<u8>> for Request {
 }
 
 impl TryFromWithCfg<Vec<u8>> for Request {
-    type Error = UdsError;
+    type Error = Iso14229Error;
     fn try_from_cfg(data: Vec<u8>, cfg: &Configuration) -> Result<Self, Self::Error> {
         let data_len = data.len();
         utils::data_length_check(data_len, 1, false)?;
@@ -257,7 +255,7 @@ impl TryFromWithCfg<Vec<u8>> for Request {
             Service::WriteMemByAddr |
             Service::SecuredDataTrans |
             Service::ResponseOnEvent => Self::new(service, None, data[offset..].to_vec(), cfg),
-            Service::NRC => Err(UdsError::OtherError("got an NRC service from request".into())),
+            Service::NRC => Err(Iso14229Error::OtherError("got an NRC service from request".into())),
         }
     }
 }

@@ -1,7 +1,7 @@
 use crate::{DataIdentifier, Service};
 
 #[derive(thiserror::Error, Debug)]
-pub enum UdsError {
+pub enum Iso14229Error {
     #[error("ISO 14229-1 - invalid parameter `{0}`")]
     InvalidParam(String),
 

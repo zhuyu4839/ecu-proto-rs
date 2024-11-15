@@ -1,6 +1,6 @@
 //! request of Service 36
 
-use crate::{UdsError, request::{Request, SubFunction}, Service, RequestData, Configuration, utils, SessionType};
+use crate::{Iso14229Error, request::{Request, SubFunction}, Service, RequestData, Configuration, utils, SessionType};
 
 #[derive(Debug, Clone)]
 pub struct TransferData {
@@ -9,9 +9,9 @@ pub struct TransferData {
 }
 
 impl RequestData for TransferData {
-    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, UdsError> {
+    fn request(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Request, Iso14229Error> {
         match sub_func {
-            Some(_) => Err(UdsError::SubFunctionError(Service::TransferData)),
+            Some(_) => Err(Iso14229Error::SubFunctionError(Service::TransferData)),
             None => {
                 utils::data_length_check(data.len(), 1, false)?;
 
@@ -20,11 +20,11 @@ impl RequestData for TransferData {
         }
     }
 
-    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::TransferData
             || request.sub_func.is_some() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         let data = &request.data;

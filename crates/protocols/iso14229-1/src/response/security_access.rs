@@ -3,7 +3,7 @@
 
 use std::collections::HashSet;
 use lazy_static::lazy_static;
-use crate::{Configuration, UdsError, response::{Code, Response, SubFunction}, SecurityAccessLevel, Service, ResponseData};
+use crate::{Configuration, Iso14229Error, response::{Code, Response, SubFunction}, SecurityAccessLevel, Service, ResponseData};
 
 lazy_static!(
     pub static ref SECURITY_ACCESS_NEGATIVES: HashSet<Code> = HashSet::from([
@@ -24,12 +24,12 @@ pub struct SecurityAccess {
 }
 
 impl ResponseData for SecurityAccess {
-    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, UdsError> {
+    fn response(data: &[u8], sub_func: Option<u8>, _: &Configuration) -> Result<Response, Iso14229Error> {
         match sub_func {
             Some(level) => {
                 if level % 2 != 0
                     && data.is_empty() {
-                    return Err(UdsError::InvalidParam("Security access response does not contain a security key".to_owned()));
+                    return Err(Iso14229Error::InvalidParam("Security access response does not contain a security key".to_owned()));
                 }
 
                 Ok(Response {
@@ -39,15 +39,15 @@ impl ResponseData for SecurityAccess {
                     data: data.to_vec(),
                 })
             }
-            None => Err(UdsError::SubFunctionError(Service::SecurityAccess)),
+            None => Err(Iso14229Error::SubFunctionError(Service::SecurityAccess)),
         }
     }
 
-    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, UdsError> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::SecurityAccess
             || response.sub_func.is_none() {
-            return Err(UdsError::ServiceError(service))
+            return Err(Iso14229Error::ServiceError(service))
         }
 
         Ok(Self { key: response.data.clone() })
