@@ -88,7 +88,8 @@ impl NiCan {
         attr_id.push(NC_ATTR_BAUD_RATE);
         attr_val.push(bitrate);
 
-        let chl_ascii = CString::new(channel).expect("can't convert str to `CString`");
+        let chl_ascii = CString::new(channel)
+            .map_err(|e| CanError::OtherError(e.to_string()))?;
         let ret = unsafe {
             (self.ncConfig)(
                 chl_ascii.clone().into_raw(),
