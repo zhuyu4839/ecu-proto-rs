@@ -17,6 +17,6 @@ interesting use cases.
 Of course, we're also happy to accept code contributions for outstanding feature requests!
 
 ### Contributors
-<a href="https://github.com/zhuyu4839/rust-can/graphs/contributors">
-  <img src="https://contributors-img.web.app/image?repo=zhuyu4839/rust-can" alt=""/>
+<a href="https://github.com/zhuyu4839/ecu-proto-rs/graphs/contributors">
+  <img src="https://contributors-img.web.app/image?repo=zhuyu4839/ecu-proto-rs" alt=""/>
 </a>

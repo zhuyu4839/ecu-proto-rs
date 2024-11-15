@@ -1,12 +1,17 @@
 [package]
 name = "nican"
-version = "0.1.1-alpha0"
+version = "0.1.1-alpha1"
 edition = "2021"
 authors = ["zhuyu <zhuyu4839@gmail.com>"]
-license = "GPL-3.0"
 description = "A Nican driver."
-homepage = "https://github.com/zhuyu4839/rust-can"
-repository = "https://github.com/zhuyu4839/rust-can"
+homepage = "https://github.com/zhuyu4839/ecu-proto-rs"
+repository = "https://github.com/zhuyu4839/ecu-proto-rs"
+
+[licenses]
+allow = [
+    "GPL-3.0",
+    "MIT",
+]
 
 [dependencies]
 log = { workspace = true }
