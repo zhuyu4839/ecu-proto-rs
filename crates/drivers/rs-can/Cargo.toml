@@ -2,16 +2,11 @@
 name = "rs-can"
 version = "0.1.0-alpha3"
 edition = "2021"
+license = "MIT OR GPL-3.0"
 authors = ["zhuyu <zhuyu4839@gmail.com>"]
 description = "A Nican driver."
 homepage = "https://github.com/zhuyu4839/ecu-proto-rs"
 repository = "https://github.com/zhuyu4839/ecu-proto-rs"
-
-[licenses]
-allow = [
-    "GPL-3.0",
-    "MIT",
-]
 
 [dependencies]
 log = { workspace = true }
