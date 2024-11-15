@@ -1,0 +1,23 @@
+[package]
+name = "nican"
+version = "0.1.1-alpha1"
+edition = "2021"
+license = "MIT OR GPL-3.0"
+authors = ["zhuyu <zhuyu4839@gmail.com>"]
+description = "A Nican driver."
+homepage = "https://github.com/zhuyu4839/ecu-proto-rs"
+repository = "https://github.com/zhuyu4839/ecu-proto-rs"
+
+[dependencies]
+log = { workspace = true }
+thiserror = { workspace = true }
+iso15765-2 = { workspace = true }
+iso14229-1 = { workspace = true }
+rs-can = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+docan = { workspace = true }
+
+[build-dependencies]
+bindgen = "0.70"

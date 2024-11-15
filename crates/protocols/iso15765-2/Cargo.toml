@@ -1,0 +1,23 @@
+[package]
+name = "iso15765-2"
+version = "0.1.0-alpha1"
+edition = "2021"
+license = "MIT OR GPL-3.0"
+authors = ["zhuyu <zhuyu4839@gmail.com>"]
+description = "A ISO 15765-2 protocol."
+homepage = "https://github.com/zhuyu4839/ecu-proto-rs"
+repository = "https://github.com/zhuyu4839/ecu-proto-rs"
+keywords = [
+    "automotive",
+    "UDS",
+    "ISO15765"
+]
+
+[dependencies]
+log = { workspace = true }
+thiserror = { workspace = true }
+bitflags = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+hex = { workspace = true }
