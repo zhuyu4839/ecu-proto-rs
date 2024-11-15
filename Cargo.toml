@@ -1,6 +1,6 @@
 [workspace]
 members = [
-#    "crates/drivers/nican",
+    "crates/drivers/nican",
     "crates/drivers/rs-can",
     "crates/drivers/zlgcan",
 

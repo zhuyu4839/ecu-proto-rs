@@ -4,7 +4,8 @@
     non_snake_case,
     dead_code
 )]
-include!(concat!(env!("OUT_DIR"), "/nican.rs"));
+// include!(concat!(env!("OUT_DIR"), "/nican.rs"));
+include!("generator/nican.rs");
 
 use rs_can::{CanError, Direct, Frame, Id, CAN_FRAME_MAX_SIZE};
 use crate::CanMessage;

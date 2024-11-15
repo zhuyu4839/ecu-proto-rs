@@ -4,7 +4,7 @@ use rs_can::{Frame, Id};
 
 fn main() -> anyhow::Result<()> {
     let channel = "CAN0";
-    let mut driver = NiCan::new();
+    let mut driver = NiCan::new(None)?;
     driver.open(channel, vec![], 500_000, true)?;
 
     let data = vec![0x02, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00];
