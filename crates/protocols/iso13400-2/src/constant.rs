@@ -1,5 +1,7 @@
 //! Table 17 — Overview of DoIP payload types at line #49(ISO 13400-2-2019)
-
+pub const TCP_SERVER_PORT: u16 = 13400;
+pub const TLS_TCP_SERVER_PORT: u16 = 3496;
+pub const UDP_SERVER_PORT: u16 = 13400;
 
 pub(crate) const HEADER_NEGATIVE: u16 = 0x0000;
 pub(crate) const UDP_REQ_VEHICLE_IDENTIFIER: u16 = 0x0001;
