@@ -16,3 +16,29 @@ keywords = [
 [dependencies]
 log = { workspace = true }
 thiserror = { workspace = true }
+derive-getters = { workspace = true }
+hex = { workspace = true }
+iso13400-2 = { workspace = true }
+iso14229-1 = { workspace = true }
+
+[dependencies.tokio]
+workspace = true
+optional = true
+features = ["net", "time"]
+
+#[dependencies.native-tls]
+#workspace = true
+#optional = true
+
+#[dependencies.tokio-native-tls]
+#workspace = true
+#optional = true
+
+[dev-dependencies]
+anyhow = { workspace = true }
+
+[features]
+async = []
+
+client = []
+server = []

@@ -27,7 +27,7 @@ pub(crate) const TCP_RESP_DIAGNOSTIC_NEGATIVE: u16 = 0x8003;
 
 /// length of EID and GID
 pub(crate) const SIZE_OF_ID: usize = 6;
-pub(crate) const LENGTH_OF_VIN: usize = 17;
+pub const LENGTH_OF_VIN: usize = 17;
 pub(crate) const SIZE_OF_ADDRESS: usize = 2;
 pub(crate) const SIZE_OF_VERSION: usize = 2;
 pub(crate) const SIZE_OF_DATA_TYPE: usize = 2;

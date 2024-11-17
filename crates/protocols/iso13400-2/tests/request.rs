@@ -1,5 +1,4 @@
-use iso13400_2::{LogicAddress, Message, Payload, RoutingActiveType, Version};
-use iso13400_2::request::{AliveCheck, Diagnostic, DiagnosticPowerMode, EntityStatus, RoutingActive, VehicleID, VehicleIDWithEID, VehicleIDWithVIN};
+use iso13400_2::{*, request::*};
 
 #[test]
 fn test_vehicle_id() -> anyhow::Result<()> {
@@ -10,7 +9,7 @@ fn test_vehicle_id() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::VehicleIdentificationRequest(v) => assert_eq!(*v, payload),
+        Payload::Request(RequestPayload::VehicleId(v)) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -26,11 +25,11 @@ fn test_vehicle_id_with_eid() -> anyhow::Result<()> {
     00000006\
     110011001100")?;
 
-    let payload = VehicleIDWithEID::new([0x11, 0x00, 0x11, 0x00, 0x11, 0x00,]);
+    let payload = VehicleIDWithEID::new(Eid::new(0x110011001100)?);
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::VehicleIdentificationRequestWithEID(v) => assert_eq!(*v, payload),
+        Payload::Request(RequestPayload::VehicleWithEid(v)) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -50,7 +49,7 @@ fn test_vehicle_id_with_vin() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::VehicleIdentificationRequestWithVIN(v) => assert_eq!(*v, payload),
+        Payload::Request(RequestPayload::VehicleWithVIN(v)) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -69,7 +68,7 @@ fn test_entity_status() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::EntityStatusRequest(v) => assert_eq!(*v, payload),
+        Payload::Request(RequestPayload::EntityStatue(v)) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -88,7 +87,7 @@ fn test_diag_power_mode() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::DiagnosticPowerModeRequest(v) => assert_eq!(*v, payload),
+        Payload::Request(RequestPayload::DiagPowerMode(v)) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -115,7 +114,7 @@ fn test_routing_activation() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::RoutingActivationRequest(v) => assert_eq!(*v, payload),
+        Payload::Request(RequestPayload::RoutingActive(v)) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -134,7 +133,7 @@ fn test_alive_check() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::AliveCheckRequest(v) => assert_eq!(*v, payload),
+        Payload::Request(RequestPayload::AliveCheck(v)) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -160,7 +159,7 @@ fn test_diag() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::Diagnostic(v) => assert_eq!(*v, payload),
+        Payload::Request(RequestPayload::Diagnostic(v)) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 

@@ -1,13 +1,15 @@
-use crate::{constant::*, request, response, Iso13400Error};
+use std::fmt::{Display, Formatter};
+use crate::{constants::*, request, response, Iso13400Error};
 
 /// Table 16 — Generic DoIP header structure at line #48(ISO 13400-2-2019)
 #[repr(u8)]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub enum Version {
     ISO13400_2_2010 = 0x01,
     ISO13400_2_2012 = 0x02,
     ISO13400_2_2019 = 0x03,
     Reserved(u8),
+    #[default]
     Default = 0xFF,
 }
 
@@ -65,7 +67,7 @@ impl TryFrom<&[u8]> for Version {
 
 /// Table 19 — Generic DoIP header NACK codes at line #52(ISO 13400-2-2019)
 #[repr(u8)]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum HeaderNegativeCode {
     IncorrectPatternFormat = 0x00,     // close socket
     UnknownPayloadTYpe = 0x01,
@@ -135,7 +137,7 @@ impl From<u8> for HeaderNegativeCode {
 ///
 /// F000 to FFFF ISO/SAE reserved
 #[repr(u8)]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum LogicAddress {
     VMSpecific(u16),           // 0x0001 ~ 0x0DFF | 0x1000 ~ 0x7FFF
     Client(u16),        // 0x0E00 ~ 0x0FFF
@@ -169,9 +171,16 @@ impl Into<u16> for LogicAddress {
     }
 }
 
+impl Display for LogicAddress {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let value: u16 = (*self).into();
+        write!(f, "{:#X}", value)
+    }
+}
+
 /// Table 11 — DoIP entity status response
 #[repr(u8)]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum NodeType {
     Gateway = 0x00,
     Node = 0x01,
@@ -201,9 +210,19 @@ impl From<u8> for NodeType {
     }
 }
 
+impl Display for NodeType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            NodeType::Gateway => write!(f, "Gateway"),
+            NodeType::Node => write!(f, "Node"),
+            NodeType::Reserved(v) => write!(f, "{}", format!("Unknown({:#X})", *v)),
+        }
+    }
+}
+
 /// Table 6 — Definition of further action code values
 #[repr(u8)]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum FurtherAction {
     NoAction = 0x00,
     Reserved(u8),       // 0x01 ~ 0x0f
@@ -238,7 +257,7 @@ impl From<u8> for FurtherAction {
 
 /// Table 7 — Definition of VIN/GID synchronization status code values
 #[repr(u8)]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum SyncStatus {
     VINorGIDSync = 0x00,
     VINorGIDNotSync = 0x10,
@@ -270,7 +289,7 @@ impl From<u8> for SyncStatus {
 
 /// Table 49 — Routing activation response code values
 #[repr(u8)]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ActiveCode {
     SourceAddressUnknown = 0x00,    // close TCP
     Activated = 0x01,       // close TCP
@@ -280,7 +299,7 @@ pub enum ActiveCode {
     VehicleRefused = 0x05,  // close TCP
     Unsupported = 0x06,     // close TCP
     /// ISO 14300-2:2019
-    Denied = 0x07,
+    TLSRequired = 0x07,
     Success = 0x10,
     NeedConfirm = 0x11,
     VMSpecific(u8),        // 0xE0 ~ 0xFE
@@ -297,7 +316,7 @@ impl Into<u8> for ActiveCode {
             Self::WithoutAuth => 0x04,
             Self::VehicleRefused => 0x05,
             Self::Unsupported => 0x06,
-            Self::Denied => 0x07,
+            Self::TLSRequired => 0x07,
             Self::Success => 0x10,
             Self::NeedConfirm => 0x11,
             Self::VMSpecific(v) => v,
@@ -316,7 +335,7 @@ impl From<u8> for ActiveCode {
             0x04 => Self::WithoutAuth,
             0x05 => Self::VehicleRefused,
             0x06 => Self::Unsupported,
-            0x07 => Self::Denied,
+            0x07 => Self::TLSRequired,
             0x10 => Self::Success,
             0x11 => Self::NeedConfirm,
             0xE0..=0xFE => Self::VMSpecific(v),
@@ -330,7 +349,7 @@ impl From<u8> for ActiveCode {
 
 /// Table 9 — Diagnostic power mode information response
 #[repr(u8)]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum PowerMode {
     NotReady = 0x00,
     Ready = 0x01,
@@ -365,7 +384,7 @@ impl From<u8> for PowerMode {
 
 /// Table 47 — Routing activation request activation types
 #[repr(u8)]
-#[derive(Debug, Default, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub enum RoutingActiveType {
     #[default]
     Default = 0x00,
@@ -404,7 +423,7 @@ impl From<u8> for RoutingActiveType {
 
 /// Table 24 — Diagnostic message positive acknowledge codes
 #[repr(u8)]
-#[derive(Debug, Default, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq)]
 pub enum DiagnosticPositiveCode {
     #[default]
     Confirm = 0x00,
@@ -432,9 +451,18 @@ impl From<u8> for DiagnosticPositiveCode {
     }
 }
 
+impl Display for DiagnosticPositiveCode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Confirm => write!(f, "Diagnostic Positive Confirm"),
+            Self::Reserved(v) => write!(f, "Diagnostic Positive Reserved({})", v),
+        }
+    }
+}
+
 /// Table 26 — Diagnostic message negative acknowledge codes
 #[repr(u8)]
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum DiagnosticNegativeCode {
     InvalidSourceAddress = 0x02,
     UnknownTargetAddress = 0x03,
@@ -479,41 +507,50 @@ impl From<u8> for DiagnosticNegativeCode {
     }
 }
 
+impl Display for DiagnosticNegativeCode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidSourceAddress => write!(f, "Diagnostic Negative Source Address"),
+            Self::UnknownTargetAddress => write!(f, "Diagnostic Negative Target Address"),
+            Self::DiagnosticMessageTooLarge => write!(f, "Diagnostic Negative Diagnostic Message Too Large"),
+            Self::OutOfMemory => write!(f, "Diagnostic Negative Target Address"),
+            Self::TargetUnreachable => write!(f, "Diagnostic Negative Target Address"),
+            Self::UnknownNetwork => write!(f, "Diagnostic Negative Target Address"),
+            Self::TransportProtocolError => write!(f, "Diagnostic Negative Transport Protocol Error"),
+            Self::Reserved(v) => write!(f, "Diagnostic Negative Reserved({})", v),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum RequestPayload {
+    VehicleId(request::VehicleID),              // UDP 0x0001
+    VehicleWithEid(request::VehicleIDWithEID),  // UDP 0x0002
+    VehicleWithVIN(request::VehicleIDWithVIN),  // UDP 0x0003
+    RoutingActive(request::RoutingActive),      // TCP 0x0005
+    AliveCheck(request::AliveCheck),            // TCP 0x0007
+    EntityStatue(request::EntityStatus),        // UDP 0x4001
+    DiagPowerMode(request::DiagnosticPowerMode),// UDP 0x4003
+    Diagnostic(request::Diagnostic),            // TCP 0x8001
+}
+
+#[derive(Debug, Clone)]
+pub enum ResponsePayload {
+    HeaderNegative(response::HeaderNegative),       // UDP/TCP 0x0000
+    VehicleId(response::VehicleID),                 // UDP 0x0004
+    RoutingActive(response::RoutingActive),         // TCP 0x0006
+    AliveCheck(response::AliveCheck),               // TCP 0x0008
+    EntityStatue(response::EntityStatus),           // UDP 0x4002
+    DiagPowerMode(response::DiagnosticPowerMode),   // UDP 0x4004
+    DiagPositive(response::DiagnosticPositive),     // TCP 0x8002
+    DiagNegative(response::DiagnosticNegative),     // TCP 0x8003
+}
+
 /// Table 17 — Overview of DoIP payload types at line #49(ISO 13400-2-2019)
 #[derive(Debug, Clone)]
 pub enum Payload {
-    /// UDP/TCP 0x0000
-    HeaderNegativeAck(response::HeaderNegative),
-    /// UDP 0x0001
-    VehicleIdentificationRequest(request::VehicleID),
-    /// UDP 0x0002
-    VehicleIdentificationRequestWithEID(request::VehicleIDWithEID),
-    /// UDP 0x0003
-    VehicleIdentificationRequestWithVIN(request::VehicleIDWithVIN),
-    /// UDP 0x0004
-    VehicleIdentificationResponse(response::VehicleID),
-    /// TCP 0x0005
-    RoutingActivationRequest(request::RoutingActive),
-    /// TCP 0x0006
-    RoutingActivationResponse(response::RoutingActive),
-    /// TCP 0x0007
-    AliveCheckRequest(request::AliveCheck),
-    /// TCP 0x0008
-    AliveCheckResponse(response::AliveCheck),
-    /// UDP 0x4001
-    EntityStatusRequest(request::EntityStatus),
-    /// UDP 0x4002
-    EntityStatusResponse(response::EntityStatus),
-    /// UDP 0x4003
-    DiagnosticPowerModeRequest(request::DiagnosticPowerMode),
-    /// UDP 0x4004
-    DiagnosticPowerModeResponse(response::DiagnosticPowerMode),
-    /// TCP 0x8001
-    Diagnostic(request::Diagnostic),
-    /// TCP 0x8002
-    DiagnosticPositive(response::DiagnosticPositive),
-    /// TCP 0x8003
-    DiagnosticNegative(response::DiagnosticNegative),
+    Request(RequestPayload),
+    Response(ResponsePayload),
 }
 
 #[derive(Debug, Clone)]
@@ -526,22 +563,28 @@ impl Into<Vec<u8>> for Message {
     fn into(self) -> Vec<u8> {
         let mut result: Vec<_> = self.version.into();
         match self.payload {
-            Payload::HeaderNegativeAck(v) => result.append(&mut v.into()),
-            Payload::VehicleIdentificationRequest(v) => result.append(&mut v.into()),
-            Payload::VehicleIdentificationRequestWithEID(v) => result.append(&mut v.into()),
-            Payload::VehicleIdentificationRequestWithVIN(v) => result.append(&mut v.into()),
-            Payload::VehicleIdentificationResponse(v) => result.append(&mut v.into()),
-            Payload::RoutingActivationRequest(v) => result.append(&mut v.into()),
-            Payload::RoutingActivationResponse(v) => result.append(&mut v.into()),
-            Payload::AliveCheckRequest(v) => result.append(&mut v.into()),
-            Payload::AliveCheckResponse(v) => result.append(&mut v.into()),
-            Payload::EntityStatusRequest(v) => result.append(&mut v.into()),
-            Payload::EntityStatusResponse(v) => result.append(&mut v.into()),
-            Payload::DiagnosticPowerModeRequest(v) => result.append(&mut v.into()),
-            Payload::DiagnosticPowerModeResponse(v) => result.append(&mut v.into()),
-            Payload::Diagnostic(v) => result.append(&mut v.into()),
-            Payload::DiagnosticPositive(v) => result.append(&mut v.into()),
-            Payload::DiagnosticNegative(v) => result.append(&mut v.into()),
+            Payload::Request(v) => {
+                match v {
+                    RequestPayload::VehicleId(v) => result.append(&mut v.into()),
+                    RequestPayload::VehicleWithEid(v) => result.append(&mut v.into()),
+                    RequestPayload::VehicleWithVIN(v) => result.append(&mut v.into()),
+                    RequestPayload::RoutingActive(v) => result.append(&mut v.into()),
+                    RequestPayload::AliveCheck(v) => result.append(&mut v.into()),
+                    RequestPayload::EntityStatue(v) => result.append(&mut v.into()),
+                    RequestPayload::DiagPowerMode(v) => result.append(&mut v.into()),
+                    RequestPayload::Diagnostic(v) => result.append(&mut v.into()),
+                }
+            }
+            Payload::Response(v) => match v {
+                ResponsePayload::HeaderNegative(v) => result.append(&mut v.into()),
+                ResponsePayload::VehicleId(v) => result.append(&mut v.into()),
+                ResponsePayload::RoutingActive(v) => result.append(&mut v.into()),
+                ResponsePayload::AliveCheck(v) => result.append(&mut v.into()),
+                ResponsePayload::EntityStatue(v) => result.append(&mut v.into()),
+                ResponsePayload::DiagPowerMode(v) => result.append(&mut v.into()),
+                ResponsePayload::DiagPositive(v) => result.append(&mut v.into()),
+                ResponsePayload::DiagNegative(v) => result.append(&mut v.into()),
+            }
         }
 
         result
@@ -551,8 +594,9 @@ impl Into<Vec<u8>> for Message {
 impl TryFrom<&[u8]> for Message {
     type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
+        log::debug!("ISO 13400-2 - parsing data: {}", hex::encode(data));
         let data_len = data.len();
-        let expected = SIZE_OF_VERSION + SIZE_OF_DATA_TYPE;
+        let expected = SIZE_OF_VERSION + SIZE_OF_DATA_TYPE + SIZE_OF_LENGTH;
         if data_len < expected {
             return Err(Iso13400Error::InvalidLength { actual: data_len, expected });
         }
@@ -562,39 +606,61 @@ impl TryFrom<&[u8]> for Message {
         offset += SIZE_OF_VERSION;
         let payload_type = u16::from_be_bytes(data[offset..offset+SIZE_OF_DATA_TYPE].try_into().unwrap());
         offset += SIZE_OF_DATA_TYPE;
+        let payload_len = u32::from_be_bytes(data[offset..offset+SIZE_OF_LENGTH].try_into().unwrap());
+        offset += SIZE_OF_LENGTH;
+        let expected = data_len - offset;
+        if (payload_len as usize) != expected {
+            return Err(Iso13400Error::InvalidPayloadLength { actual: payload_len as usize, expected });
+        }
         let payload = match payload_type {
-            HEADER_NEGATIVE =>
-                Ok(Payload::HeaderNegativeAck(response::HeaderNegative::try_from(&data[offset..])?)),
-            UDP_REQ_VEHICLE_IDENTIFIER =>
-                Ok(Payload::VehicleIdentificationRequest(request::VehicleID::try_from(&data[offset..])?)),
-            UDP_REQ_VEHICLE_ID_WITH_EID =>
-                Ok(Payload::VehicleIdentificationRequestWithEID(request::VehicleIDWithEID::try_from(&data[offset..])?)),
-            UDP_REQ_VEHICLE_ID_WITH_VIN =>
-                Ok(Payload::VehicleIdentificationRequestWithVIN(request::VehicleIDWithVIN::try_from(&data[offset..])?)),
-            UDP_RESP_VEHICLE_IDENTIFIER =>
-                Ok(Payload::VehicleIdentificationResponse(response::VehicleID::try_from(&data[offset..])?)),
-            TCP_REQ_ROUTING_ACTIVE =>
-                Ok(Payload::RoutingActivationRequest(request::RoutingActive::try_from(&data[offset..])?)),
-            TCP_RESP_ROUTING_ACTIVE =>
-                Ok(Payload::RoutingActivationResponse(response::RoutingActive::try_from(&data[offset..])?)),
-            TCP_REQ_ALIVE_CHECK =>
-                Ok(Payload::AliveCheckRequest(request::AliveCheck::try_from(&data[offset..])?)),
-            TCP_RESP_ALIVE_CHECK =>
-                Ok(Payload::AliveCheckResponse(response::AliveCheck::try_from(&data[offset..])?)),
-            UDP_REQ_ENTITY_STATUS =>
-                Ok(Payload::EntityStatusRequest(request::EntityStatus::try_from(&data[offset..])?)),
-            UDP_RESP_ENTITY_STATUS =>
-                Ok(Payload::EntityStatusResponse(response::EntityStatus::try_from(&data[offset..])?)),
-            UDP_REQ_DIAGNOSTIC_POWER_MODE =>
-                Ok(Payload::DiagnosticPowerModeRequest(request::DiagnosticPowerMode::try_from(&data[offset..])?)),
-            UDP_RESP_DIAGNOSTIC_POWER_MODE =>
-                Ok(Payload::DiagnosticPowerModeResponse(response::DiagnosticPowerMode::try_from(&data[offset..])?)),
-            TCP_REQ_DIAGNOSTIC =>
-                Ok(Payload::Diagnostic(request::Diagnostic::try_from(&data[offset..])?)),
-            TCP_RESP_DIAGNOSTIC_POSITIVE =>
-                Ok(Payload::DiagnosticPositive(response::DiagnosticPositive::try_from(&data[offset..])?)),
-            TCP_RESP_DIAGNOSTIC_NEGATIVE =>
-                Ok(Payload::DiagnosticNegative(response::DiagnosticNegative::try_from(&data[offset..])?)),
+            HEADER_NEGATIVE => Ok(Payload::Response(ResponsePayload::HeaderNegative(
+                response::HeaderNegative::try_from(&data[offset..])?
+            ))),
+            UDP_REQ_VEHICLE_IDENTIFIER => Ok(Payload::Request(RequestPayload::VehicleId(
+                request::VehicleID::try_from(&data[offset..])?
+            ))),
+            UDP_REQ_VEHICLE_ID_WITH_EID => Ok(Payload::Request(RequestPayload::VehicleWithEid(
+                request::VehicleIDWithEID::try_from(&data[offset..])?
+            ))),
+            UDP_REQ_VEHICLE_ID_WITH_VIN => Ok(Payload::Request(RequestPayload::VehicleWithVIN(
+                request::VehicleIDWithVIN::try_from(&data[offset..])?
+            ))),
+            UDP_RESP_VEHICLE_IDENTIFIER => Ok(Payload::Response(ResponsePayload::VehicleId(
+                response::VehicleID::try_from(&data[offset..])?
+            ))),
+            TCP_REQ_ROUTING_ACTIVE => Ok(Payload::Request(RequestPayload::RoutingActive(
+                request::RoutingActive::try_from(&data[offset..])?
+            ))),
+            TCP_RESP_ROUTING_ACTIVE => Ok(Payload::Response(ResponsePayload::RoutingActive(
+                response::RoutingActive::try_from(&data[offset..])?
+            ))),
+            TCP_REQ_ALIVE_CHECK => Ok(Payload::Request(RequestPayload::AliveCheck(
+                request::AliveCheck::try_from(&data[offset..])?
+            ))),
+            TCP_RESP_ALIVE_CHECK => Ok(Payload::Response(ResponsePayload::AliveCheck(
+                response::AliveCheck::try_from(&data[offset..])?
+            ))),
+            UDP_REQ_ENTITY_STATUS => Ok(Payload::Request(RequestPayload::EntityStatue(
+                request::EntityStatus::try_from(&data[offset..])?
+            ))),
+            UDP_RESP_ENTITY_STATUS => Ok(Payload::Response(ResponsePayload::EntityStatue(
+                response::EntityStatus::try_from(&data[offset..])?
+            ))),
+            UDP_REQ_DIAGNOSTIC_POWER_MODE => Ok(Payload::Request(RequestPayload::DiagPowerMode(
+                request::DiagnosticPowerMode::try_from(&data[offset..])?
+            ))),
+            UDP_RESP_DIAGNOSTIC_POWER_MODE => Ok(Payload::Response(ResponsePayload::DiagPowerMode(
+                response::DiagnosticPowerMode::try_from(&data[offset..])?
+            ))),
+            TCP_REQ_DIAGNOSTIC => Ok(Payload::Request(RequestPayload::Diagnostic(
+                request::Diagnostic::try_from(&data[offset..])?
+            ))),
+            TCP_RESP_DIAGNOSTIC_POSITIVE => Ok(Payload::Response(ResponsePayload::DiagPositive(
+                response::DiagnosticPositive::try_from(&data[offset..])?
+            ))),
+            TCP_RESP_DIAGNOSTIC_NEGATIVE => Ok(Payload::Response(ResponsePayload::DiagNegative(
+                response::DiagnosticNegative::try_from(&data[offset..])?
+            ))),
             _ => Err(Iso13400Error::InvalidPayloadType(payload_type)),
         }?;
 

@@ -1,5 +1,5 @@
 use derive_getters::Getters;
-use crate::{constant::*, Iso13400Error, LogicAddress, RoutingActiveType, utils};
+use crate::{constants::*, Iso13400Error, LogicAddress, RoutingActiveType, utils, Eid};
 
 /****** --- UDP --- ********/
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -33,25 +33,25 @@ impl Into<Vec<u8>> for VehicleID {
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct VehicleIDWithEID {    // 0x0002
-    pub(crate) eid: [u8; SIZE_OF_ID],
+    pub(crate) eid: Eid,
 }
 
 impl VehicleIDWithEID {
-    pub fn new(eid: [u8; SIZE_OF_ID]) -> Self {
+    pub fn new(eid: Eid) -> Self {
         Self { eid }
     }
 
     #[inline]
     const fn length() -> usize {
-        SIZE_OF_ID
+        Eid::length()
     }
 }
 
 impl TryFrom<&[u8]> for VehicleIDWithEID {
     type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
-        let (_, offset) = utils::data_len_check(data, Self::length(), true)?;
-        let eid: [u8; SIZE_OF_ID] = data[offset..offset+Self::length()].try_into().unwrap();
+        let _ = utils::data_len_check(data, Self::length(), true)?;
+        let eid = Eid::try_from(data)?;
 
         Ok(Self { eid })
     }
@@ -62,7 +62,7 @@ impl Into<Vec<u8>> for VehicleIDWithEID {
         let mut result = UDP_REQ_VEHICLE_ID_WITH_EID.to_be_bytes().to_vec();
         let length = Self::length() as u32;
         result.extend(length.to_be_bytes());
-        result.extend(self.eid);
+        result.append(&mut self.eid.into());
 
         result
     }
@@ -75,13 +75,13 @@ pub struct VehicleIDWithVIN {     // 0x0003
 
 impl VehicleIDWithVIN {
     #[must_use]
-    pub fn new(vin: String) -> Result<Self, Iso13400Error> {
+    pub fn new(vin: &str) -> Result<Self, Iso13400Error> {
         let vin_len = vin.as_bytes().len();
         if vin_len != Self::length() {
             return Err(Iso13400Error::InvalidLength { actual: vin_len, expected: Self::length() });
         }
 
-        Ok(Self { vin })
+        Ok(Self { vin: vin.to_owned() })
     }
 
     #[inline]

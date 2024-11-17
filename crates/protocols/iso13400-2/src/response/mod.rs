@@ -1,8 +1,10 @@
+use std::fmt::{Display, Formatter};
 use derive_getters::Getters;
-use crate::{{ActiveCode, DiagnosticNegativeCode, NodeType, Iso13400Error, FurtherAction, HeaderNegativeCode, LogicAddress, PowerMode}, constant::*, SyncStatus, DiagnosticPositiveCode, utils};
+use crate::{*, constants::*, utils};
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct HeaderNegative {
+    #[getter(copy)]
     pub(crate) code: HeaderNegativeCode,
 }
 
@@ -47,10 +49,15 @@ impl Into<Vec<u8>> for HeaderNegative {
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct VehicleID {  // 0x0004
     pub(crate) vin: String,
+    #[getter(copy)]
     pub(crate) address: LogicAddress,
-    pub(crate) eid: [u8; SIZE_OF_ID],
-    pub(crate) gid: [u8; SIZE_OF_ID],
+    #[getter(copy)]
+    pub(crate) eid: Eid,
+    #[getter(copy)]
+    pub(crate) gid: Gid,
+    #[getter(copy)]
     pub(crate) further_act: FurtherAction,
+    #[getter(copy)]
     pub(crate) sync_status: Option<SyncStatus>,
 }
 
@@ -59,8 +66,8 @@ impl VehicleID {
     pub fn new(
         vin: String,
         address: LogicAddress,
-        eid: [u8; SIZE_OF_ID],
-        gid: [u8; SIZE_OF_ID],
+        eid: Eid,
+        gid: Eid,
         further_act: FurtherAction,
         sync_status: Option<SyncStatus>,
     ) -> Result<Self, Iso13400Error> {
@@ -75,7 +82,7 @@ impl VehicleID {
     /// min length
     #[inline]
     const fn length() -> usize {
-        LENGTH_OF_VIN + SIZE_OF_ADDRESS + 2 * SIZE_OF_ID + 1
+        LENGTH_OF_VIN + SIZE_OF_ADDRESS + Eid::length() + Gid::length() + 1
     }
 }
 
@@ -91,13 +98,13 @@ impl TryFrom<&[u8]> for VehicleID {
             }
         };
         offset += LENGTH_OF_VIN;
-        let address = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        let address = u16::from_be_bytes(data[offset..offset+SIZE_OF_ADDRESS].try_into().unwrap());
         offset += SIZE_OF_ADDRESS;
         let address = LogicAddress::from(address);
-        let eid: [u8; SIZE_OF_ID] = data[offset..offset+ SIZE_OF_ID].try_into().unwrap();
-        offset += SIZE_OF_ID;
-        let gid: [u8; SIZE_OF_ID] = data[offset..offset+ SIZE_OF_ID].try_into().unwrap();
-        offset += SIZE_OF_ID;
+        let eid = Eid::try_from(&data[offset..])?;
+        offset += Eid::length();
+        let gid = Gid::try_from(&data[offset..])?;
+        offset += Gid::length();
         let further_act = FurtherAction::from(data[offset]);
         offset += 1;
         let sync_status = match data_len - offset {
@@ -121,8 +128,8 @@ impl Into<Vec<u8>> for VehicleID {
         result.extend(self.vin.as_bytes());
         let address: u16 = self.address.into();
         result.extend(address.to_be_bytes());
-        result.extend(self.eid);
-        result.extend(self.gid);
+        result.append(&mut self.eid.into());
+        result.append(&mut self.gid.into());
         result.push(self.further_act.into());
         if let Some(status) = self.sync_status {
             result.push(status.into());
@@ -200,8 +207,20 @@ impl Into<Vec<u8>> for EntityStatus {
     }
 }
 
+impl Display for EntityStatus {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("DoIP Entity Status")
+            .field("\n              Node Type", &self.node_type)
+            .field("\n    Max. TCP Connectors", &self.mcts)
+            .field("\n Current TCP Connectors", &self.ncts)
+            .field("\n       Max. Data Length", &self.max_data_size)
+            .finish()
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct DiagnosticPowerMode {    // 0x4004
+    #[getter(copy)]
     pub(crate) mode: PowerMode,
 }
 
@@ -240,10 +259,15 @@ impl Into<Vec<u8>> for DiagnosticPowerMode {
 /****** --- TCP --- ********/
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct RoutingActive {  // 0x0006
+    #[getter(copy)]
     pub(crate) dst_addr: LogicAddress,
+    #[getter(copy)]
     pub(crate) src_addr: LogicAddress,
+    #[getter(copy)]
     pub(crate) active_code: ActiveCode,
     pub(crate) reserved: u32,
+    #[getter(copy)]
+    #[getter(rename = "user_define")]
     pub(crate) user_def: Option<u32>,
 }
 
@@ -313,6 +337,7 @@ impl Into<Vec<u8>> for RoutingActive {
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct AliveCheck {     // 0x0008
+    #[getter(copy)]
     pub(crate) src_addr: LogicAddress,
 }
 
@@ -351,9 +376,13 @@ impl Into<Vec<u8>> for AliveCheck {
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct DiagnosticPositive {     // 0x8002
+    #[getter(copy)]
     pub(crate) src_addr: LogicAddress,
+    #[getter(copy)]
     pub(crate) dst_addr: LogicAddress,
+    #[getter(copy)]
     pub(crate) code: DiagnosticPositiveCode,
+    #[getter(rename = "previous_diagnostic_data")]
     pub(crate) pre_diag_msg: Vec<u8>,
 }
 
@@ -407,11 +436,26 @@ impl Into<Vec<u8>> for DiagnosticPositive {
     }
 }
 
+impl Display for DiagnosticPositive {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Diagnostic Negative")
+            .field("\nSource Address", &self.src_addr)
+            .field("\nTarget Address", &self.dst_addr)
+            .field("\n          Code", &self.code)
+            .field("\n Previous Data", &format!("{}", hex::encode(&self.pre_diag_msg)))
+            .finish()
+    }
+}
+
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct DiagnosticNegative {     // 0x8003
+    #[getter(copy)]
     pub(crate) src_addr: LogicAddress,
+    #[getter(copy)]
     pub(crate) dst_addr: LogicAddress,
+    #[getter(copy)]
     pub(crate) code: DiagnosticNegativeCode,
+    #[getter(rename = "previous_diagnostic_data")]
     pub(crate) pre_diag_msg: Vec<u8>,
 }
 
@@ -463,6 +507,17 @@ impl Into<Vec<u8>> for DiagnosticNegative {
         result.append(&mut self.pre_diag_msg);
 
         result
+    }
+}
+
+impl Display for DiagnosticNegative {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Diagnostic Negative")
+            .field("\nSource Address", &self.src_addr)
+            .field("\nTarget Address", &self.dst_addr)
+            .field("\n          Code", &self.code)
+            .field("\n Previous Data", &format!("{}", hex::encode(&self.pre_diag_msg)))
+            .finish()
     }
 }
 /****** --- end of UDP --- ********/
