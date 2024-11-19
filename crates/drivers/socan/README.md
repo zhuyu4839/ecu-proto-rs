@@ -26,10 +26,10 @@ socan = { version="lastest-version" }
 ### UDS example
 ```toml
 [dependencies]
-docan = { git = "https://github.com/zhuyu4839/ecu-proto-rs", package = "docan" }
-iso14229-1 = { git = "https://github.com/zhuyu4839/ecu-proto-rs", package = "iso14229-1" }
-rs-can = { git = "https://github.com/zhuyu4839/ecu-proto-rs", package = "rs-can", features = ["isotp-std2004"]  }
-socan = { git = "https://github.com/zhuyu4839/ecu-proto-rs", package = "socan" }
+docan = { git = "https://github.com/zhuyu4839/ecu-proto-rs", branch = "docan", package = "docan" }
+iso14229-1 = { git = "https://github.com/zhuyu4839/ecu-proto-rs", branch = "docan", package = "iso14229-1" }
+rs-can = { git = "https://github.com/zhuyu4839/ecu-proto-rs", branch = "docan", package = "rs-can", features = ["isotp-std2004"]  }
+socan = { git = "https://github.com/zhuyu4839/ecu-proto-rs", branch = "docan", package = "socan" }
 anyhow = "1"
 ```
 
