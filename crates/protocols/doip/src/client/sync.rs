@@ -1,9 +1,11 @@
 use std::{io::{Read, Write}, net::{TcpStream, UdpSocket, SocketAddr}};
 use iso13400_2::{*, request};
+use iso14229_1::{Configuration as Iso14229Cfg, response::Response as Iso14229Response, TryFromWithCfg};
 use crate::DoIpError;
-use super::{config::Configuration, context::Context};
+use super::{config::Configuration, context::{GatewayInfo, PL_TYPES}};
 
-type VerPayload = (Version, ResponsePayload);
+type VerPayload = (Version, Payload);
+pub type RoutingActiveStatus = (ActiveCode, Option<u8>);
 
 #[derive(Debug)]
 pub struct DoIpClient {
@@ -11,7 +13,7 @@ pub struct DoIpClient {
     server_udp_addr: SocketAddr,
     udp_socket: UdpSocket,
     tcp_stream: TcpStream,
-    context: Option<Context>,
+    gateway_info: Option<GatewayInfo>,
 }
 
 impl DoIpClient {
@@ -29,38 +31,36 @@ impl DoIpClient {
             server_udp_addr,
             udp_socket,
             tcp_stream,
-            context: None,
+            gateway_info: None,
         })
     }
 
-    pub fn vehicle_identifier(&mut self) -> Result<bool, DoIpError> {
+    pub fn vehicle_identifier(&mut self) -> Result<(), DoIpError> {
         let request = Message {
-            version: self.version(),
-            payload: Payload::Request(RequestPayload::VehicleId(request::VehicleID))
+            version: self.gateway_version(),
+            payload: Payload::ReqVehicleId(request::VehicleID)
         };
 
         let response = self.udp_send_recv(request)?;
         self.vehicle_id_response(response)
     }
 
-    pub fn vehicle_with_eid(&mut self, eid: Eid) -> Result<bool, DoIpError> {
+    pub fn vehicle_with_eid(&mut self, eid: Eid) -> Result<(), DoIpError> {
         let request = Message {
-            version: self.version(),
-            payload: Payload::Request(
-                RequestPayload::VehicleWithEid(request::VehicleIDWithEID::new(eid))
-            )
+            version: self.gateway_version(),
+            payload: Payload::ReqVehicleWithEid(request::VehicleIDWithEID::new(eid)),
         };
 
         let response = self.udp_send_recv(request)?;
         self.vehicle_id_response(response)
     }
 
-    pub fn vehicle_with_vin(&mut self, vin: &str) -> Result<bool, DoIpError> {
+    pub fn vehicle_with_vin(&mut self, vin: &str) -> Result<(), DoIpError> {
         let payload = request::VehicleIDWithVIN::new(vin)
             .map_err(DoIpError::Iso13400Error)?;
         let request = Message {
-            version: self.version(),
-            payload: Payload::Request(RequestPayload::VehicleWithVIN(payload))
+            version: self.gateway_version(),
+            payload: Payload::ReqVehicleWithVIN(payload)
         };
 
         let response = self.udp_send_recv(request)?;
@@ -71,171 +71,177 @@ impl DoIpClient {
         &mut self,
         r#type: RoutingActiveType,
         user_def: Option<u32>,
-    ) -> Result<(bool, Option<u8>), DoIpError> {
+    ) -> Result<RoutingActiveStatus, DoIpError> {
         let src_addr = self.config.address();
         let request = Message {
-            version: self.version(),
-            payload: Payload::Request(RequestPayload::RoutingActive(
+            version: self.gateway_version(),
+            payload: Payload::ReqRoutingActive(
                 request::RoutingActive::new(src_addr, r#type, user_def)
-            ))
+            )
         };
-        match self.tcp_write_read(request)? {
-            Some((_, resp)) => match resp {
-                ResponsePayload::HeaderNegative(v) => {
-                    Err(DoIpError::HeaderNegativeError(v.code()))
-                },
-                ResponsePayload::RoutingActive(v) => {
-                    let dst_addr = v.dst_addr();
-                    if src_addr != dst_addr {
-                        log::warn!("DoIPClient - routing active receive an message that target address: {:?}", dst_addr);
-                    }
-
-                    let active_code = v.active_code();
-                    match active_code {
-                        ActiveCode::Activated |
-                        ActiveCode::Success => Ok((true, None)),
-                        ActiveCode::NeedConfirm => Ok((true, None)),    // todo
-                        ActiveCode::SourceAddressUnknown |
-                        ActiveCode::SourceAddressInvalid |
-                        ActiveCode::SocketInvalid |
-                        ActiveCode::WithoutAuth |
-                        ActiveCode::VehicleRefused |
-                        ActiveCode::Unsupported |
-                        ActiveCode::TLSRequired => Err(DoIpError::ActiveError(active_code)),
-                        ActiveCode::VMSpecific(v) => {
-                            log::info!("DoIPClient - routing active receive VM Specific value: {}", v);
-                            Ok((true, Some(v)))
-                        },
-                        ActiveCode::Reserved(v) => {
-                            log::warn!("DoIPClient - routing active receive Reserved value: {}", v);
-                            Ok((true, Some(v)))
-                        },
-                    }
-                },
-                _ => Ok((false, None)),
-            }
-            None => Ok((false, None)),
-        }
-    }
-
-    pub fn alive_check(&mut self) -> Result<bool, DoIpError> {
-        let request = Message {
-            version: self.version(),
-            payload: Payload::Request(RequestPayload::AliveCheck(request::AliveCheck))
-        };
-        match self.tcp_write_read(request)? {
-            Some((_, resp)) => match resp {
-                ResponsePayload::HeaderNegative(v) => {
-                    Err(DoIpError::HeaderNegativeError(v.code()))
-                },
-                ResponsePayload::AliveCheck(v) => {
-                    log::info!("DoIPClient - alive check: {:?}", v.src_addr());
-                    Ok(true)
-                },
-                _ => Ok(false),
+        let (_, resp) = self.tcp_write_read(request)?;
+        match resp {
+            Payload::RespHeaderNegative(v) => {
+                Err(DoIpError::HeaderNegativeError(v.code()))
             },
-            None => Ok(true)
-        }
-    }
+            Payload::RespRoutingActive(v) => {
+                let dst_addr = v.dst_addr();
+                if src_addr != dst_addr {
+                    log::warn!("DoIPClient - routing active receive a message that target address: {:?}", dst_addr);
+                }
 
-    pub fn entity_status(&mut self) -> Result<Option<response::EntityStatus>, DoIpError> {
-        let request = Message {
-            version: self.version(),
-            payload: Payload::Request(RequestPayload::EntityStatue(request::EntityStatus))
-        };
-        match self.udp_send_recv(request)? {
-            Some((_, resp)) => match resp {
-                ResponsePayload::HeaderNegative(v) => {
-                    Err(DoIpError::HeaderNegativeError(v.code()))
-                },
-                ResponsePayload::EntityStatue(v) => Ok(Some(v)),
-                _ => Ok(None),
-            },
-            None => Ok(None)
-        }
-    }
-
-    pub fn diag_power_mode(&mut self) -> Result<Option<PowerMode>, DoIpError> {
-        let request = Message {
-            version: self.version(),
-            payload: Payload::Request(RequestPayload::DiagPowerMode(request::DiagnosticPowerMode))
-        };
-        match self.udp_send_recv(request)? {
-            Some((_, resp)) => match resp {
-                ResponsePayload::HeaderNegative(v) => {
-                    Err(DoIpError::HeaderNegativeError(v.code()))
-                },
-                ResponsePayload::DiagPowerMode(v) => {
-                    Ok(Some(v.mode()))
-                },
-                _ => Ok(None),
-            },
-            None => Ok(None),
-        }
-    }
-
-    pub fn diagnostic(&mut self, data: Vec<u8>) -> Result<(), DoIpError> {
-        match &self.context {
-            Some(ctx) => {
-                let request = Message {
-                    version: self.version(),
-                    payload: Payload::Request(RequestPayload::Diagnostic(
-                        request::Diagnostic::new(self.config.address(), ctx.address(), data)
-                    ))
-                };
-                match self.tcp_write_read(request)? {
-                    Some((_, resp)) => match resp {
-                        ResponsePayload::HeaderNegative(v) => {
-                            Err(DoIpError::HeaderNegativeError(v.code()))
-                        },
-                        ResponsePayload::DiagNegative(v) => {
-                            log::warn!("DoIPClient - {}", v);
-                            Err(DoIpError::DiagnosticNegativeError {
-                                code: v.code(),
-                                data: hex::encode(v.previous_diagnostic_data())
-                            })
-                        },
-                        ResponsePayload::DiagPositive(v) => {
-                            log::debug!("DoIPClient - {}", v);
-                            // TODO 特定时间内需要收到回复
-
-                            Ok(())
-                        },
-                        _ => Ok(()),
+                let active_code = v.active_code();
+                match active_code {
+                    ActiveCode::Activated |
+                    ActiveCode::Success |
+                    ActiveCode::NeedConfirm => Ok((active_code, None)),
+                    ActiveCode::SourceAddressUnknown |
+                    ActiveCode::SourceAddressInvalid |
+                    ActiveCode::SocketInvalid |
+                    ActiveCode::WithoutAuth |
+                    ActiveCode::VehicleRefused |
+                    ActiveCode::Unsupported |
+                    ActiveCode::TLSRequired => Err(DoIpError::ActiveError(active_code)),
+                    ActiveCode::VMSpecific(v) => {
+                        log::info!("DoIPClient - routing active receive VM Specific value: {}", v);
+                        Ok((active_code, Some(v)))
                     },
-                    None => Ok(()),
+                    ActiveCode::Reserved(v) => {
+                        log::warn!("DoIPClient - routing active receive Reserved value: {}", v);
+                        Ok((active_code, Some(v)))
+                    },
                 }
             },
-            None => Ok(())
+            _ => unreachable!(""),
+        }
+    }
+
+    pub fn alive_check(&mut self) -> Result<(), DoIpError> {
+        let request = Message {
+            version: self.gateway_version(),
+            payload: Payload::ReqAliveCheck(request::AliveCheck)
+        };
+        let (_, resp) = self.tcp_write_read(request)?;
+        match resp {
+            Payload::RespHeaderNegative(v) => {
+                Err(DoIpError::HeaderNegativeError(v.code()))
+            },
+            Payload::RespAliveCheck(v) => {
+                log::info!("DoIPClient - alive check: {:?}", v.src_addr());
+                Ok(())
+            },
+            _ => unreachable!(""),
+        }
+    }
+
+    pub fn entity_status(&mut self) -> Result<response::EntityStatus, DoIpError> {
+        let request = Message {
+            version: self.gateway_version(),
+            payload: Payload::ReqEntityStatus(request::EntityStatus)
+        };
+        let (_, resp) = self.udp_send_recv(request)?;
+        match resp {
+            Payload::RespHeaderNegative(v) => {
+                Err(DoIpError::HeaderNegativeError(v.code()))
+            },
+            Payload::RespEntityStatus(v) => Ok(v),
+            _ => unreachable!(""),
+        }
+    }
+
+    pub fn diag_power_mode(&mut self) -> Result<PowerMode, DoIpError> {
+        let request = Message {
+            version: self.gateway_version(),
+            payload: Payload::ReqDiagPowerMode(request::DiagnosticPowerMode)
+        };
+        let (_, resp) = self.udp_send_recv(request)?;
+        match resp {
+            Payload::RespHeaderNegative(v) => {
+                Err(DoIpError::HeaderNegativeError(v.code()))
+            },
+            Payload::RespDiagPowerMode(v) => {
+                Ok(v.mode())
+            },
+            _ => unreachable!(""),
+        }
+    }
+
+    pub fn diagnostic(
+        &mut self,
+        address: LogicAddress,
+        data: Vec<u8>,
+    ) -> Result<Iso14229Response, DoIpError> {
+        let request = Message {
+            version: self.gateway_version(),
+            payload: Payload::Diagnostic(
+                Diagnostic::new(self.config.address(), address, data)
+            )
+        };
+        let (_, resp) = self.tcp_write_read(request)?;
+        match resp {
+            Payload::RespHeaderNegative(v) => {
+                Err(DoIpError::HeaderNegativeError(v.code()))
+            },
+            Payload::RespDiagNegative(v) => {
+                log::warn!("DoIPClient - {}", v);
+                Err(DoIpError::DiagnosticNegativeError {
+                    code: v.code(),
+                    data: hex::encode(v.previous_diagnostic_data())
+                })
+            },
+            Payload::RespDiagPositive(v) => {
+                log::debug!("DoIPClient - Diagnostic message ACK: {}", v);
+                let (_, payload) = self.tcp_read(&PL_TYPES.diag_data_payload_types)?;
+                match payload {
+                    Payload::Diagnostic(v) => {
+                        let data = v.data;
+                        log::debug!("DoIPClient - diagnostic Data: {:?}", hex::encode(&data));
+                        let cfg = Iso14229Cfg::default();
+                        let resp = Iso14229Response::try_from_cfg(data, &cfg)
+                            .map_err(DoIpError::Iso14229Error)?;
+
+                        Ok(resp)
+                    },
+                    _ => unreachable!(""),
+                }
+            },
+            _ => unreachable!(""),
         }
     }
 
     #[inline]
-    fn vehicle_id_response(&mut self, response: Option<VerPayload>) -> Result<bool, DoIpError> {
-        match response {
-            Some((ver, resp)) => match resp {
-                ResponsePayload::HeaderNegative(v) => {
-                    Err(DoIpError::HeaderNegativeError(v.code()))
-                },
-                ResponsePayload::VehicleId(v) => {
-                    self.context = Some(Context {
-                        version: ver,
-                        address: v.address(),
-                        eid: v.eid(),
-                        gid: v.gid(),
-                        further_act: v.further_act(),
-                        sync_status: v.sync_status(),
-                    });
-
-                    Ok(true)
-                },
-                _ => Ok(false),
+    fn vehicle_id_response(&mut self, (ver, resp): VerPayload) -> Result<(), DoIpError> {
+        match resp {
+            Payload::RespHeaderNegative(v) => {
+                Err(DoIpError::HeaderNegativeError(v.code()))
             },
-            None => Ok(false)
+            Payload::RespVehicleId(v) => {
+                self.gateway_info = Some(GatewayInfo {
+                    version: ver,
+                    address: v.address(),
+                    eid: v.eid(),
+                    gid: v.gid(),
+                    further_act: v.further_act(),
+                    sync_status: v.sync_status(),
+                });
+
+                Ok(())
+            },
+            _ => unreachable!(""),
         }
     }
 
-    fn udp_send_recv(&mut self, request: Message) -> Result<Option<VerPayload>, DoIpError> {
+    fn udp_send_recv(&mut self, request: Message) -> Result<VerPayload, DoIpError> {
+        let payload_type = request.payload.payload_type();
+        let expect = match payload_type {
+            PayloadType::ReqVehicleId => Some(&PL_TYPES.vid_payload_types),
+            PayloadType::ReqVehicleWithEid => Some(&PL_TYPES.vid_payload_types),
+            PayloadType::ReqVehicleWithVIN => Some(&PL_TYPES.vid_payload_types),
+            PayloadType::ReqEntityStatus => Some(&PL_TYPES.es_payload_types),
+            PayloadType::ReqDiagPowerMode => Some(&PL_TYPES.dpm_payload_types),
+            _ => None
+        }
+            .ok_or(DoIpError::InputError(format!("invalid udp request payload: {:?}", payload_type)))?;
         let data: Vec<_> = request.into();
         log::trace!("DoIPClient - UDP writing data: {}", hex::encode(&data));
         let size = self.udp_socket.send_to(&data, &self.server_udp_addr)
@@ -249,45 +255,64 @@ impl DoIpClient {
         let size = self.udp_socket.recv(&mut buffer)
             .map_err(DoIpError::IoError)?;
 
-        self.parse_response(&buffer[..size])
+        self.parse_response(&buffer[..size], expect)
     }
 
-    fn tcp_write_read(&mut self, request: Message) -> Result<Option<VerPayload>, DoIpError> {
+    fn tcp_write_read(&mut self, request: Message) -> Result<VerPayload, DoIpError> {
+        let payload_type = request.payload.payload_type();
+        let expect = match payload_type {
+            PayloadType::ReqRoutingActive => Some(&PL_TYPES.ra_payload_types),
+            PayloadType::ReqAliveCheck => Some(&PL_TYPES.ac_payload_types),
+            PayloadType::Diagnostic => Some(&PL_TYPES.diag_payload_types),
+            _ => None,
+        }
+            .ok_or(DoIpError::InputError(format!("invalid udp request payload: {:?}", payload_type)))?;
         let data: Vec<_> = request.into();
-        println!("DoIPClient - TCP writing data: {}", hex::encode(&data));
+        log::trace!("DoIPClient - TCP writing data: {}", hex::encode(&data));
         let size = self.tcp_stream.write(&data)
             .map_err(DoIpError::IoError)?;
         let data_len = data.len();
         if size != data_len {
             log::warn!("DoIPClient - TCP wrote {} bytes, expect {}", size, data_len);
+            Err(DoIpError::IoError(std::io::Error::last_os_error()))
         }
-
-        let mut buffer = [0; 1024];
-        let size = self.tcp_stream.read(&mut buffer)
-            .map_err(DoIpError::IoError)?;
-
-        self.parse_response(&buffer[..size])
+        else {
+            self.tcp_read(expect)
+        }
     }
 
     #[inline]
-    fn parse_response(&mut self, data: &[u8]) -> Result<Option<VerPayload>, DoIpError> {
+    fn tcp_read(&mut self, expected: &Vec<PayloadType>) -> Result<VerPayload, DoIpError> {
+        let mut buffer = [0; 4096];
+        let size = self.tcp_stream.read(&mut buffer)
+            .map_err(DoIpError::IoError)?;
+
+        self.parse_response(&buffer[..size], expected)
+    }
+
+    #[inline]
+    fn parse_response(
+        &mut self,
+        data: &[u8],
+        expected: &Vec<PayloadType>,
+    ) -> Result<VerPayload, DoIpError> {
         let response = Message::try_from(data)
             .map_err(DoIpError::Iso13400Error)?;
         let version = response.version;
         self.version_check(version);
 
-        match response.payload {
-            Payload::Request(_) => {
-                log::warn!("DoIPClient - unknown payload type from server!");
-                Ok(None)
-            },
-            Payload::Response(response) => Ok(Some((version, response)))
+        let actual = response.payload.payload_type();
+        if expected.contains(&actual) {
+            Ok((version, response.payload))
+        }
+        else {
+            Err(DoIpError::PayloadTypeError(actual))
         }
     }
 
     fn version_check(&self, version: Version) {
-        match &self.context {
-            Some(ctx) => if ctx.version() != version {
+        match &self.gateway_info {
+            Some(info) => if info.version() != version {
                 log::warn!("DoIPClient - DoIP version mismatch!");
             },
             None => {},
@@ -295,112 +320,10 @@ impl DoIpClient {
     }
 
     #[inline]
-    fn version(&self) -> Version {
-        match &self.context {
-            Some(ctx) => ctx.version,
+    fn gateway_version(&self) -> Version {
+        match &self.gateway_info {
+            Some(info) => info.version,
             None => Version::Default,
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use iso13400_2::{Eid, LogicAddress, PowerMode, RoutingActiveType};
-    use iso14229_1::{request, Service, SessionType, Configuration as Iso14229Cfg};
-    use crate::client::{Configuration, DoIpClient};
-    use crate::DoIpError;
-
-    fn init_client() -> Result<DoIpClient, DoIpError> {
-        let cfg = Configuration::new("127.0.0.1", LogicAddress::from(0x0e00))
-            .unwrap();
-        DoIpClient::new(cfg)
-    }
-
-    #[test]
-    fn vehicle_identifier() -> anyhow::Result<()> {
-        let mut client = init_client()?;
-        let ret = client.vehicle_identifier()?;
-        assert!(ret);
-
-        Ok(())
-    }
-
-    #[test]
-    fn vehicle_with_eid() -> anyhow::Result<()> {
-        let mut client = init_client()?;
-        let ret = client.vehicle_with_eid(Eid::new(0xE1E2E3E4E5E6)?)?;
-        assert!(ret);
-
-        Ok(())
-    }
-
-    #[test]
-    fn vehicle_with_vin() -> anyhow::Result<()> {
-        let mut client = init_client()?;
-        let ret = client.vehicle_with_vin("12345678901234567")?;
-        assert!(ret);
-
-        // block
-        // let ret = client.vehicle_with_vin("12345678901234560")?;
-        // assert!(ret);
-
-        Ok(())
-    }
-
-    #[test]
-    fn entity_status() -> anyhow::Result<()> {
-        let mut client = init_client()?;
-        let ret = client.entity_status()?;
-        assert!(ret.is_some());
-
-        Ok(())
-    }
-
-    #[test]
-    fn diag_power_mode() -> anyhow::Result<()> {
-        let mut client = init_client()?;
-        let power_mode = client.diag_power_mode()?.unwrap();
-        assert_eq!(power_mode, PowerMode::NotReady);
-
-        Ok(())
-    }
-
-    #[test]
-    fn alive_check() -> anyhow::Result<()> {
-        let mut client = init_client()?;
-        let ret = client.alive_check()?;
-        assert!(ret);
-
-        Ok(())
-    }
-
-    #[test]
-    fn routing_active() -> anyhow::Result<()> {
-        let mut client = init_client()?;
-        let (ret, value) = client.routing_active(RoutingActiveType::CentralSecurity, None)?;
-        assert!(ret);
-
-        Ok(())
-    }
-
-    #[test]
-    fn diagnostics() -> anyhow::Result<()> {
-        let mut client = init_client()?;
-        let cfg = Iso14229Cfg::default();
-        let ret = client.vehicle_identifier()?;
-        assert!(ret);
-        let (ret, value) = client.routing_active(Default::default(), None)?;
-        assert!(ret);
-        assert!(value.is_none());
-        let diag_req = request::Request::new(
-            Service::SessionCtrl,
-            Some(SessionType::Default.into()),
-            vec![],
-            &cfg
-        )?;
-        let ret = client.diagnostic(diag_req.into())?;
-        // assert!(ret);
-
-        Ok(())
     }
 }

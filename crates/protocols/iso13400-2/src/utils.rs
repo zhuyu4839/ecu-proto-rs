@@ -10,7 +10,7 @@ pub(crate) fn data_len_check(data: &[u8], struct_len: usize, equal: bool) -> Res
     }
     else {
         if expected > actual {
-            return Err(Iso13400Error::InvalidDataLen { actual, expected });
+            return Err(Iso13400Error::InvalidLength { actual, expected });
         }
     }
 

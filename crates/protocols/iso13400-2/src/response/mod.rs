@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 use derive_getters::Getters;
-use crate::{*, constants::*, utils};
+use crate::{*, utils};
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct HeaderNegative {
@@ -73,7 +73,9 @@ impl VehicleID {
     ) -> Result<Self, Iso13400Error> {
         let vin_len = vin.as_bytes().len();
         if vin_len != LENGTH_OF_VIN {
-            return Err(Iso13400Error::InvalidLength { actual: vin_len, expected: LENGTH_OF_VIN });
+            return Err(Iso13400Error::InputError(
+                format!("length of vin must equal {}", LENGTH_OF_VIN)
+            ));
         }
 
         Ok(Self { vin, address, eid, gid, further_act, sync_status })
@@ -141,12 +143,16 @@ impl Into<Vec<u8>> for VehicleID {
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
 pub struct EntityStatus {   // 0x4002
+    #[getter(copy)]
     pub(crate) node_type: NodeType,
     /// 1 ~ 255
+    #[getter(copy)]
     pub(crate) mcts: u8,    // Max. concurrent TCP_DATA sockets
     /// 0 ~ 255
+    #[getter(copy)]
     pub(crate) ncts: u8,    // Current opened TCP_DATA sockets
     /// 0 ~ 4GB
+    #[getter(copy)]
     pub(crate) max_data_size: Option<u32>,
 }
 
@@ -393,6 +399,9 @@ impl DiagnosticPositive {
         code: DiagnosticPositiveCode,
         pre_diag_msg: Vec<u8>,
     ) -> Self {
+        if code != DiagnosticPositiveCode::Confirm {
+            log::warn!("Diagnostic Positive code: {:?}", code);
+        }
         Self { src_addr, dst_addr, code, pre_diag_msg }
     }
     /// min length
@@ -416,7 +425,7 @@ impl TryFrom<&[u8]> for DiagnosticPositive {
         offset += 1;
         let pre_diag_msg = data[offset..].to_vec();
 
-        Ok(Self { src_addr, dst_addr, code, pre_diag_msg })
+        Ok(Self::new(src_addr, dst_addr, code, pre_diag_msg))
     }
 }
 
@@ -438,11 +447,11 @@ impl Into<Vec<u8>> for DiagnosticPositive {
 
 impl Display for DiagnosticPositive {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Diagnostic Negative")
-            .field("\nSource Address", &self.src_addr)
-            .field("\nTarget Address", &self.dst_addr)
-            .field("\n          Code", &self.code)
-            .field("\n Previous Data", &format!("{}", hex::encode(&self.pre_diag_msg)))
+        f.debug_struct("Diagnostic Positive")
+            .field("\n       Source Address", &self.src_addr)
+            .field("\n       Target Address", &self.dst_addr)
+            .field("\n                 Code", &self.code)
+            .field("\n        Previous Data", &format!("{}", hex::encode(&self.pre_diag_msg)))
             .finish()
     }
 }
@@ -513,10 +522,10 @@ impl Into<Vec<u8>> for DiagnosticNegative {
 impl Display for DiagnosticNegative {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Diagnostic Negative")
-            .field("\nSource Address", &self.src_addr)
-            .field("\nTarget Address", &self.dst_addr)
-            .field("\n          Code", &self.code)
-            .field("\n Previous Data", &format!("{}", hex::encode(&self.pre_diag_msg)))
+            .field("\n       Source Address", &self.src_addr)
+            .field("\n       Target Address", &self.dst_addr)
+            .field("\n                 Code", &self.code)
+            .field("\n        Previous Data", &format!("{}", hex::encode(&self.pre_diag_msg)))
             .finish()
     }
 }

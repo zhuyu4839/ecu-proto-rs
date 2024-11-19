@@ -21,7 +21,7 @@ pub(crate) const UDP_RESP_ENTITY_STATUS: u16 = 0x4002;
 pub(crate) const UDP_REQ_DIAGNOSTIC_POWER_MODE: u16 = 0x4003;
 pub(crate) const UDP_RESP_DIAGNOSTIC_POWER_MODE: u16 = 0x4004;
 
-pub(crate) const TCP_REQ_DIAGNOSTIC: u16 = 0x8001;
+pub(crate) const TCP_DIAGNOSTIC: u16 = 0x8001;
 pub(crate) const TCP_RESP_DIAGNOSTIC_POSITIVE: u16 = 0x8002;
 pub(crate) const TCP_RESP_DIAGNOSTIC_NEGATIVE: u16 = 0x8003;
 

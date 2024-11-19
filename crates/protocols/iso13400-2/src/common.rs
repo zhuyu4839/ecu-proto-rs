@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter};
-use crate::{constants::*, request, response, Iso13400Error};
+use derive_getters::Getters;
+use crate::{constants::*, request, response, utils, Iso13400Error, PayloadType};
 
 /// Table 16 — Generic DoIP header structure at line #48(ISO 13400-2-2019)
 #[repr(u8)]
@@ -522,35 +523,108 @@ impl Display for DiagnosticNegativeCode {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum RequestPayload {
-    VehicleId(request::VehicleID),              // UDP 0x0001
-    VehicleWithEid(request::VehicleIDWithEID),  // UDP 0x0002
-    VehicleWithVIN(request::VehicleIDWithVIN),  // UDP 0x0003
-    RoutingActive(request::RoutingActive),      // TCP 0x0005
-    AliveCheck(request::AliveCheck),            // TCP 0x0007
-    EntityStatue(request::EntityStatus),        // UDP 0x4001
-    DiagPowerMode(request::DiagnosticPowerMode),// UDP 0x4003
-    Diagnostic(request::Diagnostic),            // TCP 0x8001
+/// The first response is 0x8002 if diagnostic is positive,
+/// that means diagnostic request was received,
+/// then send 0x8001 response with UDS data.
+/// Otherwise, send 0x8003 response with UDS NRC data.
+#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+pub struct Diagnostic {     // 0x8001
+    #[getter(copy)]
+    pub(crate) dst_addr: LogicAddress,
+    #[getter(copy)]
+    pub(crate) src_addr: LogicAddress,
+    pub data: Vec<u8>,
 }
 
-#[derive(Debug, Clone)]
-pub enum ResponsePayload {
-    HeaderNegative(response::HeaderNegative),       // UDP/TCP 0x0000
-    VehicleId(response::VehicleID),                 // UDP 0x0004
-    RoutingActive(response::RoutingActive),         // TCP 0x0006
-    AliveCheck(response::AliveCheck),               // TCP 0x0008
-    EntityStatue(response::EntityStatus),           // UDP 0x4002
-    DiagPowerMode(response::DiagnosticPowerMode),   // UDP 0x4004
-    DiagPositive(response::DiagnosticPositive),     // TCP 0x8002
-    DiagNegative(response::DiagnosticNegative),     // TCP 0x8003
+impl Diagnostic {
+    pub fn new(
+        dst_addr: LogicAddress,
+        src_addr: LogicAddress,
+        data: Vec<u8>,
+    ) -> Self {
+        Self { dst_addr, src_addr, data }
+    }
+
+    /// min length
+    #[inline]
+    const fn length() -> usize {
+        SIZE_OF_ADDRESS + SIZE_OF_ADDRESS
+    }
+}
+
+impl TryFrom<&[u8]> for Diagnostic {
+    type Error = Iso13400Error;
+    fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
+        let (_, mut offset) = utils::data_len_check(data, Self::length(), false)?;
+        let dst_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
+        let dst_addr = LogicAddress::from(dst_addr);
+        let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
+        offset += SIZE_OF_ADDRESS;
+        let src_addr = LogicAddress::from(src_addr);
+        let data = data[offset..].to_vec();
+
+        Ok(Self::new(dst_addr, src_addr, data))
+    }
+}
+
+impl Into<Vec<u8>> for Diagnostic {
+    fn into(mut self) -> Vec<u8> {
+        let mut result = TCP_DIAGNOSTIC.to_be_bytes().to_vec();
+        let length = (Self::length() + self.data.len()) as u32;
+        result.extend(length.to_be_bytes());
+        let dst_addr: u16 = self.dst_addr.into();
+        result.extend(dst_addr.to_be_bytes());
+        let src_addr: u16 = self.src_addr.into();
+        result.extend(src_addr.to_be_bytes());
+        result.append(&mut self.data);
+
+        result
+    }
 }
 
 /// Table 17 — Overview of DoIP payload types at line #49(ISO 13400-2-2019)
 #[derive(Debug, Clone)]
 pub enum Payload {
-    Request(RequestPayload),
-    Response(ResponsePayload),
+    RespHeaderNegative(response::HeaderNegative),   // UDP/TCP 0x0000
+    ReqVehicleId(request::VehicleID),               // UDP 0x0001
+    ReqVehicleWithEid(request::VehicleIDWithEID),   // UDP 0x0002
+    ReqVehicleWithVIN(request::VehicleIDWithVIN),   // UDP 0x0003
+    RespVehicleId(response::VehicleID),             // UDP 0x0004
+    ReqRoutingActive(request::RoutingActive),       // TCP 0x0005
+    RespRoutingActive(response::RoutingActive),     // TCP 0x0006
+    ReqAliveCheck(request::AliveCheck),             // TCP 0x0007
+    RespAliveCheck(response::AliveCheck),           // TCP 0x0008
+    ReqEntityStatus(request::EntityStatus),         // UDP 0x4001
+    ReqDiagPowerMode(request::DiagnosticPowerMode), // UDP 0x4003
+    RespEntityStatus(response::EntityStatus),       // UDP 0x4002
+    RespDiagPowerMode(response::DiagnosticPowerMode),// UDP 0x4004
+    Diagnostic(Diagnostic),                         // TCP 0x8001
+    RespDiagPositive(response::DiagnosticPositive), // TCP 0x8002
+    RespDiagNegative(response::DiagnosticNegative), // TCP 0x8003
+}
+
+impl Payload {
+    pub fn payload_type(&self) -> PayloadType {
+        match &self {
+            Payload::RespHeaderNegative(_) => PayloadType::RespHeaderNegative,
+            Payload::ReqVehicleId(_) => PayloadType::ReqVehicleId,
+            Payload::ReqVehicleWithEid(_) => PayloadType::ReqVehicleWithEid,
+            Payload::ReqVehicleWithVIN(_) => PayloadType::ReqVehicleWithVIN,
+            Payload::RespVehicleId(_) => PayloadType::RespVehicleId,
+            Payload::ReqRoutingActive(_) => PayloadType::ReqRoutingActive,
+            Payload::RespRoutingActive(_) => PayloadType::RespRoutingActive,
+            Payload::ReqAliveCheck(_) => PayloadType::ReqAliveCheck,
+            Payload::RespAliveCheck(_) => PayloadType::RespAliveCheck,
+            Payload::ReqEntityStatus(_) => PayloadType::ReqEntityStatus,
+            Payload::ReqDiagPowerMode(_) => PayloadType::ReqDiagPowerMode,
+            Payload::RespEntityStatus(_) => PayloadType::RespEntityStatus,
+            Payload::RespDiagPowerMode(_) => PayloadType::RespDiagPowerMode,
+            Payload::Diagnostic(_) => PayloadType::Diagnostic,
+            Payload::RespDiagPositive(_) => PayloadType::RespDiagPositive,
+            Payload::RespDiagNegative(_) => PayloadType::RespDiagNegative,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -563,28 +637,22 @@ impl Into<Vec<u8>> for Message {
     fn into(self) -> Vec<u8> {
         let mut result: Vec<_> = self.version.into();
         match self.payload {
-            Payload::Request(v) => {
-                match v {
-                    RequestPayload::VehicleId(v) => result.append(&mut v.into()),
-                    RequestPayload::VehicleWithEid(v) => result.append(&mut v.into()),
-                    RequestPayload::VehicleWithVIN(v) => result.append(&mut v.into()),
-                    RequestPayload::RoutingActive(v) => result.append(&mut v.into()),
-                    RequestPayload::AliveCheck(v) => result.append(&mut v.into()),
-                    RequestPayload::EntityStatue(v) => result.append(&mut v.into()),
-                    RequestPayload::DiagPowerMode(v) => result.append(&mut v.into()),
-                    RequestPayload::Diagnostic(v) => result.append(&mut v.into()),
-                }
-            }
-            Payload::Response(v) => match v {
-                ResponsePayload::HeaderNegative(v) => result.append(&mut v.into()),
-                ResponsePayload::VehicleId(v) => result.append(&mut v.into()),
-                ResponsePayload::RoutingActive(v) => result.append(&mut v.into()),
-                ResponsePayload::AliveCheck(v) => result.append(&mut v.into()),
-                ResponsePayload::EntityStatue(v) => result.append(&mut v.into()),
-                ResponsePayload::DiagPowerMode(v) => result.append(&mut v.into()),
-                ResponsePayload::DiagPositive(v) => result.append(&mut v.into()),
-                ResponsePayload::DiagNegative(v) => result.append(&mut v.into()),
-            }
+            Payload::RespHeaderNegative(v) => result.append(&mut v.into()),
+            Payload::ReqVehicleId(v) => result.append(&mut v.into()),
+            Payload::ReqVehicleWithEid(v) => result.append(&mut v.into()),
+            Payload::ReqVehicleWithVIN(v) => result.append(&mut v.into()),
+            Payload::RespVehicleId(v) => result.append(&mut v.into()),
+            Payload::ReqRoutingActive(v) => result.append(&mut v.into()),
+            Payload::RespRoutingActive(v) => result.append(&mut v.into()),
+            Payload::ReqAliveCheck(v) => result.append(&mut v.into()),
+            Payload::RespAliveCheck(v) => result.append(&mut v.into()),
+            Payload::ReqEntityStatus(v) => result.append(&mut v.into()),
+            Payload::ReqDiagPowerMode(v) => result.append(&mut v.into()),
+            Payload::RespEntityStatus(v) => result.append(&mut v.into()),
+            Payload::RespDiagPowerMode(v) => result.append(&mut v.into()),
+            Payload::Diagnostic(v) => result.append(&mut v.into()),
+            Payload::RespDiagPositive(v) => result.append(&mut v.into()),
+            Payload::RespDiagNegative(v) => result.append(&mut v.into()),
         }
 
         result
@@ -612,57 +680,56 @@ impl TryFrom<&[u8]> for Message {
         if (payload_len as usize) != expected {
             return Err(Iso13400Error::InvalidPayloadLength { actual: payload_len as usize, expected });
         }
-        let payload = match payload_type {
-            HEADER_NEGATIVE => Ok(Payload::Response(ResponsePayload::HeaderNegative(
+        let payload = match PayloadType::try_from(payload_type)? {
+            PayloadType::RespHeaderNegative => Payload::RespHeaderNegative(
                 response::HeaderNegative::try_from(&data[offset..])?
-            ))),
-            UDP_REQ_VEHICLE_IDENTIFIER => Ok(Payload::Request(RequestPayload::VehicleId(
+            ),
+            PayloadType::ReqVehicleId => Payload::ReqVehicleId(
                 request::VehicleID::try_from(&data[offset..])?
-            ))),
-            UDP_REQ_VEHICLE_ID_WITH_EID => Ok(Payload::Request(RequestPayload::VehicleWithEid(
+            ),
+            PayloadType::ReqVehicleWithEid => Payload::ReqVehicleWithEid(
                 request::VehicleIDWithEID::try_from(&data[offset..])?
-            ))),
-            UDP_REQ_VEHICLE_ID_WITH_VIN => Ok(Payload::Request(RequestPayload::VehicleWithVIN(
+            ),
+            PayloadType::ReqVehicleWithVIN => Payload::ReqVehicleWithVIN(
                 request::VehicleIDWithVIN::try_from(&data[offset..])?
-            ))),
-            UDP_RESP_VEHICLE_IDENTIFIER => Ok(Payload::Response(ResponsePayload::VehicleId(
+            ),
+            PayloadType::RespVehicleId => Payload::RespVehicleId(
                 response::VehicleID::try_from(&data[offset..])?
-            ))),
-            TCP_REQ_ROUTING_ACTIVE => Ok(Payload::Request(RequestPayload::RoutingActive(
+            ),
+            PayloadType::ReqRoutingActive => Payload::ReqRoutingActive(
                 request::RoutingActive::try_from(&data[offset..])?
-            ))),
-            TCP_RESP_ROUTING_ACTIVE => Ok(Payload::Response(ResponsePayload::RoutingActive(
+            ),
+            PayloadType::RespRoutingActive => Payload::RespRoutingActive(
                 response::RoutingActive::try_from(&data[offset..])?
-            ))),
-            TCP_REQ_ALIVE_CHECK => Ok(Payload::Request(RequestPayload::AliveCheck(
+            ),
+            PayloadType::ReqAliveCheck => Payload::ReqAliveCheck(
                 request::AliveCheck::try_from(&data[offset..])?
-            ))),
-            TCP_RESP_ALIVE_CHECK => Ok(Payload::Response(ResponsePayload::AliveCheck(
+            ),
+            PayloadType::RespAliveCheck => Payload::RespAliveCheck(
                 response::AliveCheck::try_from(&data[offset..])?
-            ))),
-            UDP_REQ_ENTITY_STATUS => Ok(Payload::Request(RequestPayload::EntityStatue(
+            ),
+            PayloadType::ReqEntityStatus => Payload::ReqEntityStatus(
                 request::EntityStatus::try_from(&data[offset..])?
-            ))),
-            UDP_RESP_ENTITY_STATUS => Ok(Payload::Response(ResponsePayload::EntityStatue(
+            ),
+            PayloadType::RespEntityStatus => Payload::RespEntityStatus(
                 response::EntityStatus::try_from(&data[offset..])?
-            ))),
-            UDP_REQ_DIAGNOSTIC_POWER_MODE => Ok(Payload::Request(RequestPayload::DiagPowerMode(
+            ),
+            PayloadType::ReqDiagPowerMode => Payload::ReqDiagPowerMode(
                 request::DiagnosticPowerMode::try_from(&data[offset..])?
-            ))),
-            UDP_RESP_DIAGNOSTIC_POWER_MODE => Ok(Payload::Response(ResponsePayload::DiagPowerMode(
+            ),
+            PayloadType::RespDiagPowerMode => Payload::RespDiagPowerMode(
                 response::DiagnosticPowerMode::try_from(&data[offset..])?
-            ))),
-            TCP_REQ_DIAGNOSTIC => Ok(Payload::Request(RequestPayload::Diagnostic(
-                request::Diagnostic::try_from(&data[offset..])?
-            ))),
-            TCP_RESP_DIAGNOSTIC_POSITIVE => Ok(Payload::Response(ResponsePayload::DiagPositive(
+            ),
+            PayloadType::Diagnostic => Payload::Diagnostic(
+                Diagnostic::try_from(&data[offset..])?
+            ),
+            PayloadType::RespDiagPositive => Payload::RespDiagPositive(
                 response::DiagnosticPositive::try_from(&data[offset..])?
-            ))),
-            TCP_RESP_DIAGNOSTIC_NEGATIVE => Ok(Payload::Response(ResponsePayload::DiagNegative(
+            ),
+            PayloadType::RespDiagNegative => Payload::RespDiagNegative(
                 response::DiagnosticNegative::try_from(&data[offset..])?
-            ))),
-            _ => Err(Iso13400Error::InvalidPayloadType(payload_type)),
-        }?;
+            ),
+        };
 
         Ok(Self { version, payload })
     }
