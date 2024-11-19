@@ -1,4 +1,4 @@
-#[derive(thiserror::Error, Debug,  Clone, Eq, PartialEq)]
+#[derive(Debug,  Clone, thiserror::Error)]
 pub enum CanError {
     #[error("RUST-CAN - device configuration error {0}")]
     DeviceConfigError(String),
@@ -8,6 +8,9 @@ pub enum CanError {
     DeviceNotOpened,
     #[error("RUST-CAN - device not supported")]
     DeviceNotSupported,
+
+    #[error("RUST-CAN - data length: {0} is too large")]
+    DataOutOfRange(usize),
 
     #[error("RUST-CAN - channel: {0} initialize failed")]
     ChannelInitializeError(String),

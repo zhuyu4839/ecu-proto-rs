@@ -1,6 +1,6 @@
 [package]
 name = "iso15765-2"
-version = "0.1.0-alpha1"
+version = "0.1.0-alpha2"
 edition = "2021"
 license = "MIT OR GPL-3.0"
 authors = ["zhuyu <zhuyu4839@gmail.com>"]
