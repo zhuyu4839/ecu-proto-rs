@@ -22,7 +22,7 @@ impl RequestData for AccessTimingParameter {
 
                         Ok(Request {
                             service: Service::AccessTimingParam,
-                            sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                            sub_func: Some(SubFunction::new(sub_func, suppress_positive)),
                             data: data.to_vec(),
                         })
                     }
@@ -33,7 +33,7 @@ impl RequestData for AccessTimingParameter {
 
                         Ok(Request {
                             service: Service::AccessTimingParam,
-                            sub_func: Some(SubFunction::new(sub_func, Some(suppress_positive))),
+                            sub_func: Some(SubFunction::new(sub_func, suppress_positive)),
                             data: data.to_vec(),
                         })
                     }

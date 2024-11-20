@@ -89,8 +89,8 @@ impl ResponseData for RequestUpload {
         result.append(&mut utils::u128_to_vec(
             self.max_num_of_block_len,
             lfi.max_number_of_block_length(),
-            cfg.bo_mem_size)
-        );
+            cfg.bo_mem_size
+        ));
 
         result
     }

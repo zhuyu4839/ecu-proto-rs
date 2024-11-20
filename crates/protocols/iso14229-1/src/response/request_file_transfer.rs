@@ -198,7 +198,10 @@ impl ResponseData for RequestFileTransfer {
 
                 utils::data_length_check(data_len, offset + filesize_or_dir_param_len as usize + 1, false)?;
 
-                let uncompressed_size_or_dir_len = utils::slice_to_u128(&data[offset..offset + filesize_or_dir_param_len as usize], cfg.bo_mem_size);
+                let uncompressed_size_or_dir_len = utils::slice_to_u128(
+                    &data[offset..offset + filesize_or_dir_param_len as usize],
+                    cfg.bo_mem_size
+                );
                 offset += filesize_or_dir_param_len as usize;
 
                 let compressed_size = utils::slice_to_u128(&data[offset..], cfg.bo_mem_size);
@@ -231,7 +234,10 @@ impl ResponseData for RequestFileTransfer {
 
                 let filesize_or_dir_param_len = u16::from_be_bytes([data[offset], data[offset + 1]]);
                 offset += 2;
-                let uncompressed_size_or_dir_len = utils::slice_to_u128(&data[offset..offset + filesize_or_dir_param_len as usize], cfg.bo_mem_size);
+                let uncompressed_size_or_dir_len = utils::slice_to_u128(
+                    &data[offset..offset + filesize_or_dir_param_len as usize],
+                    cfg.bo_mem_size
+                );
 
                 Ok(Self::ReadDir {
                     lfi,
