@@ -1,0 +1,2 @@
+
+pub const PROGRAMMING_DWORD_PADDING_SIZE: usize = 2;
