@@ -1,5 +1,3 @@
-// mod copy_cal_page;
-// pub use copy_cal_page::*;
 mod get_cal_page;
 pub use get_cal_page::*;
 mod get_page_info;
@@ -10,7 +8,3 @@ mod get_segment_info;
 pub use get_segment_info::*;
 mod get_segment_mode;
 pub use get_segment_mode::*;
-// mod set_cal_page;
-// pub use set_cal_page::*;
-// mod set_segment_mode;
-// pub use set_segment_mode::*;

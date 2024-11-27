@@ -26,6 +26,12 @@ impl StartStopDaqList {
     }
 }
 
+impl Into<Vec<u8>> for StartStopDaqList {
+    fn into(self) -> Vec<u8> {
+        vec![self.first_pid, ]
+    }
+}
+
 impl TryFrom<&[u8]> for StartStopDaqList {
     type Error = XcpError;
 

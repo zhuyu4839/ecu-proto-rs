@@ -2,12 +2,12 @@ use getset::CopyGetters;
 use crate::{GetSectorInfoMode, ProgrammingMethod, TryFromWith, XcpError};
 
 #[derive(Debug, Clone)]
-pub enum GetSectorInfo {
-    M01(GetSectorInfoM01),
-    M2(GetSectorInfoM2),
+pub enum GetProgramSectorInfo {
+    M01(GetProgramSectorInfoM01),
+    M2(GetProgramSectorInfoM2),
 }
 
-impl Into<Vec<u8>> for GetSectorInfo {
+impl Into<Vec<u8>> for GetProgramSectorInfo {
     fn into(self) -> Vec<u8> {
         match self {
             Self::M01(info) => info.into(),
@@ -16,17 +16,17 @@ impl Into<Vec<u8>> for GetSectorInfo {
     }
 }
 
-impl TryFromWith<&[u8], GetSectorInfoMode> for GetSectorInfo {
+impl TryFromWith<&[u8], GetSectorInfoMode> for GetProgramSectorInfo {
     type Error = XcpError;
 
     fn try_from_with(data: &[u8], mode: GetSectorInfoMode) -> Result<Self, Self::Error> {
         match mode {
             GetSectorInfoMode::StartAddress
             | GetSectorInfoMode::Length => {
-                Ok(Self::M01(GetSectorInfoM01::try_from(data)?))
+                Ok(Self::M01(GetProgramSectorInfoM01::try_from(data)?))
             }
             GetSectorInfoMode::NameOfLength => {
-                Ok(Self::M2(GetSectorInfoM2::try_from(data)?))
+                Ok(Self::M2(GetProgramSectorInfoM2::try_from(data)?))
             }
             GetSectorInfoMode::Undefined(_) => Err(XcpError::UndefinedError),
         }
@@ -35,7 +35,7 @@ impl TryFromWith<&[u8], GetSectorInfoMode> for GetSectorInfo {
 
 #[derive(Debug, Clone, CopyGetters)]
 #[get_copy = "pub"]
-pub struct GetSectorInfoM01 {
+pub struct GetProgramSectorInfoM01 {
     /// Clear Sequence Number
     pub(crate) clear_sequence_number: u8,
     /// Program Sequence Number
@@ -47,7 +47,7 @@ pub struct GetSectorInfoM01 {
     pub(crate) sector_info: u32,
 }
 
-impl GetSectorInfoM01 {
+impl GetProgramSectorInfoM01 {
     pub fn new(
         clear_sequence_number: u8,
         program_sequence_number: u8,
@@ -67,7 +67,7 @@ impl GetSectorInfoM01 {
     }
 }
 
-impl Into<Vec<u8>> for GetSectorInfoM01 {
+impl Into<Vec<u8>> for GetProgramSectorInfoM01 {
     fn into(self) -> Vec<u8> {
         let mut result = vec![
             self.clear_sequence_number,
@@ -80,7 +80,7 @@ impl Into<Vec<u8>> for GetSectorInfoM01 {
     }
 }
 
-impl TryFrom<&[u8]> for GetSectorInfoM01 {
+impl TryFrom<&[u8]> for GetProgramSectorInfoM01 {
     type Error = XcpError;
 
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
@@ -105,14 +105,14 @@ impl TryFrom<&[u8]> for GetSectorInfoM01 {
 
 #[derive(Debug, Clone, CopyGetters)]
 #[get_copy = "pub"]
-pub struct GetSectorInfoM2 {
+pub struct GetProgramSectorInfoM2 {
     /// Number of Data Elements UPLOAD [AG] = (Length GET_SECTOR_INFO[BYTE]) / AG
     /// SECTOR_NAME_LENGTH in bytes
     /// 0 – if not available
     pub(crate) size: u8,
 }
 
-impl GetSectorInfoM2 {
+impl GetProgramSectorInfoM2 {
     pub fn new(size: u8) -> Self {
         Self { size }
     }
@@ -122,13 +122,13 @@ impl GetSectorInfoM2 {
     }
 }
 
-impl Into<Vec<u8>> for GetSectorInfoM2 {
+impl Into<Vec<u8>> for GetProgramSectorInfoM2 {
     fn into(self) -> Vec<u8> {
         vec![self.size, ]
     }
 }
 
-impl TryFrom<&[u8]> for GetSectorInfoM2 {
+impl TryFrom<&[u8]> for GetProgramSectorInfoM2 {
     type Error = XcpError;
 
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {

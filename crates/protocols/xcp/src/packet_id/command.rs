@@ -5,77 +5,77 @@ use crate::XcpError;
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
 pub enum Command {
     /* start of Standard */
-    Connect = 0xFF,                 // ✅
-    Disconnect = 0xFE,              // ✅
-    GetStatus = 0xFD,               // ✅
-    Synch = 0xFC,                   // ✅
+    Connect = 0xFF,                 // ✅ page 110
+    Disconnect = 0xFE,              // ✅ page 115
+    GetStatus = 0xFD,               // ✅ page 116
+    Synch = 0xFC,                   // ✅ page 120
     // optional
-    GetCommandModeInfo = 0xFB,      // ✅
-    GetId = 0xFA,                   // ✅
-    SetRequest = 0xF9,              // ✅
-    GetSeed = 0xF8,                 // ✅
-    Unlock = 0xF7,                  // ✅
-    SetMeta = 0xF6,                 // ✅
-    Upload = 0xF5,                  // ✅
-    ShortUpload = 0xF4,             // ✅
-    BuildChecksum = 0xF3,           // ✅ nonstandard negative
-    TransportLayer = 0xF2,          // ✅
-    UserCmd = 0xF1,                 // ✅
+    GetCommandModeInfo = 0xFB,      // ✅ page 121
+    GetId = 0xFA,                   // ✅ page 123
+    SetRequest = 0xF9,              // ✅ page 125
+    GetSeed = 0xF8,                 // ✅ page 128
+    Unlock = 0xF7,                  // ✅ page 130
+    SetMeta = 0xF6,                 // ✅ page 133
+    Upload = 0xF5,                  // ✅ page 134
+    ShortUpload = 0xF4,             // ✅ page 136
+    BuildChecksum = 0xF3,           // ✅ page 137 nonstandard negative
+    TransportLayer = 0xF2,          // ✅ page 140
+    UserCmd = 0xF1,                 // ✅ page 141
     /* end of Standard */
 
     /* start of calibration */
-    CALDownload = 0xF0,             // ✅
+    CALDownload = 0xF0,             // ✅ page 142
     // optional
-    CALDownloadNext = 0xEF,         // ✅
-    CALDownloadMax = 0xEE,          // ✅
-    CALShortDownload = 0xED,        // ✅
-    CALModifyBits = 0xEC,           // ✅
+    CALDownloadNext = 0xEF,         // ✅ page 144
+    CALDownloadMax = 0xEE,          // ✅ page 146
+    CALShortDownload = 0xED,        // ✅ page 147
+    CALModifyBits = 0xEC,           // ✅ page 148
     /* end of calibration */
 
     /* start of page switch */
     // optional
-    PAGSetCalPage = 0xEB,           // ✅
-    PAGGetCalPage = 0xEA,           // ✅
-    PAGGetPageProcessorInfo = 0xE9, // ✅
-    PAGGetSegmentInfo = 0xE8,       // ✅
-    PAGGetPageInfo = 0xE7,          // ✅
-    PAGSetSegmentMode = 0xE6,       // ✅
-    PAGGetSegmentMode = 0xE5,       // ✅
-    PAGCopyCalPage = 0xE4,          // ✅
+    PAGSetCalPage = 0xEB,           // ✅ page 149
+    PAGGetCalPage = 0xEA,           // ✅ page 150
+    PAGGetPageProcessorInfo = 0xE9, // ✅ page 151
+    PAGGetSegmentInfo = 0xE8,       // ✅ page 152
+    PAGGetPageInfo = 0xE7,          // ✅ page 155
+    PAGSetSegmentMode = 0xE6,       // ✅ page 159
+    PAGGetSegmentMode = 0xE5,       // ✅ page 160
+    PAGCopyCalPage = 0xE4,          // ✅ page 161
     /* end of page switch */
 
     /* start of DAQ & STIM */
-    DAQSetPtr = 0xE2,               // ✅
-    DAQWrite = 0xE1,                // ✅
-    DAQSetListMode = 0xE0,          // ✅
-    DAQStartStopList = 0xDE,        // ✅
-    DAQStartStopSynch = 0xDD,       // ✅
+    DAQSetPtr = 0xE2,               // ✅ page 162
+    DAQWrite = 0xE1,                // ✅ page 163
+    DAQSetListMode = 0xE0,          // ✅ page 164
+    DAQStartStopList = 0xDE,        // ✅ page 167
+    DAQStartStopSynch = 0xDD,       // ✅ page 169
     // optional
-    DAQWriteMultiple = 0xC7,        // ✅
-    DAQRead = 0xDB,                 // ✅
-    DAQGetClock = 0xDC,             // ✅
-    DAQGetProcessorInfo = 0xDA,     // ✅
-    DAQGetResolutionInfo = 0xD9,    // ✅
-    DAQGetListMode = 0xDF,          // ✅
-    DAQGetEventInfo = 0xD7,         // ✅
-    DAQDTOCTRProperty = 0xC5,       // ✅
+    DAQWriteMultiple = 0xC7,        // ✅ page 170
+    DAQRead = 0xDB,                 // ✅ page 175
+    DAQGetClock = 0xDC,             // ✅ page 176
+    DAQGetProcessorInfo = 0xDA,     // ✅ page 178
+    DAQGetResolutionInfo = 0xD9,    // ✅ page 184
+    DAQGetListMode = 0xDF,          // ✅ page 187
+    DAQGetEventInfo = 0xD7,         // ✅ page 189
+    DAQDTOCTRProperty = 0xC5,       // ✅ page 193
 
     // static configuration
-    DAQClearList = 0xE3,            // ✅
+    DAQClearList = 0xE3,            // ✅ page 198
     // optional
-    DAQGetListInfo = 0xD8,          // ✅
+    DAQGetListInfo = 0xD8,          // ✅ page 199
 
     // Dynamic configuration
-    DAQFree = 0xD6,                 // ✅
-    DAQAlloc = 0xD5,                // ✅
-    DAQAllocODT = 0xD4,             // ✅
-    DAQAllocODTEntry = 0xD3,        // ✅
+    DAQFree = 0xD6,                 // ✅ page 201
+    DAQAlloc = 0xD5,                // ✅ page 202
+    DAQAllocODT = 0xD4,             // ✅ page 203
+    DAQAllocODTEntry = 0xD3,        // ✅ page 204
     /* end of DAQ & STIM */
 
     /* start of nonvolatile memory program */
-    PGMPrgStart = 0xD2,             // ✅
-    PGMPrgClear = 0xD1,             // ✅
-    PGMPrg = 0xD0,                  // TODO page 209
+    PGMPrgStart = 0xD2,             // ✅ page 205
+    PGMPrgClear = 0xD1,             // ✅ page 207
+    PGMPrg = 0xD0,                  // ✅ page 209
     PGMPrgReset = 0xCF,             // ✅ page 211
     // optional
     PGMGetProcessorInfo = 0xCE,     // ✅ page 212
@@ -87,8 +87,11 @@ pub enum Command {
     PGMPrgVerify = 0xC8,            // ✅ page 222
     /* end of nonvolatile memory program */
 
-    TimeCorrelationProperty = 0xC6, // page 223
+    TimeCorrelationProperty = 0xC6, // ✅ page 223
 
+    /// get version page 114
+    /// set daq package mode page 172
+    /// get daq package mode page 174
     C0 = 0xC0,
 }
 

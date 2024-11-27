@@ -5,12 +5,12 @@ use crate::XcpError;
 #[get_copy = "pub"]
 pub struct DownloadNext {
     /// Number of expected data elements
-    pub(crate) size_expected: u8,
+    pub(crate) expected_size: u8,
 }
 
 impl DownloadNext {
-    pub fn new(size_expected: u8) -> Self {
-        Self { size_expected }
+    pub fn new(expected_size: u8) -> Self {
+        Self { expected_size }
     }
 
     #[inline]
@@ -21,7 +21,7 @@ impl DownloadNext {
 
 impl Into<Vec<u8>> for DownloadNext {
     fn into(self) -> Vec<u8> {
-        vec![self.size_expected, ]
+        vec![self.expected_size, ]
     }
 }
 

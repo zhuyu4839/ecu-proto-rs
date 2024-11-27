@@ -3,12 +3,12 @@ use crate::{GetSectorInfoMode, XcpError};
 
 #[derive(Debug, Clone, CopyGetters)]
 #[get_copy = "pub"]
-pub struct GetSectorInfo {
+pub struct GetProgramSectorInfo {
     pub(crate) mode: GetSectorInfoMode,
     pub(crate) sector_number: u8,
 }
 
-impl GetSectorInfo {
+impl GetProgramSectorInfo {
     pub fn new(mode: GetSectorInfoMode, sector_number: u8) -> Self {
         Self { mode, sector_number }
     }
@@ -18,13 +18,13 @@ impl GetSectorInfo {
     }
 }
 
-impl Into<Vec<u8>> for GetSectorInfo {
+impl Into<Vec<u8>> for GetProgramSectorInfo {
     fn into(self) -> Vec<u8> {
         vec![self.mode.into(), self.sector_number]
     }
 }
 
-impl TryFrom<&[u8]> for GetSectorInfo {
+impl TryFrom<&[u8]> for GetProgramSectorInfo {
     type Error = XcpError;
 
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {

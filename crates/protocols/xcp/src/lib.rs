@@ -10,12 +10,13 @@
 //! Table 234 Time Synchronization commands error handling
 //!
 
+mod constants;
+use constants::*;
+
 pub mod event;
 pub mod request;
 pub mod response;
 mod common;
-
-use getset::CopyGetters;
 pub use common::*;
 mod error;
 pub use error::*;
@@ -24,8 +25,8 @@ pub use packet_id::*;
 
 /// TODO
 mod config;
-mod constants;
-use constants::*;
+
+use getset::CopyGetters;
 
 pub trait IntoWith<T, V> {
     fn into_with(self, val: V) -> T;

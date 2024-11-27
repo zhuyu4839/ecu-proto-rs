@@ -18,6 +18,9 @@ pub enum XcpError {
 
     #[error("XCP - unexpected input: {0}")]
     UnexpectInput(String),
+
+    #[error("XCP - unexpected response: {0}")]
+    UnexpectedResponse(u8),
 }
 
 #[repr(u8)]

@@ -20,14 +20,14 @@ pub struct ProcessorInfoProperty {
 
 #[derive(Debug, Clone, CopyGetters)]
 #[get_copy = "pub"]
-pub struct GetPageProcessorInfoPositive {
+pub struct GetPageProcessorInfo {
     /// MAX_SEGMENTS
     /// total number of available segments
     pub(crate) segments: u8,
     pub(crate) property: ProcessorInfoProperty,
 }
 
-impl GetPageProcessorInfoPositive {
+impl GetPageProcessorInfo {
     pub fn new(segments: u8, property: ProcessorInfoProperty) -> Self {
         Self { segments, property }
     }
@@ -37,13 +37,13 @@ impl GetPageProcessorInfoPositive {
     }
 }
 
-impl Into<Vec<u8>> for GetPageProcessorInfoPositive {
+impl Into<Vec<u8>> for GetPageProcessorInfo {
     fn into(self) -> Vec<u8> {
         vec![self.segments, self.property.into(),]
     }
 }
 
-impl TryFrom<&[u8]> for GetPageProcessorInfoPositive {
+impl TryFrom<&[u8]> for GetPageProcessorInfo {
     type Error = XcpError;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
         let data_len = data.len();

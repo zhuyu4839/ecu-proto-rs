@@ -147,7 +147,7 @@ pub struct ProgramProperty {
 
 #[derive(Debug, Clone, CopyGetters)]
 #[get_copy = "pub"]
-pub struct GetProcessorInfo {
+pub struct GetProgramProcessorInfo {
     /// PGM_PROPERTIES
     /// General properties for programming
     pub(crate) property: ProgramProperty,
@@ -156,7 +156,7 @@ pub struct GetProcessorInfo {
     pub(crate) max_sector: u8,
 }
 
-impl GetProcessorInfo {
+impl GetProgramProcessorInfo {
     pub fn new(property: ProgramProperty, max_sector: u8) -> Self {
         Self { property, max_sector }
     }
@@ -166,13 +166,13 @@ impl GetProcessorInfo {
     }
 }
 
-impl Into<Vec<u8>> for GetProcessorInfo {
+impl Into<Vec<u8>> for GetProgramProcessorInfo {
     fn into(self) -> Vec<u8> {
         vec![self.property.into(), self.max_sector]
     }
 }
 
-impl TryFrom<&[u8]> for GetProcessorInfo {
+impl TryFrom<&[u8]> for GetProgramProcessorInfo {
     type Error = XcpError;
 
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {

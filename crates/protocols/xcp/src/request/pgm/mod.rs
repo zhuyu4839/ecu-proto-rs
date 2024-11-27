@@ -1,5 +1,3 @@
-// mod get_processor_info;
-// pub use get_processor_info::*;
 mod get_sector_info;
 pub use get_sector_info::*;
 mod program;
@@ -14,9 +12,5 @@ mod program_next;
 pub use program_next::*;
 mod program_prepare;
 pub use program_prepare::*;
-// mod program_reset;
-// pub use program_reset::*;
-// mod program_start;
-// pub use program_start::*;
 mod program_verify;
 pub use program_verify::*;
