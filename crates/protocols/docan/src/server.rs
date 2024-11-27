@@ -5,6 +5,8 @@ mod synchronous;
 #[cfg(not(feature = "async"))]
 pub use synchronous::*;
 
+pub(crate) mod util;
+
 use rs_can::ResultWrapper;
 
 pub trait Server {

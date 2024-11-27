@@ -12,13 +12,13 @@ mod tests {
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<ECUResetType>()?, ECUResetType::HardReset);
-        assert_eq!(sub_func.is_suppress_positive(), Some(false));
+        assert_eq!(sub_func.is_suppress_positive(), false);
 
         let source = hex::decode("1181")?;
         let request = request::Request::try_from_cfg(source, &cfg)?;
         let sub_func = request.sub_function().unwrap();
         assert_eq!(sub_func.function::<ECUResetType>()?, ECUResetType::HardReset);
-        assert_eq!(sub_func.is_suppress_positive(), Some(true));
+        assert_eq!(sub_func.is_suppress_positive(), true);
 
         let source = hex::decode("110100")?;
         let err = request::Request::try_from_cfg(source, &cfg).unwrap_err();

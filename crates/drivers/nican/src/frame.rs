@@ -1,6 +1,5 @@
-use rs_can::utils::{data_resize, system_timestamp};
+use rs_can::{{Direct, Frame, Id}, utils::{data_resize, system_timestamp, can_dlc}};
 use std::fmt::{Display, Formatter};
-use rs_can::{Direct, Frame, Id, CAN_FRAME_MAX_SIZE};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -171,11 +170,7 @@ impl Frame for CanMessage {
 
     #[inline]
     fn dlc(&self) -> Option<usize> {
-        let len = self.length;
-        match len {
-            ..=CAN_FRAME_MAX_SIZE => Some(len),
-            _ => None,
-        }
+        can_dlc(self.length, false)
     }
 
     #[inline]

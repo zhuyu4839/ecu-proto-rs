@@ -1,5 +1,5 @@
-use derive_getters::Getters;
-use crate::{constant::*, Iso13400Error, LogicAddress, RoutingActiveType, utils};
+use getset::{CopyGetters, Getters};
+use crate::{constants::*, Iso13400Error, LogicAddress, RoutingActiveType, utils, Eid};
 
 /****** --- UDP --- ********/
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -31,27 +31,28 @@ impl Into<Vec<u8>> for VehicleID {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, CopyGetters)]
+#[get_copy = "pub"]
 pub struct VehicleIDWithEID {    // 0x0002
-    pub(crate) eid: [u8; SIZE_OF_ID],
+    pub(crate) eid: Eid,
 }
 
 impl VehicleIDWithEID {
-    pub fn new(eid: [u8; SIZE_OF_ID]) -> Self {
+    pub fn new(eid: Eid) -> Self {
         Self { eid }
     }
 
     #[inline]
     const fn length() -> usize {
-        SIZE_OF_ID
+        Eid::length()
     }
 }
 
 impl TryFrom<&[u8]> for VehicleIDWithEID {
     type Error = Iso13400Error;
     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
-        let (_, offset) = utils::data_len_check(data, Self::length(), true)?;
-        let eid: [u8; SIZE_OF_ID] = data[offset..offset+Self::length()].try_into().unwrap();
+        let _ = utils::data_len_check(data, Self::length(), true)?;
+        let eid = Eid::try_from(data)?;
 
         Ok(Self { eid })
     }
@@ -62,26 +63,29 @@ impl Into<Vec<u8>> for VehicleIDWithEID {
         let mut result = UDP_REQ_VEHICLE_ID_WITH_EID.to_be_bytes().to_vec();
         let length = Self::length() as u32;
         result.extend(length.to_be_bytes());
-        result.extend(self.eid);
+        result.append(&mut self.eid.into());
 
         result
     }
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[get = "pub"]
 pub struct VehicleIDWithVIN {     // 0x0003
     pub(crate) vin: String,
 }
 
 impl VehicleIDWithVIN {
     #[must_use]
-    pub fn new(vin: String) -> Result<Self, Iso13400Error> {
+    pub fn new(vin: &str) -> Result<Self, Iso13400Error> {
         let vin_len = vin.as_bytes().len();
         if vin_len != Self::length() {
-            return Err(Iso13400Error::InvalidLength { actual: vin_len, expected: Self::length() });
+            return Err(Iso13400Error::InputError(
+                format!("length of vin must equal {}", Self::length())
+            ));
         }
 
-        Ok(Self { vin })
+        Ok(Self { vin: vin.to_owned() })
     }
 
     #[inline]
@@ -178,7 +182,8 @@ impl Into<Vec<u8>> for DiagnosticPowerMode {
 /****** --- end of UDP --- ********/
 
 /****** --- TCP --- ********/
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, CopyGetters)]
+#[get_copy = "pub"]
 pub struct RoutingActive {  // 0x0005
     pub(crate) src_addr: LogicAddress,
     pub(crate) active: RoutingActiveType,
@@ -268,64 +273,6 @@ impl Into<Vec<u8>> for AliveCheck {
         let mut result = TCP_REQ_ALIVE_CHECK.to_be_bytes().to_vec();
         let length = Self::length() as u32;
         result.extend(length.to_be_bytes());
-
-        result
-    }
-}
-
-/// The first response is 0x8002 if diagnostic is positive,
-/// that means diagnostic request was received,
-/// then send 0x8001 response with UDS data.
-/// Otherwise, send 0x8003 response with UDS NRC data.
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
-pub struct Diagnostic {     // 0x8001
-    pub(crate) src_addr: LogicAddress,
-    pub(crate) dst_addr: LogicAddress,
-    pub(crate) data: Vec<u8>,
-}
-
-impl Diagnostic {
-    pub fn new(
-        src_addr: LogicAddress,
-        dst_addr: LogicAddress,
-        data: Vec<u8>,
-    ) -> Self {
-        Self { src_addr, dst_addr, data }
-    }
-
-    /// min length
-    #[inline]
-    const fn length() -> usize {
-        SIZE_OF_ADDRESS + SIZE_OF_ADDRESS
-    }
-}
-
-impl TryFrom<&[u8]> for Diagnostic {
-    type Error = Iso13400Error;
-    fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
-        let (_, mut offset) = utils::data_len_check(data, Self::length(), false)?;
-        let src_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
-        offset += SIZE_OF_ADDRESS;
-        let src_addr = LogicAddress::from(src_addr);
-        let dst_addr = u16::from_be_bytes(data[offset..offset+ SIZE_OF_ADDRESS].try_into().unwrap());
-        let dst_addr = LogicAddress::from(dst_addr);
-        offset += SIZE_OF_ADDRESS;
-        let data = data[offset..].to_vec();
-
-        Ok(Self { src_addr, dst_addr, data })
-    }
-}
-
-impl Into<Vec<u8>> for Diagnostic {
-    fn into(mut self) -> Vec<u8> {
-        let mut result = TCP_REQ_DIAGNOSTIC.to_be_bytes().to_vec();
-        let length = (Self::length() + self.data.len()) as u32;
-        result.extend(length.to_be_bytes());
-        let src_addr: u16 = self.src_addr.into();
-        result.extend(src_addr.to_be_bytes());
-        let dst_addr: u16 = self.dst_addr.into();
-        result.extend(dst_addr.to_be_bytes());
-        result.append(&mut self.data);
 
         result
     }

@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use rs_can::{Direct, Frame, Id, CANFD_FRAME_MAX_SIZE, CAN_FRAME_MAX_SIZE, utils::{can_dlc, data_resize, system_timestamp}};
+use rs_can::{Direct, Frame, Id, CAN_FRAME_MAX_SIZE, utils::{can_dlc, data_resize, system_timestamp, is_can_fd_len}};
 
 #[repr(C)]
 #[derive(Debug, Clone)]
@@ -28,8 +28,8 @@ impl Frame for CanMessage {
     fn new(id: impl Into<Id>, data: &[u8]) -> Option<Self> {
         let length = data.len();
 
-        match is_can_fd(length) {
-            Some(is_fd) => {
+        match is_can_fd_len(length) {
+            Ok(is_fd) => {
                 let id: Id = id.into();
                 Some(Self {
                     timestamp: 0,
@@ -47,14 +47,14 @@ impl Frame for CanMessage {
                     tx_mode: 0,
                 })
             },
-            None => None,
+            Err(_) => None,
         }
     }
 
     #[inline]
     fn new_remote(id: impl Into<Id>, len: usize) -> Option<Self> {
-        match is_can_fd(len) {
-            Some(is_fd) => {
+        match is_can_fd_len(len) {
+            Ok(is_fd) => {
                 let id = id.into();
                 let mut data = Vec::new();
                 data_resize(&mut data, len);
@@ -74,7 +74,7 @@ impl Frame for CanMessage {
                     tx_mode: 0,
                 })
             },
-            None => None,
+            Err(_) => None,
         }
     }
 
@@ -227,17 +227,5 @@ impl CanMessage {
 impl Display for CanMessage {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         <dyn Frame<Channel=u8> as Display>::fmt(self, f)
-    }
-}
-
-#[inline]
-fn is_can_fd(len: usize) -> Option<bool> {
-    match len {
-        ..=CAN_FRAME_MAX_SIZE => Some(false),
-        ..=CANFD_FRAME_MAX_SIZE => Some(true),
-        _ => {
-            log::warn!("CanMessage - invalid data length: {}", len);
-            None
-        },
     }
 }

@@ -1,29 +1,18 @@
-use crate::constant::SIZE_OF_LENGTH;
 use crate::Iso13400Error;
 
 pub(crate) fn data_len_check(data: &[u8], struct_len: usize, equal: bool) -> Result<(usize, usize), Iso13400Error> {
-    let data_len = data.len();
-    let expected = SIZE_OF_LENGTH + struct_len;
+    let actual = data.len();
+    let expected = struct_len;
     if equal {
-        if data_len != expected {
-            return Err(Iso13400Error::InvalidLength { actual: data_len, expected });
-        }
-
-        let length = u32::from_be_bytes(data[..SIZE_OF_LENGTH].try_into().unwrap()) as usize;
-        if length != struct_len {
-            return Err(Iso13400Error::InvalidDataLen { actual: length, expected: struct_len });
+        if actual != expected {
+            return Err(Iso13400Error::InvalidLength { actual, expected });
         }
     }
     else {
-        if data_len < expected {
-            return Err(Iso13400Error::InvalidLength { actual: data_len, expected });
-        }
-
-        let length = u32::from_be_bytes(data[..SIZE_OF_LENGTH].try_into().unwrap()) as usize;
-        if length < struct_len {
-            return Err(Iso13400Error::InvalidDataLen { actual: length, expected: struct_len });
+        if expected > actual {
+            return Err(Iso13400Error::InvalidLength { actual, expected });
         }
     }
 
-    Ok((data_len, SIZE_OF_LENGTH))
+    Ok((actual, 0))
 }

@@ -28,6 +28,7 @@ anyhow = { workspace = true }
 [features]
 default = ["std2020"]
 
+#std2004 = []
 std2006 = []
 std2013 = []
 std2020 = []

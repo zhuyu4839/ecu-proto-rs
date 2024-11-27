@@ -1,5 +1,4 @@
-use iso13400_2::{ActiveCode, DiagnosticNegativeCode, DiagnosticPositiveCode, NodeType, FurtherAction, HeaderNegativeCode, LogicAddress, Message, Payload, PowerMode, SyncStatus, Version};
-use iso13400_2::response::{AliveCheck, DiagnosticNegative, DiagnosticPositive, DiagnosticPowerMode, EntityStatus, HeaderNegative, RoutingActive, VehicleID};
+use iso13400_2::{*, response::*};
 
 #[test]
 fn test_header_negative() -> anyhow::Result<()> {
@@ -11,7 +10,7 @@ fn test_header_negative() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::HeaderNegativeAck(v) => assert_eq!(*v, payload),
+        Payload::RespHeaderNegative(v) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -34,15 +33,15 @@ fn test_vehicle_id() -> anyhow::Result<()> {
     let payload = VehicleID::new(
         "-".repeat(17),
         LogicAddress::from(0x0E00),
-        [0x00, 0x11, 0x00, 0x11, 0x00, 0x11],
-        [0x11, 0x00, 0x11, 0x00, 0x11, 0x00, ],
+        Eid::new(0x001100110011)?,
+        Gid::new(0x110011001100)?,
         FurtherAction::CentralSecurity,
         Some(SyncStatus::VINorGIDSync),
     )?;
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::VehicleIdentificationResponse(v) => assert_eq!(*v, payload),
+        Payload::RespVehicleId(v) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -67,7 +66,7 @@ fn test_entity_status() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::EntityStatusResponse(v) => assert_eq!(*v, payload),
+        Payload::RespEntityStatus(v) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -87,7 +86,7 @@ fn test_diag_power_mode() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::DiagnosticPowerModeResponse(v) => assert_eq!(*v, payload),
+        Payload::RespDiagPowerMode(v) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -116,7 +115,7 @@ fn test_routing_activation() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::RoutingActivationResponse(v) => assert_eq!(*v, payload),
+        Payload::RespRoutingActive(v) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -136,7 +135,7 @@ fn test_alive_check() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::AliveCheckResponse(v) => assert_eq!(*v, payload),
+        Payload::RespAliveCheck(v) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -163,7 +162,7 @@ fn test_diag_positive() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::DiagnosticPositive(v) => assert_eq!(*v, payload),
+        Payload::RespDiagPositive(v) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 
@@ -190,7 +189,7 @@ fn test_diag_negative() -> anyhow::Result<()> {
     let msg = Message::try_from(source.as_ref())?;
     assert_eq!(msg.version, Version::ISO13400_2_2012);
     match &msg.payload {
-        Payload::DiagnosticNegative(v) => assert_eq!(*v, payload),
+        Payload::RespDiagNegative(v) => assert_eq!(*v, payload),
         _ => panic!("Wrong payload type"),
     }
 

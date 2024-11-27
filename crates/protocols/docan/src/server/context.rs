@@ -1,13 +1,17 @@
+mod session_manager;
+use session_manager::SessionManager;
+mod diag_info_manager;
+use diag_info_manager::DiagInfoManager;
+
 use std::{fmt::Display, time::Duration, thread};
 use iso14229_1::{request::{self, Request}, response::{self, Response, Code}, *};
 use iso15765_2::{IsoTpEvent, IsoTpEventListener};
-use rs_can::{Frame, isotp::{AddressType, CanIsoTp, P2Context}};
-use crate::{buffer::IsoTpBuffer, DoCanError, SecurityAlgo, };
+use rs_can::{Frame, isotp::{AddressType, CanIsoTp}};
+use crate::{buffer::IsoTpBuffer, DoCanError, SecurityAlgo, server::util};
 
 #[derive(Debug, Default, Clone)]
 pub struct IsoTpListener {
     pub(crate) buffer: IsoTpBuffer,
-    pub(crate) p2_ctx: P2Context,
 }
 
 impl IsoTpEventListener for IsoTpListener {
@@ -34,7 +38,7 @@ pub struct Context<C, F> {
     listener: IsoTpListener,
     config: Configuration,
     security_algo: Option<SecurityAlgo>,
-    session_type: SessionType,
+    session_manager: SessionManager,
 }
 
 impl<C, F> Context<C, F>
@@ -49,7 +53,7 @@ where
             listener,
             config: Default::default(),
             security_algo: Default::default(),
-            session_type: SessionType::default(),
+            session_manager: Default::default(),
         }
     }
 
@@ -57,120 +61,110 @@ where
         while self.flag {
             if let Some(event) = self.listener.buffer.get() {
                 match event {
-                    IsoTpEvent::Wait => {
-                        // TODO
-                    },
-                    IsoTpEvent::FirstFrameReceived => {
-                        // nothing to do
-                    },
+                    IsoTpEvent::Wait => self.session_manager.keep_session(),
+                    IsoTpEvent::FirstFrameReceived => {},   // nothing to do
                     IsoTpEvent::DataReceived(data) => {
                         log::trace!("DoCANServer - data received: {}", hex::encode(&data));
                         if data.is_empty() {
                             continue;
                         }
-                        let origin_service = data[0];
-                        let data = match Request::try_from_cfg(data, &self.config) {
-                            Ok(request) => {
-                                let service = request.service();
-                                match service {
-                                    Service::SessionCtrl => {
-                                        match request.sub_function() {
-                                            Some(sub_func) => {
-                                                if sub_func.is_suppress_positive() {
-                                                    None
-                                                }
-                                                else {
-                                                    let session_timing = response::SessionTiming::default();
-                                                    Some(self.positive_response(service, Some(sub_func.into()), session_timing.into()))
-                                                }
-                                            },
-                                            None => Some(self.sub_func_not_supported(service)),
-                                        }
-                                    },
-                                    Service::ECUReset => {
-                                        match request.sub_function() {
-                                            Some(sub_func) => {
-                                                if sub_func.is_suppress_positive() {
-                                                    None
-                                                }
-                                                else {
-                                                    let sub_func: ECUResetType = sub_func.function().unwrap();
-                                                    let data = match sub_func {
-                                                        ECUResetType::EnableRapidPowerShutDown => vec![1, ],
-                                                        _ => vec![],
-                                                    };
 
-                                                    Some(self.positive_response(service, Some(sub_func.into()), data))
-                                                }
-                                            },
-                                            None => Some(self.sub_func_not_supported(service)),
+                        let service = data[0];
+                        let data = match self.session_manager.service_check(service) {
+                            Some(data) => Some(data),
+                            None => match Request::try_from_cfg(data, &self.config) {
+                                Ok(request) => {
+                                    let service = request.service();
+                                    match service {
+                                        Service::SessionCtrl => {
+                                            match request.sub_function() {
+                                                Some(sub_func) => match sub_func.function::<SessionType>() {
+                                                    Ok(r#type) => {
+                                                        self.session_manager.change_session(r#type);
+                                                        if sub_func.is_suppress_positive() {
+                                                            None
+                                                        } else {
+                                                            let session_timing = response::SessionTiming::default();
+                                                            Some(self.positive_response(service, Some(sub_func.into()), session_timing.into()))
+                                                        }
+                                                    },
+                                                    Err(_) => Some(util::sub_func_not_support(service.into())),
+                                                },
+                                                None => Some(util::sub_func_not_support(service.into())),
+                                            }
+                                        },
+                                        Service::ECUReset => {
+                                            match request.sub_function() {
+                                                Some(sub_func) => {
+                                                    if sub_func.is_suppress_positive() {
+                                                        None
+                                                    } else {
+                                                        let sub_func: ECUResetType = sub_func.function().unwrap();
+                                                        let data = match sub_func {
+                                                            ECUResetType::EnableRapidPowerShutDown => vec![1, ],
+                                                            _ => vec![],
+                                                        };
+
+                                                        Some(self.positive_response(service, Some(sub_func.into()), data))
+                                                    }
+                                                },
+                                                None => Some(util::sub_func_not_support(service.into())),
+                                            }
                                         }
-                                    }
-                                    Service::ClearDiagnosticInfo => {
-                                        self.clear_diag_info();
-                                        Some(self.positive_response(service, None, vec![]))
-                                    }
-                                    // Service::ReadDTCInfo => {}
-                                    // Service::ReadDID => {}
-                                    // Service::ReadMemByAddr => {}
-                                    // Service::ReadScalingDID => {}
-                                    Service::SecurityAccess => {
-                                        if self.session_type == SessionType::Default {
-                                            Some(self.service_not_support_in_session(service))
-                                        }
-                                        else {
-                                            None    // TODO
-                                        }
-                                    }
-                                    // Service::CommunicationCtrl => {}
-                                    // #[cfg(any(feature = "std2020"))]
-                                    // Service::Authentication => {}
-                                    // Service::ReadDataByPeriodId => {}
-                                    // Service::DynamicalDefineDID => {}
-                                    // Service::WriteDID => {}
-                                    // Service::IOCtrl => {}
-                                    // Service::RoutineCtrl => {}
-                                    // Service::RequestDownload => {}
-                                    // Service::RequestUpload => {}
-                                    // Service::TransferData => {}
-                                    Service::RequestTransferExit => {
-                                        if self.session_type == SessionType::Programming {
+                                        Service::ClearDiagnosticInfo => {
+                                            self.clear_diag_info();
                                             Some(self.positive_response(service, None, vec![]))
                                         }
-                                        else {
-                                            Some(self.service_not_support_in_session(service))
+                                        // Service::ReadDTCInfo => {}
+                                        // Service::ReadDID => {}
+                                        // Service::ReadMemByAddr => {}
+                                        // Service::ReadScalingDID => {}
+                                        Service::SecurityAccess => {
+                                            None    // TODO
                                         }
-                                    }
-                                    // #[cfg(any(feature = "std2013", feature = "std2020"))]
-                                    // Service::RequestFileTransfer => {}
-                                    // Service::WriteMemByAddr => {}
-                                    Service::TesterPresent => {
-                                        match request.sub_function() {
-                                            Some(sub_func) => {
-                                                if sub_func.is_suppress_positive() {
-                                                    self.session_keep();
-                                                    None
-                                                }
-                                                else {
-                                                    Some(self.positive_response(service, Some(sub_func.into()), vec![]))
-                                                }
-                                            },
-                                            None => Some(self.sub_func_not_supported(service)),
+                                        // Service::CommunicationCtrl => {}
+                                        // #[cfg(any(feature = "std2020"))]
+                                        // Service::Authentication => {}
+                                        // Service::ReadDataByPeriodId => {}
+                                        // Service::DynamicalDefineDID => {}
+                                        // Service::WriteDID => {}
+                                        // Service::IOCtrl => {}
+                                        // Service::RoutineCtrl => {}
+                                        // Service::RequestDownload => {}
+                                        // Service::RequestUpload => {}
+                                        // Service::TransferData => {}
+                                        Service::RequestTransferExit => {
+                                            None    // TODO
                                         }
+                                        // #[cfg(any(feature = "std2013", feature = "std2020"))]
+                                        // Service::RequestFileTransfer => {}
+                                        // Service::WriteMemByAddr => {}
+                                        Service::TesterPresent => {
+                                            match request.sub_function() {
+                                                Some(sub_func) => {
+                                                    if sub_func.is_suppress_positive() {
+                                                        self.session_manager.keep_session();
+                                                        None
+                                                    } else {
+                                                        Some(self.positive_response(service, Some(sub_func.into()), vec![]))
+                                                    }
+                                                },
+                                                None => Some(util::sub_func_not_support(service.into())),
+                                            }
+                                        }
+                                        // #[cfg(any(feature = "std2006", feature = "std2013"))]
+                                        // Service::AccessTimingParam => {}
+                                        // Service::SecuredDataTrans => {}
+                                        // Service::CtrlDTCSetting => {}
+                                        // Service::ResponseOnEvent => {}
+                                        // Service::LinkCtrl => {}
+                                        _ => Some(util::service_not_support(service.into())),
                                     }
-                                    // #[cfg(any(feature = "std2006", feature = "std2013"))]
-                                    // Service::AccessTimingParam => {}
-                                    // Service::SecuredDataTrans => {}
-                                    // Service::CtrlDTCSetting => {}
-                                    // Service::ResponseOnEvent => {}
-                                    // Service::LinkCtrl => {}
-                                    _ => Some(self.service_not_supported(service.into())),
+                                },
+                                Err(err) => {
+                                    log::warn!("DoCANServer - error: {} when parsing response", err);
+                                    Some(vec![Service::NRC.into(), service, Code::GeneralReject.into()])
                                 }
-                            },
-                            Err(e) => {
-                                log::warn!("DoCANServer - error: {} when parsing response", e);
-                                Some(vec![Service::NRC.into(), origin_service, Code::GeneralReject.into()])
-                                // TODO
                             }
                         };
 
@@ -199,11 +193,6 @@ where
     }
 
     #[inline]
-    fn session_keep(&mut self) {
-        // TODO
-    }
-
-    #[inline]
     fn clear_diag_info(&mut self) {
         // TODO
     }
@@ -213,45 +202,6 @@ where
         match Response::new(service, sub_func, data, &self.config) {
             Ok(v) => v.into(),
             Err(_) => vec![Service::NRC.into(), service.into(), Code::GeneralReject.into()]
-        }
-    }
-
-    #[inline]
-    fn service_not_support_in_session(&self, service: Service) -> Vec<u8> {
-        match Response::new(
-            Service::NRC,
-            None,
-            vec![service.into(), Code::ServiceNotSupportedInActiveSession.into(), ],
-            &self.config
-        ) {
-            Ok(v) => v.into(),
-            Err(_) => vec![Service::NRC.into(), service.into(), Code::GeneralReject.into()]
-        }
-    }
-
-    #[inline]
-    fn sub_func_not_supported(&self, service: Service) -> Vec<u8> {
-        match Response::new(
-            Service::NRC,
-            None,
-            vec![service.into(), Code::SubFunctionNotSupported.into(), ],
-            &self.config
-        ) {
-            Ok(v) => v.into(),
-            Err(_) => vec![Service::NRC.into(), service.into(), Code::GeneralReject.into()]
-        }
-    }
-
-    #[inline]
-    fn service_not_supported(&self, service: u8) -> Vec<u8> {
-        match Response::new(
-            Service::NRC,
-            None,
-            vec![service, Code::ServiceNotSupported.into(), ],
-            &self.config
-        ) {
-            Ok(v) => v.into(),
-            Err(_) => vec![Service::NRC.into(), service.into(), Code::GeneralReject.into()],
         }
     }
 }

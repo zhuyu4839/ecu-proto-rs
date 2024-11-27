@@ -30,12 +30,6 @@ pub enum Iso15765Error {
     #[error("ISO 15765-2 - timeout when time({value}{unit})")]
     Timeout { value: u64, unit: &'static str },
 
-    #[error("ISO 15765-2 - error when converting {src:?} to {target:?}")]
-    ConvertError { src: &'static str, target: &'static str, },
-
     #[error("ISO 15765-2 - ECU has overload flow control response")]
     OverloadFlow,
-
-    #[error("ISO 15765-2 - context error when {0}")]
-    ContextError(String),
 }

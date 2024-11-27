@@ -66,15 +66,18 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
                 AddressType::Physical => Ok(address.tx_id),
                 AddressType::Functional => Ok(address.fid)
             },
-            Err(_) => Err(Iso15765Error::ContextError("can't get address context".into())),
+            Err(_) => {
+                log::warn!("can't get address context");
+                Err(Iso15765Error::DeviceError)
+            },
         }?;
         let mut need_flow_ctrl = frame_len > 1;
         let mut index = 0;
         for frame in frames {
             let mut frame = F::from_iso_tp(can_id, frame, None)
-                .ok_or(Iso15765Error::ConvertError {
-                    src: "iso-tp frame",
-                    target: "can-frame",
+                .ok_or({
+                    log::warn!("fail to convert iso-tp frame to can frame");
+                    Iso15765Error::DeviceError
                 })?;
             frame.set_channel(self.channel.clone());
 
@@ -197,7 +200,10 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
 
                 Ok(())
             },
-            Err(_) => Err(Iso15765Error::ContextError("can't get `context`".into()))
+            Err(_) => {
+                log::warn!("can't get `context`");
+                Err(Iso15765Error::DeviceError)
+            }
         }?;
 
         let start = Instant::now();
@@ -240,7 +246,10 @@ impl<C: Clone, F: Frame<Channel = C>> CanIsoTp<C, F> {
             Ok(mut context) => {
                 context.append_consecutive(sequence, data)
             },
-            Err(_) => Err(Iso15765Error::ContextError("can't get `context`".into()))
+            Err(_) => {
+                log::warn!("can't get `context`");
+                Err(Iso15765Error::DeviceError)
+            }
         }
     }
 

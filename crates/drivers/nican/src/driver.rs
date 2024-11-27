@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 use std::ffi::{c_char, c_void, CStr, CString};
+use winapi::{shared::minwindef::HMODULE, um::{errhandlingapi::GetLastError, libloaderapi::{LoadLibraryA, GetProcAddress}, winnt::LPCSTR}};
 use rs_can::{CanDriver, CanError, CanFilter, Frame};
-use crate::api::*;
-use crate::constant;
-use crate::CanMessage;
+use crate::{api::*, CanMessage, constant};
 
 #[derive(Debug, Clone)]
 struct NiCanContext {
@@ -13,15 +12,47 @@ struct NiCanContext {
     log_errors: bool,
 }
 
+#[allow(non_snake_case)]
 #[derive(Debug, Clone)]
 pub struct NiCan {
-    channels: HashMap<String, NiCanContext>
+    _dll: HMODULE,
+    channels: HashMap<String, NiCanContext>,
+    ncConfig: unsafe extern "system" fn(NCTYPE_STRING, NCTYPE_UINT32, NCTYPE_ATTRID_P, NCTYPE_UINT32_P) -> NCTYPE_STATUS,
+    ncOpenObject: unsafe extern "system" fn(NCTYPE_STRING, NCTYPE_OBJH_P) -> NCTYPE_STATUS,
+    ncAction: unsafe extern "system" fn(NCTYPE_OBJH, NCTYPE_OPCODE, NCTYPE_UINT32) -> NCTYPE_STATUS,
+    ncCloseObject: unsafe extern "system" fn(NCTYPE_OBJH) -> NCTYPE_STATUS,
+    ncWrite: unsafe extern "system" fn(NCTYPE_OBJH, NCTYPE_UINT32, NCTYPE_ANY_P) -> NCTYPE_STATUS,
+    ncRead: unsafe extern "system" fn(NCTYPE_OBJH, NCTYPE_UINT32, NCTYPE_ANY_P) -> NCTYPE_STATUS,
+    ncWaitForState: unsafe extern "system" fn(NCTYPE_OBJH, NCTYPE_STATE, NCTYPE_DURATION, NCTYPE_STATE_P) -> NCTYPE_STATUS,
+    ncStatusToString: unsafe extern "system" fn(NCTYPE_STATUS, NCTYPE_UINT32, NCTYPE_STRING) -> NCTYPE_STATUS,
 }
 
+unsafe impl Send for NiCan {}
+
 impl NiCan {
-    pub fn new() -> Self {
-        Self {
-            channels: Default::default(),
+    pub fn new(dll_path: Option<&str>) -> Result<Self, CanError> {
+        let dll_path = dll_path.unwrap_or(r"Nican.dll");
+        unsafe {
+            let dll_cstr = CString::new(dll_path)
+                .map_err(|e| CanError::OtherError(e.to_string()))?;
+            let dll = LoadLibraryA(dll_cstr.as_ptr() as LPCSTR);
+            if dll.is_null() {
+                let code = GetLastError();
+                return Err(CanError::DeviceConfigError(format!("Can't load library: {} code: {}", dll_path, code)));
+            }
+
+            Ok(Self {
+                _dll: dll,
+                channels: Default::default(),
+                ncConfig: std::mem::transmute(GetProcAddress(dll, b"ncConfig\0".as_ptr() as LPCSTR)),
+                ncOpenObject: std::mem::transmute(GetProcAddress(dll, b"ncOpenObject\0".as_ptr() as LPCSTR)),
+                ncAction: std::mem::transmute(GetProcAddress(dll, b"ncAction\0".as_ptr() as LPCSTR)),
+                ncCloseObject: std::mem::transmute(GetProcAddress(dll, b"ncCloseObject\0".as_ptr() as LPCSTR)),
+                ncWrite: std::mem::transmute(GetProcAddress(dll, b"ncWrite\0".as_ptr() as LPCSTR)),
+                ncRead: std::mem::transmute(GetProcAddress(dll, b"ncRead\0".as_ptr() as LPCSTR)),
+                ncWaitForState: std::mem::transmute(GetProcAddress(dll, b"ncWaitForState\0".as_ptr() as LPCSTR)),
+                ncStatusToString: std::mem::transmute(GetProcAddress(dll, b"ncStatusToString\0".as_ptr() as LPCSTR)),
+            })
         }
     }
 
@@ -57,9 +88,10 @@ impl NiCan {
         attr_id.push(NC_ATTR_BAUD_RATE);
         attr_val.push(bitrate);
 
-        let chl_ascii = CString::new(channel).expect("can't convert str to `CString`");
+        let chl_ascii = CString::new(channel)
+            .map_err(|e| CanError::OtherError(e.to_string()))?;
         let ret = unsafe {
-            ncConfig(
+            (self.ncConfig)(
                 chl_ascii.clone().into_raw(),
                 attr_id.len() as u32,
                 attr_id.as_mut_ptr(),
@@ -71,7 +103,7 @@ impl NiCan {
         }
 
         let mut handle = 0;
-        let ret = unsafe { ncOpenObject(chl_ascii.into_raw(), &mut handle) };
+        let ret = unsafe { (self.ncOpenObject)(chl_ascii.into_raw(), &mut handle) };
         if ret != 0 {
             return Err(CanError::DeviceOpenFailed);
         }
@@ -89,14 +121,14 @@ impl NiCan {
     pub fn reset(&mut self, channel: String) -> Result<(), CanError> {
         match self.channels.get(&channel) {
             Some(ctx) => {
-                let ret = unsafe { ncAction(ctx.handle, NC_OP_RESET, 0) };
+                let ret = unsafe { (self.ncAction)(ctx.handle, NC_OP_RESET, 0) };
 
-                Self::check_status(channel.as_str(), ret)
+                self.check_status(channel.as_str(), ret)
                     .map_err(|r| {
                         log::warn!(
                             "{} error {} when reset",
-                            Self::channel_info(channel.as_str()),
-                            Self::status_to_str(r)
+                            Self::channel_info(&channel),
+                            self.status_to_str(r)
                         );
 
                         CanError::OperationError(channel)
@@ -109,15 +141,15 @@ impl NiCan {
     pub fn close(&mut self, channel: String) -> Result<(), CanError> {
         match self.channels.get(&channel) {
             Some(ctx) => {
-                let ret = unsafe { ncCloseObject(ctx.handle) };
+                let ret = unsafe { (self.ncCloseObject)(ctx.handle) };
                 self.channels.remove(&channel);
 
-                Self::check_status(channel.as_str(), ret)
+                self.check_status(channel.as_str(), ret)
                     .map_err(|r| {
                         log::warn!(
                             "{} error {} when close",
-                            Self::channel_info(channel.as_str()),
-                            Self::status_to_str(r)
+                            Self::channel_info(&channel),
+                            self.status_to_str(r)
                         );
 
                         CanError::OperationError(channel)
@@ -134,18 +166,18 @@ impl NiCan {
                 let raw_msg = msg.into();
 
                 let ret = unsafe {
-                    ncWrite(
+                    (self.ncWrite)(
                         ctx.handle,
                         std::mem::size_of::<NCTYPE_CAN_FRAME>() as u32,
                         &raw_msg as *const NCTYPE_CAN_FRAME as *mut c_void,
                     )
                 };
 
-                if let Err(r) = Self::check_status(channel.as_str(), ret) {
+                if let Err(r) = self.check_status(channel.as_str(), ret) {
                     log::warn!(
                         "{} error {} when transmit",
-                        Self::channel_info(channel.as_str()),
-                        Self::status_to_str(r)
+                        Self::channel_info(&channel),
+                        self.status_to_str(r)
                     )
                 }
 
@@ -158,11 +190,11 @@ impl NiCan {
     pub fn receive_can(&self, channel: String, timeout: Option<u32>) -> Result<Vec<CanMessage>, CanError> {
         match self.channels.get(&channel) {
             Some(ctx) => {
-                if let Err(ret) = Self::wait_for_state(channel.as_str(), ctx.handle, timeout) {
+                if let Err(ret) = self.wait_for_state(channel.as_str(), ctx.handle, timeout) {
                     if ret == constant::CanErrFunctionTimeout {
-                        log::warn!("{} wait for state timeout", Self::channel_info(channel.as_str()));
+                        log::warn!("{} wait for state timeout", Self::channel_info(&channel));
                     }
-                    return Err(CanError::TimeoutError(Self::channel_info(channel.as_str())));
+                    return Err(CanError::TimeoutError(Self::channel_info(&channel)));
                 }
 
                 let raw_msg = NCTYPE_CAN_STRUCT {
@@ -177,20 +209,20 @@ impl NiCan {
                 };
 
                 let ret = unsafe {
-                    ncRead(
+                    (self.ncRead)(
                         ctx.handle,
                         std::mem::size_of::<NCTYPE_CAN_STRUCT>() as u32,
                         &raw_msg as *const NCTYPE_CAN_STRUCT as *mut c_void,
                     )
                 };
 
-                if let Err(r) = Self::check_status(channel.as_str(), ret) {
+                if let Err(r) = self.check_status(channel.as_str(), ret) {
                     log::warn!(
                         "{} error {} when receive",
-                        Self::channel_info(channel.as_str()),
-                        Self::status_to_str(r)
+                        Self::channel_info(&channel),
+                        self.status_to_str(r)
                     );
-                    return Err(CanError::OperationError(Self::channel_info(channel.as_str())));
+                    return Err(CanError::OperationError(Self::channel_info(&channel)));
                 }
 
                 let mut msg = <NCTYPE_CAN_STRUCT as TryInto<CanMessage>>::try_into(raw_msg)?;
@@ -233,18 +265,18 @@ impl NiCan {
         }
     }
 
-    fn wait_for_state(channel: &str, handle: NCTYPE_OBJH, timeout: Option<u32>) -> Result<(), i32> {
+    fn wait_for_state(&self, channel: &str, handle: NCTYPE_OBJH, timeout: Option<u32>) -> Result<(), i32> {
         let timeout = timeout.unwrap_or(NC_DURATION_INFINITE);
 
         let mut state = 0;
-        let ret = unsafe { ncWaitForState(handle, NC_ST_READ_AVAIL, timeout, &mut state) };
+        let ret = unsafe { (self.ncWaitForState)(handle, NC_ST_READ_AVAIL, timeout, &mut state) };
 
-        Self::check_status(channel, ret)
+        self.check_status(channel, ret)
     }
 
-    fn check_status(channel: &str, result: i32) -> Result<(), i32> {
+    fn check_status(&self, channel: &str, result: i32) -> Result<(), i32> {
         if result > 0 {
-            log::warn!("{} {}", Self::channel_info(channel), Self::status_to_str(result));
+            log::warn!("{} {}", Self::channel_info(channel), self.status_to_str(result));
             Ok(())
         } else if result < 0 {
             Err(result)
@@ -253,9 +285,9 @@ impl NiCan {
         }
     }
 
-    fn status_to_str(code: i32) -> String {
+    fn status_to_str(&self, code: i32) -> String {
         let mut err = [0u8; 1024];
-        unsafe { ncStatusToString(code, err.len() as u32, err.as_mut_ptr() as *mut c_char) };
+        unsafe { (self.ncStatusToString)(code, err.len() as u32, err.as_mut_ptr() as *mut c_char) };
         let cstr = unsafe { CStr::from_ptr(err.as_ptr() as *const c_char) };
 
         cstr.to_str().unwrap_or("Unknown").to_string()
@@ -267,15 +299,15 @@ impl CanDriver for NiCan {
     type Frame = CanMessage;
 
     #[inline]
-    fn opened_channels(&self) -> Vec<Self::C> {
-        self.channels.keys()
-            .map(|v| v.clone())
-            .collect()
+    fn is_closed(&self) -> bool {
+        self.channels.is_empty()
     }
 
     #[inline]
-    fn is_closed(&self) -> bool {
-        self.channels.is_empty()
+    fn opened_channels(&self) -> Vec<Self::Channel> {
+        self.channels.keys()
+            .map(|v| v.clone())
+            .collect()
     }
 
     #[inline]
@@ -292,13 +324,13 @@ impl CanDriver for NiCan {
     fn shutdown(&mut self) {
         self.channels.iter()
             .for_each(|(c, ctx)| {
-                let ret = unsafe { ncCloseObject(ctx.handle) };
+                let ret = unsafe { (self.ncCloseObject)(ctx.handle) };
 
-                if let Err(e) = Self::check_status(c, ret) {
+                if let Err(e) = self.check_status(c, ret) {
                     log::warn!(
                         "{} error {} when close",
                         Self::channel_info(c),
-                        Self::status_to_str(e)
+                        self.status_to_str(e)
                     );
                 }
             });
@@ -319,7 +351,7 @@ mod tests {
     #[test]
     fn api() -> anyhow::Result<()> {
         let channel = "CAN0";
-        let mut driver = NiCan::new();
+        let mut driver = NiCan::new(None)?;
         driver.open(channel, vec![], 500_000, true)?;
 
         let data = vec![0x02, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00];
@@ -351,7 +383,7 @@ mod tests {
     #[test]
     fn isotp() -> anyhow::Result<()> {
         let channel = "CAN0";
-        let mut driver = NiCan::new();
+        let mut driver = NiCan::new(None)?;
         driver.open(channel, vec![], 500_000, true)?;
 
         let mut adapter = IsoTpAdapter::new(driver.clone());
