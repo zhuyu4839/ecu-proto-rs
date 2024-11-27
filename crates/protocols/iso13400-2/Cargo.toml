@@ -18,7 +18,7 @@ keywords = [
 log = { workspace = true }
 thiserror = { workspace = true }
 hex = { workspace = true }
-derive-getters = { workspace = true }
+getset = { workspace = true }
 
 [dev-dependencies]
 anyhow = { workspace = true }

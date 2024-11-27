@@ -65,7 +65,7 @@ impl RequestData for RequestFileTransfer {
         }
     }
 
-    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, Iso14229Error> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service();
         if service != Service::RequestFileTransfer
             || request.sub_func.is_none() {
@@ -89,12 +89,12 @@ impl RequestData for RequestFileTransfer {
                 offset += 1;
                 let uncompressed_size = utils::slice_to_u128(
                     &data[offset..offset + filesize_len as usize],
-                    cfg.bo_mem_size
+                    ByteOrder::Big
                 );
                 offset += filesize_len as usize;
                 let compressed_size = utils::slice_to_u128(
                     &data[offset..offset + filesize_len as usize],
-                    cfg.bo_mem_size
+                    ByteOrder::Big
                 );
                 Ok(Self::AddFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
             }
@@ -106,12 +106,12 @@ impl RequestData for RequestFileTransfer {
                 offset += 1;
                 let uncompressed_size = utils::slice_to_u128(
                     &data[offset..offset + filesize_len as usize],
-                    cfg.bo_mem_size
+                    ByteOrder::Big
                 );
                 offset += filesize_len as usize;
                 let compressed_size = utils::slice_to_u128(
                     &data[offset..offset + filesize_len as usize],
-                    cfg.bo_mem_size
+                    ByteOrder::Big
                 );
                 Ok(Self::ReplaceFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
             }
@@ -128,19 +128,19 @@ impl RequestData for RequestFileTransfer {
                 offset += 1;
                 let uncompressed_size = utils::slice_to_u128(
                     &data[offset..offset + filesize_len as usize],
-                    cfg.bo_mem_size
+                    ByteOrder::Big
                 );
                 offset += filesize_len as usize;
                 let compressed_size = utils::slice_to_u128(
                     &data[offset..offset + filesize_len as usize],
-                    cfg.bo_mem_size
+                    ByteOrder::Big
                 );
                 Ok(Self::ResumeFile { filepath, dfi, filesize_len, uncompressed_size, compressed_size })
             }
         }
     }
 
-    fn to_vec(self, cfg: &Configuration) -> Vec<u8> {
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         let mut result = Vec::new();
         match &self {
             Self::AddFile { .. } => result.push(ModeOfOperation::AddFile.into()),
@@ -178,8 +178,8 @@ impl RequestData for RequestFileTransfer {
                 result.push(dfi.into());
                 result.push(filesize_len);
 
-                result.append(&mut utils::u128_to_vec(uncompressed_size, filesize_len as usize, cfg.bo_mem_size));
-                result.append(&mut utils::u128_to_vec(compressed_size, filesize_len as usize, cfg.bo_mem_size));
+                result.append(&mut utils::u128_to_vec(uncompressed_size, filesize_len as usize, ByteOrder::Big));
+                result.append(&mut utils::u128_to_vec(compressed_size, filesize_len as usize, ByteOrder::Big));
             },
             Self::DeleteFile { filepath, } |
             Self::ReadDir { filepath, } => {

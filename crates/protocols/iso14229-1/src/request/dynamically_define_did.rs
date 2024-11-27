@@ -1,7 +1,7 @@
 //! request of Service 2C
 
 
-use crate::{DynamicallyDID, DefinitionType, DynamicallyMemAddr, Iso14229Error, request::{Request, SubFunction}, RequestData, Configuration, utils, Service};
+use crate::{DynamicallyDID, DefinitionType, DynamicallyMemAddr, Iso14229Error, request::{Request, SubFunction}, RequestData, Configuration, utils, Service, ByteOrder};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum DynamicallyDefineDID {
@@ -44,7 +44,7 @@ impl RequestData for DynamicallyDefineDID {
         }
     }
 
-    fn try_parse(request: &Request, cfg: &Configuration) -> Result<Self, Iso14229Error> {
+    fn try_parse(request: &Request, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = request.service;
         if service != Service::DynamicalDefineDID
             || request.sub_func.is_none() {
@@ -86,18 +86,18 @@ impl RequestData for DynamicallyDefineDID {
                 let mem_size_len = ((alfi & 0xF0) >> 4) as usize;
                 utils::data_length_check(data_len, offset + mem_addr_len + mem_size_len, false)?;
 
-                let mem_addr = utils::slice_to_u128(&data[offset..offset + mem_addr_len], cfg.bo_addr);
+                let mem_addr = utils::slice_to_u128(&data[offset..offset + mem_addr_len], ByteOrder::Big);
                 offset += mem_addr_len;
-                let mem_size = utils::slice_to_u128(&data[offset..offset + mem_size_len], cfg.bo_mem_size);
+                let mem_size = utils::slice_to_u128(&data[offset..offset + mem_size_len], ByteOrder::Big);
                 offset += mem_size_len;
 
                 let mut others = Vec::new();
                 while data_len > offset {
                     utils::data_length_check(data_len, offset + mem_addr_len + mem_size_len, false)?;
 
-                    let mem_addr = utils::slice_to_u128(&data[offset..offset + mem_addr_len], cfg.bo_addr);
+                    let mem_addr = utils::slice_to_u128(&data[offset..offset + mem_addr_len], ByteOrder::Big);
                     offset += mem_addr_len;
-                    let mem_size = utils::slice_to_u128(&data[offset..offset + mem_size_len], cfg.bo_mem_size);
+                    let mem_size = utils::slice_to_u128(&data[offset..offset + mem_size_len], ByteOrder::Big);
                     offset += mem_size_len;
                     others.push((mem_addr, mem_size));
                 }
@@ -118,7 +118,7 @@ impl RequestData for DynamicallyDefineDID {
         }
     }
 
-    fn to_vec(self, cfg: &Configuration) -> Vec<u8> {
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         let mut result: Vec<u8> = Vec::new();
         match self {
             Self::DefineByIdentifier {
@@ -159,15 +159,15 @@ impl RequestData for DynamicallyDefineDID {
                 let mem_size_len = utils::length_of_u_type(max_size);
                 result.push(((mem_size_len << 4) | mem_addr_len) as u8);
 
-                let mut mem_addr = utils::u128_to_vec(memory.0, mem_addr_len, cfg.bo_addr);
-                let mut mem_size = utils::u128_to_vec(memory.1, mem_size_len, cfg.bo_mem_size);
+                let mut mem_addr = utils::u128_to_vec(memory.0, mem_addr_len, ByteOrder::Big);
+                let mut mem_size = utils::u128_to_vec(memory.1, mem_size_len, ByteOrder::Big);
                 result.append(&mut mem_addr);
                 result.append(&mut mem_size);
 
                 others.into_iter()
                     .for_each(|v| {
-                        let mut mem_addr = utils::u128_to_vec(v.0, mem_addr_len, cfg.bo_addr);
-                        let mut mem_size = utils::u128_to_vec(v.1, mem_size_len, cfg.bo_mem_size);
+                        let mut mem_addr = utils::u128_to_vec(v.0, mem_addr_len, ByteOrder::Big);
+                        let mut mem_size = utils::u128_to_vec(v.1, mem_size_len, ByteOrder::Big);
                         result.append(&mut mem_addr);
                         result.append(&mut mem_size);
                     });

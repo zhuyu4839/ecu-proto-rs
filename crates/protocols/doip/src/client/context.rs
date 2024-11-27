@@ -1,20 +1,15 @@
-use derive_getters::Getters;
+use getset::CopyGetters;
 use lazy_static::lazy_static;
 use iso13400_2::{Eid, FurtherAction, Gid, LogicAddress, PayloadType, SyncStatus, Version};
 
-#[derive(Debug, Clone, Getters)]
+#[derive(Debug, Clone, CopyGetters)]
+#[get_copy = "pub"]
 pub struct GatewayInfo {
-    #[getter(copy)]
     pub(crate) version: Version,
-    #[getter(copy)]
     pub(crate) address: LogicAddress,
-    #[getter(copy)]
     pub(crate) eid: Eid,
-    #[getter(copy)]
     pub(crate) gid: Gid,
-    #[getter(copy)]
     pub(crate) further_act: FurtherAction,
-    #[getter(copy)]
     pub(crate) sync_status: Option<SyncStatus>,
 }
 

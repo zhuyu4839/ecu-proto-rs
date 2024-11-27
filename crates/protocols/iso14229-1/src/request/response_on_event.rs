@@ -27,12 +27,11 @@ enum_extend!(
 /// |         |             | extract the data identifier value.                    |
 #[bitfield(u16, order = Msb)]
 pub struct Localization {
-    #[bits(1)]
-    sign: bool,
+    pub sign: bool,
     #[bits(5)]
-    length: u8,
+    pub length: u8,
     #[bits(10)]
-    offset: u16,
+    pub offset: u16,
 }
 
 impl Localization {

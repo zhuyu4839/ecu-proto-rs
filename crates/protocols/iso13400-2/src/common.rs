@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter};
-use derive_getters::Getters;
+use getset::{CopyGetters, Getters};
 use crate::{constants::*, request, response, utils, Iso13400Error, PayloadType};
 
 /// Table 16 — Generic DoIP header structure at line #48(ISO 13400-2-2019)
@@ -527,12 +527,13 @@ impl Display for DiagnosticNegativeCode {
 /// that means diagnostic request was received,
 /// then send 0x8001 response with UDS data.
 /// Otherwise, send 0x8003 response with UDS NRC data.
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, Getters, CopyGetters)]
 pub struct Diagnostic {     // 0x8001
-    #[getter(copy)]
+    #[getset(get_copy = "pub")]
     pub(crate) dst_addr: LogicAddress,
-    #[getter(copy)]
+    #[getset(get_copy = "pub")]
     pub(crate) src_addr: LogicAddress,
+    #[getset(get = "pub")]
     pub data: Vec<u8>,
 }
 

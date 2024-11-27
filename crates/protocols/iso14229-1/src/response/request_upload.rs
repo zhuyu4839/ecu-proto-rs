@@ -56,7 +56,7 @@ impl ResponseData for RequestUpload {
         }
     }
 
-    fn try_parse(response: &Response, cfg: &Configuration) -> Result<Self, Iso14229Error> {
+    fn try_parse(response: &Response, _: &Configuration) -> Result<Self, Iso14229Error> {
         let service = response.service();
         if service != Service::RequestUpload
             || response.sub_func.is_some() {
@@ -71,7 +71,7 @@ impl ResponseData for RequestUpload {
         let remain = &data[offset..];
         utils::data_length_check(lfi.max_number_of_block_length(), remain.len(), true)?;
 
-        let max_num_of_block_len = utils::slice_to_u128(remain, cfg.bo_mem_size);
+        let max_num_of_block_len = utils::slice_to_u128(remain, ByteOrder::Big);
         if max_num_of_block_len == 0 {
             return Err(Iso14229Error::InvalidParam("`maxNumberOfBlockLength` must be rather than 0".to_string()));
         }
@@ -83,13 +83,13 @@ impl ResponseData for RequestUpload {
     }
 
     #[inline]
-    fn to_vec(self, cfg: &Configuration) -> Vec<u8> {
+    fn to_vec(self, _: &Configuration) -> Vec<u8> {
         let lfi = self.lfi;
         let mut result = vec![lfi.0, ];
         result.append(&mut utils::u128_to_vec(
             self.max_num_of_block_len,
             lfi.max_number_of_block_length(),
-            cfg.bo_mem_size
+            ByteOrder::Big
         ));
 
         result

@@ -15,9 +15,9 @@ mod authentication;         // 0x29
 pub use authentication::*;
 mod tester_present;         // 0x3E
 pub use tester_present::*;
-#[cfg(any(feature = "std2006", feature = "std2013"))]
+#[cfg(any(feature = "std2006", feature = "std2013"))]   // std2004
 mod access_timing_param;    // 0x83
-#[cfg(any(feature = "std2006", feature = "std2013"))]
+#[cfg(any(feature = "std2006", feature = "std2013"))]   // std2004
 pub use access_timing_param::*;
 mod secured_data_trans;     // 0x84
 pub use secured_data_trans::*;

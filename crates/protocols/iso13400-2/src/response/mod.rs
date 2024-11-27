@@ -1,10 +1,10 @@
 use std::fmt::{Display, Formatter};
-use derive_getters::Getters;
+use getset::{CopyGetters, Getters};
 use crate::{*, utils};
 
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, CopyGetters)]
+#[get_copy = "pub"]
 pub struct HeaderNegative {
-    #[getter(copy)]
     pub(crate) code: HeaderNegativeCode,
 }
 
@@ -46,18 +46,19 @@ impl Into<Vec<u8>> for HeaderNegative {
 /// response with delay
 /// send response 3 times with interval 500ms
 /// the RoutingActive from client must be 0xE0 when further_act = 0x10.
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, Getters, CopyGetters)]
+#[get = "pub"]
 pub struct VehicleID {  // 0x0004
     pub(crate) vin: String,
-    #[getter(copy)]
+    #[get_copy = "pub"]
     pub(crate) address: LogicAddress,
-    #[getter(copy)]
+    #[get_copy = "pub"]
     pub(crate) eid: Eid,
-    #[getter(copy)]
+    #[get_copy = "pub"]
     pub(crate) gid: Gid,
-    #[getter(copy)]
+    #[get_copy = "pub"]
     pub(crate) further_act: FurtherAction,
-    #[getter(copy)]
+    #[get_copy = "pub"]
     pub(crate) sync_status: Option<SyncStatus>,
 }
 
@@ -141,18 +142,15 @@ impl Into<Vec<u8>> for VehicleID {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, CopyGetters)]
+#[get_copy = "pub"]
 pub struct EntityStatus {   // 0x4002
-    #[getter(copy)]
     pub(crate) node_type: NodeType,
     /// 1 ~ 255
-    #[getter(copy)]
     pub(crate) mcts: u8,    // Max. concurrent TCP_DATA sockets
     /// 0 ~ 255
-    #[getter(copy)]
     pub(crate) ncts: u8,    // Current opened TCP_DATA sockets
     /// 0 ~ 4GB
-    #[getter(copy)]
     pub(crate) max_data_size: Option<u32>,
 }
 
@@ -224,9 +222,9 @@ impl Display for EntityStatus {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, CopyGetters)]
+#[get_copy = "pub"]
 pub struct DiagnosticPowerMode {    // 0x4004
-    #[getter(copy)]
     pub(crate) mode: PowerMode,
 }
 
@@ -263,17 +261,14 @@ impl Into<Vec<u8>> for DiagnosticPowerMode {
 /****** --- end of UDP --- ********/
 
 /****** --- TCP --- ********/
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, CopyGetters)]
+#[get_copy = "pub"]
 pub struct RoutingActive {  // 0x0006
-    #[getter(copy)]
     pub(crate) dst_addr: LogicAddress,
-    #[getter(copy)]
     pub(crate) src_addr: LogicAddress,
-    #[getter(copy)]
     pub(crate) active_code: ActiveCode,
     pub(crate) reserved: u32,
-    #[getter(copy)]
-    #[getter(rename = "user_define")]
+    // #[getter(name = "user_define")]
     pub(crate) user_def: Option<u32>,
 }
 
@@ -341,9 +336,9 @@ impl Into<Vec<u8>> for RoutingActive {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, CopyGetters)]
+#[get_copy = "pub"]
 pub struct AliveCheck {     // 0x0008
-    #[getter(copy)]
     pub(crate) src_addr: LogicAddress,
 }
 
@@ -381,14 +376,15 @@ impl Into<Vec<u8>> for AliveCheck {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[get = "pub"]
 pub struct DiagnosticPositive {     // 0x8002
-    #[getter(copy)]
+    #[getset(get_copy = "pub")]
     pub(crate) src_addr: LogicAddress,
-    #[getter(copy)]
+    #[getset(get_copy = "pub")]
     pub(crate) dst_addr: LogicAddress,
-    #[getter(copy)]
+    #[getset(get_copy = "pub")]
     pub(crate) code: DiagnosticPositiveCode,
-    #[getter(rename = "previous_diagnostic_data")]
+    // #[getter(name = "previous_diagnostic_data")]
     pub(crate) pre_diag_msg: Vec<u8>,
 }
 
@@ -456,16 +452,17 @@ impl Display for DiagnosticPositive {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, Getters, CopyGetters)]
 pub struct DiagnosticNegative {     // 0x8003
-    #[getter(copy)]
+    #[getset(get_copy = "pub")]
     pub(crate) src_addr: LogicAddress,
-    #[getter(copy)]
+    #[getset(get_copy = "pub")]
     pub(crate) dst_addr: LogicAddress,
-    #[getter(copy)]
+    #[getset(get_copy = "pub")]
     pub(crate) code: DiagnosticNegativeCode,
-    #[getter(rename = "previous_diagnostic_data")]
-    pub(crate) pre_diag_msg: Vec<u8>,
+    // #[getter(name = "previous_diagnostic_data")]
+    #[getset(get = "pub")]
+    pub(crate) previous_diagnostic_data: Vec<u8>,
 }
 
 impl DiagnosticNegative {
@@ -473,9 +470,9 @@ impl DiagnosticNegative {
         src_addr: LogicAddress,
         dst_addr: LogicAddress,
         code: DiagnosticNegativeCode,
-        pre_diag_msg: Vec<u8>,
+        previous_diagnostic_data: Vec<u8>,
     ) -> Self {
-        Self { src_addr, dst_addr, code, pre_diag_msg }
+        Self { src_addr, dst_addr, code, previous_diagnostic_data }
     }
 
     /// min length
@@ -497,23 +494,23 @@ impl TryFrom<&[u8]> for DiagnosticNegative {
         let dst_addr = LogicAddress::from(dst_addr);
         let code = DiagnosticNegativeCode::from(data[offset]);
         offset += 1;
-        let pre_diag_msg = data[offset..].to_vec();
+        let previous_diagnostic_data = data[offset..].to_vec();
 
-        Ok(Self { src_addr, dst_addr, code, pre_diag_msg })
+        Ok(Self { src_addr, dst_addr, code, previous_diagnostic_data })
     }
 }
 
 impl Into<Vec<u8>> for DiagnosticNegative {
     fn into(mut self) -> Vec<u8> {
         let mut result = TCP_RESP_DIAGNOSTIC_NEGATIVE.to_be_bytes().to_vec();
-        let length = (Self::length() + self.pre_diag_msg.len()) as u32;
+        let length = (Self::length() + self.previous_diagnostic_data.len()) as u32;
         result.extend(length.to_be_bytes());
         let src_addr: u16 = self.src_addr.into();
         result.extend(src_addr.to_be_bytes());
         let dst_addr: u16 = self.dst_addr.into();
         result.extend(dst_addr.to_be_bytes());
         result.push(self.code.into());
-        result.append(&mut self.pre_diag_msg);
+        result.append(&mut self.previous_diagnostic_data);
 
         result
     }
@@ -525,7 +522,7 @@ impl Display for DiagnosticNegative {
             .field("\n       Source Address", &self.src_addr)
             .field("\n       Target Address", &self.dst_addr)
             .field("\n                 Code", &self.code)
-            .field("\n        Previous Data", &format!("{}", hex::encode(&self.pre_diag_msg)))
+            .field("\n        Previous Data", &format!("{}", hex::encode(&self.previous_diagnostic_data)))
             .finish()
     }
 }

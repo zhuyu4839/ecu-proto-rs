@@ -16,7 +16,7 @@ keywords = [
 [dependencies]
 log = { workspace = true }
 thiserror = { workspace = true }
-derive-getters = { workspace = true }
+getset = { workspace = true }
 hex = { workspace = true }
 lazy_static = { workspace = true }
 iso13400-2 = { workspace = true }

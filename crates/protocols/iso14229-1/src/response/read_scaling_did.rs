@@ -94,9 +94,9 @@ impl Into<u8> for Formula {
 #[bitfield(u16, order = Msb)]
 pub struct TwoByteRealNumber {
     #[bits(4)]
-    exponent: u8,
+    pub exponent: u8,
     #[bits(12)]
-    mantissa: u16,
+    pub mantissa: u16,
 }
 
 impl TwoByteRealNumber {

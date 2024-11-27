@@ -1,16 +1,17 @@
 use std::net::SocketAddr;
-use derive_getters::Getters;
+use getset::Getters;
 use iso13400_2::{Eid, Gid, LogicAddress, LENGTH_OF_VIN, TCP_SERVER_PORT};
 
 #[derive(Clone, Debug, Getters)]
+#[get = "pub"]
 pub struct Configuration {
     ip_address: String,
     vin: String,
-    #[getter(copy)]
+    #[get_copy = "pub"]
     address: LogicAddress,
-    #[getter(copy)]
+    #[get_copy = "pub"]
     eid: Eid,
-    #[getter(copy)]
+    #[get_copy = "pub"]
     gid: Gid,
 }
 

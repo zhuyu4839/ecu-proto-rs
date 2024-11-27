@@ -19,24 +19,19 @@ use crate::{Iso14229Error, utils};
 /// | Signature on the response is requested | 1           |
 /// | ISO reserved                           | 4           |
 /// | ISO reserved                           | 5           |
-#[bitfield(u16, order = Lsb)]
+#[bitfield(u16, order = Msb)]
 pub struct AdministrativeParameter {
-    #[bits(1)]
-    request: bool,
+    pub request: bool,
     #[bits(2)]
-    reserved0: u8,
-    #[bits(1)]
-    pre_established: bool,
-    #[bits(1)]
-    encrypted: bool,
-    #[bits(1)]
-    signed: bool,
-    #[bits(1)]
-    signature_on_response: bool,
+    __: u8,
+    pub pre_established: bool,
+    pub encrypted: bool,
+    pub signed: bool,
+    pub signature_on_response: bool,
     #[bits(4)]
-    reserved1: u8,
+    __: u8,
     #[bits(5)]
-    reserved2: u8,
+    __: u8,
 }
 
 impl Into<Vec<u8>> for AdministrativeParameter {

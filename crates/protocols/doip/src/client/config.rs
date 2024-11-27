@@ -1,11 +1,12 @@
 use std::net::SocketAddr;
-use derive_getters::Getters;
+use getset::{CopyGetters, Getters};
 use iso13400_2::{LogicAddress, TCP_SERVER_PORT};
 
-#[derive(Clone, Debug, Getters)]
+#[derive(Clone, Debug, Getters, CopyGetters)]
+#[get = "pub"]
 pub struct Configuration {
     server_ip: String,
-    #[getter(copy)]
+    #[get_copy = "pub"]
     address: LogicAddress,
 }
 

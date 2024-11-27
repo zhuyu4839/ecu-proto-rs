@@ -1,4 +1,4 @@
-use derive_getters::Getters;
+use getset::{CopyGetters, Getters};
 use crate::{constants::*, Iso13400Error, LogicAddress, RoutingActiveType, utils, Eid};
 
 /****** --- UDP --- ********/
@@ -31,9 +31,9 @@ impl Into<Vec<u8>> for VehicleID {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, CopyGetters)]
+#[get_copy = "pub"]
 pub struct VehicleIDWithEID {    // 0x0002
-    #[getter(copy)]
     pub(crate) eid: Eid,
 }
 
@@ -70,6 +70,7 @@ impl Into<Vec<u8>> for VehicleIDWithEID {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[get = "pub"]
 pub struct VehicleIDWithVIN {     // 0x0003
     pub(crate) vin: String,
 }
@@ -181,15 +182,12 @@ impl Into<Vec<u8>> for DiagnosticPowerMode {
 /****** --- end of UDP --- ********/
 
 /****** --- TCP --- ********/
-#[derive(Debug, Clone, Eq, PartialEq, Getters)]
+#[derive(Debug, Clone, Eq, PartialEq, CopyGetters)]
+#[get_copy = "pub"]
 pub struct RoutingActive {  // 0x0005
-    #[getter(copy)]
     pub(crate) src_addr: LogicAddress,
-    #[getter(copy)]
     pub(crate) active: RoutingActiveType,
-    #[getter(copy)]
     pub(crate) reserved: u32,
-    #[getter(copy)]
     pub(crate) user_def: Option<u32>,
 }
 
