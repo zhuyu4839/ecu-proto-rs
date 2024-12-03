@@ -3,8 +3,8 @@ use getset::{CopyGetters, Getters};
 use iso13400_2::{LogicAddress, TCP_SERVER_PORT};
 
 #[derive(Clone, Debug, Getters, CopyGetters)]
-#[get = "pub"]
 pub struct Configuration {
+    #[get = "pub"]
     server_ip: String,
     #[get_copy = "pub"]
     address: LogicAddress,

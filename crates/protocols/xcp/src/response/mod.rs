@@ -11,7 +11,7 @@ pub use standard::*;
 mod positive;
 pub use positive::*;
 pub mod negative;
-pub use negative::Negative;
+pub use negative::*;
 
 use crate::{constants::{EVENT_CODE, NEGATIVE_CODE, POSITIVE_CODE}, event::Event, XcpError};
 

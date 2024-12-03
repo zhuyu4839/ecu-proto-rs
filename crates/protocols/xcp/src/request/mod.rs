@@ -15,7 +15,7 @@ pub use c0::*;
 mod time_correlation;
 pub use time_correlation::*;
 
-use crate::{AddressGranularity, CalPageMode, Command, SegmentInfoMode, SegmentMode, IntoWith, XcpError};
+use crate::{AddressGranularity, CalPageMode, Command, SegmentInfoMode, SegmentMode, IntoWith, XcpError, DTOCTRPropertyMode, DAQPackedMode, DAQPackedModeData, GetSectorInfoMode, ProgrammingMethod};
 
 #[derive(Debug, Clone)]
 pub struct Request {
@@ -23,14 +23,6 @@ pub struct Request {
 }
 
 impl Request {
-    pub fn new(data: Vec<u8>) -> Result<Self, XcpError> {
-        if data.is_empty() {
-            return Err(XcpError::InvalidDataLength { expected: 1, actual: data.len() });
-        }
-
-        Ok(Self { data })
-    }
-
     pub fn connect(mode: ConnectMode) -> Self {
         let mut result = vec![Command::Connect.into(), ];
         let request = Connect::new(mode);
@@ -141,7 +133,7 @@ impl Request {
         Self { data: result }
     }
 
-    pub fn cal_download(
+    pub fn download(
         remain_size: u8,
         elements: Vec<u8>,
         ag: AddressGranularity
@@ -153,7 +145,7 @@ impl Request {
         Ok(Self { data: result })
     }
 
-    pub fn cal_download_next(
+    pub fn download_next(
         remain_size: u8,
         elements: Vec<u8>,
         ag: AddressGranularity
@@ -165,7 +157,7 @@ impl Request {
         Ok(Self { data: result })
     }
 
-    pub fn cal_download_max(elements: Vec<u8>, ag: AddressGranularity) -> Result<Self, XcpError> {
+    pub fn download_max(elements: Vec<u8>, ag: AddressGranularity) -> Result<Self, XcpError> {
         let mut result = vec![Command::CALDownloadMax.into(), ];
         let request = DownloadMax::new(elements);
         result.append(&mut request.into_with(ag));
@@ -173,7 +165,7 @@ impl Request {
         Ok(Self { data: result })
     }
 
-    pub fn cal_short_download(address_extension: u8, address: u32, elements: Vec<u8>) -> Self {
+    pub fn short_download(address_extension: u8, address: u32, elements: Vec<u8>) -> Self {
         let mut result = vec![Command::CALShortDownload.into(), ];
         let request = ShortDownload::new(address_extension, address, elements);
         result.append(&mut request.into());
@@ -181,7 +173,7 @@ impl Request {
         Self { data: result }
     }
 
-    pub fn cal_modify_bits(shift_value: u8, and_mask: u16, xor_mask: u16) -> Self {
+    pub fn modify_bits(shift_value: u8, and_mask: u16, xor_mask: u16) -> Self {
         let mut result = vec![Command::CALModifyBits.into(), ];
         let request = ModifyBits::new(shift_value, and_mask, xor_mask);
         result.append(&mut request.into());
@@ -189,7 +181,7 @@ impl Request {
         Self { data: result }
     }
 
-    pub fn page_set_cal_page(mode: CalPageMode, segment: u8, page: u8) -> Self {
+    pub fn set_cal_page(mode: CalPageMode, segment: u8, page: u8) -> Self {
         let mut result = vec![Command::PAGSetCalPage.into(), ];
         let request = SetCalPage::new(mode, segment, page);
         result.append(&mut request.into());
@@ -197,7 +189,7 @@ impl Request {
         Self { data: result }
     }
 
-    pub fn page_get_cal_page(mode: CalPageMode, segment: u8) -> Result<Self, XcpError> {
+    pub fn get_cal_page(mode: CalPageMode, segment: u8) -> Result<Self, XcpError> {
         let mut result = vec![Command::PAGGetCalPage.into()];
         let request = GetCalPage::new(mode, segment)?;
         result.append(&mut request.into());
@@ -205,11 +197,11 @@ impl Request {
         Ok(Self { data: result })
     }
 
-    pub fn page_get_page_processor_info() -> Self {
+    pub fn get_page_processor_info() -> Self {
         Self { data: vec![Command::PAGGetPageProcessorInfo.into(), ] }
     }
 
-    pub fn page_get_segment_info(mode: SegmentInfoMode, size: u8, info: u8, mapping_index: u8) -> Self {
+    pub fn get_segment_info(mode: SegmentInfoMode, size: u8, info: u8, mapping_index: u8) -> Self {
         let mut result = vec![Command::PAGGetSegmentInfo.into(), ];
         let request = GetSegmentInfo::new(mode, size, info, mapping_index);
         result.append(&mut request.into());
@@ -217,7 +209,7 @@ impl Request {
         Self { data: result }
     }
 
-    pub fn page_get_page_info(segment_number: u8, page_number: u8) -> Self {
+    pub fn get_page_info(segment_number: u8, page_number: u8) -> Self {
         let mut result = vec![Command::PAGGetPageInfo.into(), ];
         let request = GetPageInfo::new(segment_number, page_number);
         result.append(&mut request.into());
@@ -225,7 +217,7 @@ impl Request {
         Self { data: result }
     }
 
-    pub fn page_set_segment_mode(mode: SegmentMode, number: u8) -> Self {
+    pub fn set_segment_mode(mode: SegmentMode, number: u8) -> Self {
         let mut result = vec![Command::PAGSetSegmentMode.into(), ];
         let request = SetSegmentMode::new(mode, number);
         result.append(&mut request.into());
@@ -233,7 +225,7 @@ impl Request {
         Self { data: result }
     }
 
-    pub fn page_get_segment_mode(number: u8) -> Self {
+    pub fn get_segment_mode(number: u8) -> Self {
         let mut result = vec![Command::PAGGetSegmentMode.into(), ];
         let request = GetSegmentMode::new(number);
         result.append(&mut request.into());
@@ -241,7 +233,7 @@ impl Request {
         Self { data: result }
     }
 
-    pub fn page_copy_cal_page(
+    pub fn copy_cal_page(
         src_segment_number: u8,
         src_page_number: u8,
         dist_segment_number: u8,
@@ -259,144 +251,298 @@ impl Request {
         Self { data: result }
     }
 
-    pub fn daq_set_ptr() -> Self {
-        todo!()
+    pub fn set_daq_ptr(daq_list_number: u16, odt_number: u8, odt_entry_number: u8) -> Self {
+        let mut result = vec![Command::DAQSetPtr.into(), ];
+        let request = SetDAQPtr::new(daq_list_number, odt_number, odt_entry_number);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_write() -> Self {
-        todo!()
+    pub fn write_daq(bit_offset: u8, size: u8, address_extension: u8, address: u32) -> Self {
+        let mut result = vec![Command::DAQWrite.into(), ];
+        let request = WriteDAQ::new(bit_offset, size, address_extension, address);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_set_list_mode() -> Self {
-        todo!()
+    pub fn set_daq_list_mode(
+        mode: DAQListModeSet,
+        daq_list_number: u16,
+        event_channel_number: u16,
+        transmission_rate_prescaler: u8,
+        daq_list_priority:  u8,
+    ) -> Self {
+        let mut result = vec![Command::DAQSetListMode.into(), ];
+        let request = SetDAQListMode::new(
+            mode,
+            daq_list_number,
+            event_channel_number,
+            transmission_rate_prescaler,
+            daq_list_priority,
+        );
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_set_start_stop_list() -> Self {
-        todo!()
+    pub fn start_stop_list(mode: StartStopDaqListMode, daq_list_number: u16) -> Self {
+        let mut result = vec![Command::DAQStartStopList.into(), ];
+        let request = StartStopDAQList::new(mode, daq_list_number);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_set_start_stop_synch() -> Self {
-        todo!()
+    pub fn start_stop_synch(mode: StartStopSynchMode) -> Self {
+        let mut result = vec![Command::DAQStartStopSynch.into(), ];
+        let request = StartStopSynch::new(mode);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_write_multiple() -> Self {
-        todo!()
+    pub fn write_daq_multiple(elements: Vec<DAQElement>) -> Self {
+        let mut result = vec![Command::DAQWriteMultiple.into(), ];
+        let request = WriteDAQMultiple::new(elements);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_read() -> Self {
-        todo!()
+    pub fn read_daq() -> Self {
+        Self { data: vec![Command::DAQRead.into(), ] }
     }
 
-    pub fn daq_get_clock() -> Self {
-        todo!()
+    pub fn get_daq_clock() -> Self {
+        Self { data: vec![Command::DAQGetClock.into(), ] }
     }
 
-    pub fn daq_get_processor_info() -> Self {
-        todo!()
+    pub fn get_daq_processor_info() -> Self {
+        Self { data: vec![Command::DAQGetProcessorInfo.into(), ] }
     }
 
-    pub fn daq_get_resolution_info() -> Self {
-        todo!()
+    pub fn get_daq_resolution_info() -> Self {
+        Self { data: vec![Command::DAQGetResolutionInfo.into(), ] }
     }
 
-    pub fn daq_get_list_mode() -> Self {
-        todo!()
+    pub fn get_daq_list_mode(daq_list_number: u16) -> Self {
+        let mut result = vec![Command::DAQGetListMode.into(), ];
+        let request = GetDAQListMode::new(daq_list_number);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_get_event_info() -> Self {
-        todo!()
+    pub fn get_daq_event_info(event_channel_number: u16) -> Self {
+        let mut result = vec![Command::DAQGetEventInfo.into(), ];
+        let request = GetDAQEventInfo::new(event_channel_number);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_dto_ctr_property() -> Self {
-        todo!()
+    pub fn get_daq_dto_ctr_property(
+        modifier: DTOCTRPropertyModifier,
+        event_channel_number: u16,
+        related_event_channel_number: u16,
+        mode: DTOCTRPropertyMode,
+    ) -> Self {
+        let mut result = vec![Command::DAQDTOCTRProperty.into(), ];
+        let request = GetDTOCTRProperty::new(
+            modifier,
+            event_channel_number,
+            related_event_channel_number,
+            mode,
+        );
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_clear_list() -> Self {
-        todo!()
+    pub fn clear_daq_list(daq_list_number: u16) -> Self {
+        let mut result = vec![Command::DAQClearList.into(), ];
+        let request = ClearDAQList::new(daq_list_number);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_get_list_info() -> Self {
-        todo!()
+    pub fn get_daq_list_info(daq_list_number: u16) -> Self {
+        let mut result = vec![Command::DAQGetListInfo.into(), ];
+        let request = GetDAQListInfo::new(daq_list_number);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_free() -> Self {
-        todo!()
+    pub fn free_daq() -> Self {
+        Self { data: vec![Command::DAQFree.into(), ] }
     }
 
-    pub fn daq_alloc() -> Self {
-        todo!()
+    pub fn alloc_daq(daq_count: u16) -> Self {
+        let mut result = vec![Command::DAQAlloc.into(), ];
+        let request = AllocDAQ::new(daq_count);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_alloc_odt() -> Self {
-        todo!()
+    pub fn alloc_daq_odt(daq_list_number: u16, odt_count: u8) -> Self {
+        let mut result = vec![Command::DAQAllocODT.into(), ];
+        let request = AllocODT::new(daq_list_number, odt_count);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_alloc_odt_entry() -> Self {
-        todo!()
+    pub fn alloc_daq_odt_entry(daq_list_number: u16, odt_number: u8, odt_entry_count: u8) -> Self {
+        let mut result = vec![Command::DAQAllocODTEntry.into(), ];
+        let request = AllocODTEntry::new(daq_list_number, odt_number, odt_entry_count);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_set_packed_mode() -> Self {  // 0xC0
-        todo!()
+    pub fn set_daq_packed_mode(daq_list_number: u16) -> Self {  // 0xC0
+        let mut result = vec![Command::C0.into(), CmdCode::GetDAQPackedMode.into()];
+        let request = GetDAQPackedMode::new(daq_list_number);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn daq_get_packed_mode() -> Self {  // 0xC0
-        todo!()
+    pub fn get_daq_packed_mode(
+        daq_list_number: u16,
+        mode: DAQPackedMode,
+        content: Option<DAQPackedModeData>,
+    ) -> Self {  // 0xC0
+        let mut result = vec![Command::C0.into(), CmdCode::SetDAQPackedMode.into()];
+        let request = SetDAQPackedMode::new(daq_list_number, mode, content);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
     pub fn program_start() -> Self {
-        todo!()
+        Self { data: vec![Command::PGMPrgStart.into(), ] }
     }
 
-    pub fn program_clear() -> Self {
-        todo!()
+    pub fn program_clear(mode: ProgramClearMode, clear_range: u32) -> Self {
+        let mut result = vec![Command::PGMPrgClear.into(), ];
+        let request = ProgramClear::new(mode, clear_range);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn program() -> Self {
-        todo!()
+    pub fn program(remain_size: u8, elements: Vec<u8>) -> Self {
+        let mut result = vec![Command::PGMPrg.into(), ];
+        let request = Program::new(remain_size, elements);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
     pub fn program_reset() -> Self {
-        todo!()
+        Self { data: vec![Command::PGMPrgReset.into(), ] }
     }
 
-    pub fn program_get_processor_info() -> Self {
-        todo!()
+    pub fn get_program_processor_info() -> Self {
+        Self { data: vec![Command::PGMGetProcessorInfo.into(), ] }
     }
 
-    pub fn program_get_selector_info() -> Self {
-        todo!()
+    pub fn get_program_selector_info(mode: GetSectorInfoMode, sector_number: u8) -> Self {
+        let mut result = vec![Command::PGMGetSectorInfo.into(), ];
+        let request = GetProgramSectorInfo::new(mode, sector_number);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn program_prepare() -> Self {
-        todo!()
+    pub fn program_prepare(code_size: u16) -> Self {
+        let mut result = vec![Command::PGMPrgPrepare.into(), ];
+        let request = ProgramPrepare::new(code_size);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn program_format() -> Self {
-        todo!()
+    pub fn program_format(
+        compression_method: CompressionMethod,
+        encryption_method: EncryptionMethod,
+        programming_method: ProgrammingMethod,
+        access_mode: AccessMode,
+    ) -> Result<Self, XcpError> {
+        let mut result = vec![Command::PGMPrgFormat.into(), ];
+        let request = ProgramFormat::new(
+            compression_method,
+            encryption_method,
+            programming_method,
+            access_mode,
+        )?;
+        result.append(&mut request.into());
+
+        Ok(Self { data: result })
     }
 
-    pub fn program_next() -> Self {
-        todo!()
+    pub fn program_next(remain_size: u8, elements: Vec<u8>) -> Self {
+        let mut result = vec![Command::PGMPrgNext.into(), ];
+        let request = ProgramNext::new(remain_size, elements);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn program_max() -> Self {
-        todo!()
+    pub fn program_max(elements: Vec<u8>) -> Self {
+        let mut result = vec![Command::PGMPrgMAX.into(), ];
+        let request = ProgramMax::new(elements);
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
-    pub fn program_verify() -> Self {
-        todo!()
+    pub fn program_verify(
+        compression_method: CompressionMethod,
+        encryption_method: EncryptionMethod,
+        programming_method: ProgrammingMethod,
+        access_mode: AccessMode,
+    ) -> Result<Self, XcpError> {
+        let mut result = vec![Command::PGMPrgVerify.into(), ];
+        let request = ProgramFormat::new(
+            compression_method,
+            encryption_method,
+            programming_method,
+            access_mode,
+        )?;
+        result.append(&mut request.into());
+
+        Ok(Self { data: result })
     }
 
-    pub fn time_correlation_set_property() -> Self {
-        todo!()
+    pub fn time_correlation_set_property(
+        set_property: TimeCorrelationSetProperty,
+        get_property_request: u8,
+        cluster_id: u16,
+    ) -> Self {
+        let mut result = vec![Command::TimeCorrelationProperty.into(), ];
+        let request = TimeCorrelationProperty::new(
+            set_property,
+            get_property_request,
+            cluster_id,
+        );
+        result.append(&mut request.into());
+
+        Self { data: result }
     }
 
     pub fn debug_over_xcp() -> Self {   // 0xC0
-        todo!()
+        Self { data: vec![Command::C0.into(), CmdCode::SwDbgOverXCP.into()] }
     }
 
     pub fn pod_bs() -> Self {           // 0xC0
-        todo!()
+        Self { data: vec![Command::C0.into(), CmdCode::PodBS.into()] }
     }
 
     #[inline(always)]

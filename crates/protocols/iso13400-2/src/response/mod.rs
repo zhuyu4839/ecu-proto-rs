@@ -47,7 +47,6 @@ impl Into<Vec<u8>> for HeaderNegative {
 /// send response 3 times with interval 500ms
 /// the RoutingActive from client must be 0xE0 when further_act = 0x10.
 #[derive(Debug, Clone, Eq, PartialEq, Getters, CopyGetters)]
-#[get = "pub"]
 pub struct VehicleID {  // 0x0004
     pub(crate) vin: String,
     #[get_copy = "pub"]

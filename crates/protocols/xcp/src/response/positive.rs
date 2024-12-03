@@ -1,5 +1,5 @@
 use getset::Getters;
-use crate::{Command, DAQPackedMode, DAQPackedModeData, DTOCTRPropertyMode, PayloadFormat, ResourceStatus, SegmentMode, SyncState, TimestampUnit, XcpError};
+use crate::{AddressGranularity, Command, DAQPackedMode, DAQPackedModeData, DTOCTRPropertyMode, IntoWith, PayloadFormat, ResourceStatus, SegmentMode, SyncState, TimestampUnit, XcpError};
 use crate::response::{BuildChecksum, ChecksumType, CmdModeOpt, CommonMode, Connect, DAQEventProperty, DAQKeyByte, DAQListModeGet, DAQListProperty, DAQProperty, DTOCTRProperty, GetCalPage, GetCmdModeInfo, GetDAQClock, GetDAQEventInfo, GetDAQListInfo, GetDAQListMode, GetDAQPackedMode, GetDTOCTRProperty, GetDaqProcessorInfo, GetDaqResolutionInfo, GetId, GetIdMode, GetPageInfo, GetPageProcessorInfo, GetProgramProcessorInfo, GetProgramSectorInfo, GetSeed, GetSegmentInfo, GetSegmentMode, GetStatus, GetVersion, PageProperty, ProcessorInfoProperty, ProgramProperty, ProgramStart, ProgrammingMode, ReadDAQ, SessionStatus, StartStopDaqList, TimestampMode, Unlock, UnlockStatus, Upload, Version};
 
 #[derive(Debug, Clone, Getters)]
@@ -296,9 +296,9 @@ impl Positive {
         Self { data: response.into() }
     }
 
-    pub fn upload(elements: Vec<u8>) -> Self {
+    pub fn upload(elements: Vec<u8>, ag: AddressGranularity) -> Self {
         let response = Upload::new(elements);
-        Self { data: response.into() }
+        Self { data: response.into_with(ag) }
     }
 
     #[inline]
