@@ -417,30 +417,30 @@ impl Request {
         daq_list_number: u16,
         mode: DAQPackedMode,
         content: Option<DAQPackedModeData>,
-    ) -> Self {  // 0xC0
+    ) -> Result<Self, XcpError> {  // 0xC0
         let mut result = vec![Command::C0.into(), CmdCode::SetDAQPackedMode.into()];
-        let request = SetDAQPackedMode::new(daq_list_number, mode, content);
+        let request = SetDAQPackedMode::new(daq_list_number, mode, content)?;
         result.append(&mut request.into());
 
-        Self { data: result }
+        Ok(Self { data: result })
     }
 
     pub fn program_start() -> Self {
         Self { data: vec![Command::PGMPrgStart.into(), ] }
     }
 
-    pub fn program_clear(mode: ProgramClearMode, clear_range: u32) -> Self {
+    pub fn program_clear(mode: ProgramClearMode, clear_range: u32) -> Result<Self, XcpError> {
         let mut result = vec![Command::PGMPrgClear.into(), ];
-        let request = ProgramClear::new(mode, clear_range);
+        let request = ProgramClear::new(mode, clear_range)?;
         result.append(&mut request.into());
 
-        Self { data: result }
+        Ok(Self { data: result })
     }
 
-    pub fn program(remain_size: u8, elements: Vec<u8>) -> Self {
+    pub fn program(remain_size: u8, elements: Vec<u8>, ag: AddressGranularity) -> Self {
         let mut result = vec![Command::PGMPrg.into(), ];
         let request = Program::new(remain_size, elements);
-        result.append(&mut request.into());
+        result.append(&mut request.into_with(ag));
 
         Self { data: result }
     }
@@ -487,18 +487,18 @@ impl Request {
         Ok(Self { data: result })
     }
 
-    pub fn program_next(remain_size: u8, elements: Vec<u8>) -> Self {
+    pub fn program_next(remain_size: u8, elements: Vec<u8>, ag: AddressGranularity) -> Self {
         let mut result = vec![Command::PGMPrgNext.into(), ];
         let request = ProgramNext::new(remain_size, elements);
-        result.append(&mut request.into());
+        result.append(&mut request.into_with(ag));
 
         Self { data: result }
     }
 
-    pub fn program_max(elements: Vec<u8>) -> Self {
+    pub fn program_max(elements: Vec<u8>, ag: AddressGranularity) -> Self {
         let mut result = vec![Command::PGMPrgMAX.into(), ];
         let request = ProgramMax::new(elements);
-        result.append(&mut request.into());
+        result.append(&mut request.into_with(ag));
 
         Self { data: result }
     }

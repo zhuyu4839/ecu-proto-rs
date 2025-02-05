@@ -1,6 +1,6 @@
 use getset::Getters;
-use crate::{AddressGranularity, Command, DAQPackedMode, DAQPackedModeData, DTOCTRPropertyMode, IntoWith, PayloadFormat, ResourceStatus, SegmentMode, SyncState, TimestampUnit, XcpError};
-use crate::response::{BuildChecksum, ChecksumType, CmdModeOpt, CommonMode, Connect, DAQEventProperty, DAQKeyByte, DAQListModeGet, DAQListProperty, DAQProperty, DTOCTRProperty, GetCalPage, GetCmdModeInfo, GetDAQClock, GetDAQEventInfo, GetDAQListInfo, GetDAQListMode, GetDAQPackedMode, GetDTOCTRProperty, GetDaqProcessorInfo, GetDaqResolutionInfo, GetId, GetIdMode, GetPageInfo, GetPageProcessorInfo, GetProgramProcessorInfo, GetProgramSectorInfo, GetSeed, GetSegmentInfo, GetSegmentMode, GetStatus, GetVersion, PageProperty, ProcessorInfoProperty, ProgramProperty, ProgramStart, ProgrammingMode, ReadDAQ, SessionStatus, StartStopDaqList, TimestampMode, Unlock, UnlockStatus, Upload, Version};
+use crate::{response, AddressGranularity, Command, DAQPackedMode, DAQPackedModeData, DTOCTRPropertyMode, IntoWith, PayloadFormat, ResourceStatus, SegmentMode, SyncState, TimestampUnit, XcpError};
+use crate::response::{ChecksumType, CmdModeOpt, CommonMode, Connect, DAQEventProperty, DAQKeyByte, DAQListModeGet, DAQListProperty, DAQProperty, DTOCTRProperty, GetCalPage, GetCmdModeInfo, GetDAQClock, GetDAQEventInfo, GetDAQListInfo, GetDAQListMode, GetDAQPackedMode, GetDTOCTRProperty, GetDaqProcessorInfo, GetDaqResolutionInfo, GetId, GetIdMode, GetPageInfo, GetPageProcessorInfo, GetProgramProcessorInfo, GetProgramSectorInfo, GetSeed, GetSegmentInfo, GetSegmentMode, GetStatus, GetVersion, PageProperty, ProcessorInfoProperty, ProgramProperty, ProgramStart, ProgrammingMode, ReadDAQ, SessionStatus, StartStopDaqList, TimestampMode, Unlock, UnlockStatus, Upload, Version};
 
 #[derive(Debug, Clone, Getters)]
 #[get = "pub"]
@@ -226,7 +226,7 @@ impl Positive {
     }
 
     pub fn build_checksum(r#type: ChecksumType, checksum: u32) -> Self {
-        let response = BuildChecksum::new(r#type, checksum);
+        let response = response::standard::BuildChecksum::new(r#type, checksum);
         Self { data: response.into() }
     }
 

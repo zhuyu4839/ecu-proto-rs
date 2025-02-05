@@ -128,7 +128,7 @@ impl ProgramFormat {
     }
 }
 
-impl Into<Vec<u8>> for &ProgramFormat {
+impl Into<Vec<u8>> for ProgramFormat {
     fn into(self) -> Vec<u8> {
         vec![
             self.compression_method.into(),
