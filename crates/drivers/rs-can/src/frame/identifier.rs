@@ -46,6 +46,14 @@ impl Into<u32> for Id {
 
 impl Id {
     #[inline]
+    pub fn new_standard(id: u32) -> Self {
+        Self::Standard(id as u16)
+    }
+    #[inline]
+    pub fn new_extended(id: u32) -> Self {
+        Self::Extended(id)
+    }
+    #[inline]
     pub fn from_bits(bits: u32, extended: bool) -> Self {
         if bits <= EFF_MASK {
             if extended {
