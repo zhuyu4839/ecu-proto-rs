@@ -12,6 +12,7 @@ version = "0.1.0-alpha3"
 edition = "2021"
 license = "MIT OR GPL-3.0"
 authors = ["Jesse Smith <zhuyu4839@gmail.com>"]
+repository = "https://github.com/zhuyu4839/ecu-proto-rs"
 
 [workspace.dependencies]
 bitflags = "2.6"
