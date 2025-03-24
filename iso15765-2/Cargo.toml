@@ -1,0 +1,35 @@
+[package]
+name = "iso15765-2"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "ISO-TP trait define."
+homepage = "https://github.com/zhuyu4839/ecu-proto-rs/tree/develop/is15765-2"
+repository.workspace = true
+keywords = [
+    "automotive",
+    "UDS",
+    "ISO15765",
+    "ISO-TP",
+]
+
+
+[dependencies]
+bitflags = { workspace = true }
+hex = { workspace = true }
+log = { workspace = true }
+thiserror = { workspace = true }
+
+[dependencies.rs-can]
+workspace = true
+optional = true
+
+[features]
+default = ["can", "std2004"]
+
+can = ["rs-can"]
+can-fd = ["can"]
+std2004 = []
+std2016 = []
+

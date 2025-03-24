@@ -3,11 +3,7 @@
 ## Overview
   #### The project aims to define a unified ECU protocol.
 
-  #### The drivers aim to define a unified driver.
-
   #### The application is implemented by the adaptation layer that joint driver and the protocol.
-
-![Diagram](asserts/layer.svg)
 
 ## Contributing
 

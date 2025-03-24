@@ -1,0 +1,31 @@
+[package]
+name = "iso13400-2"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "A ISO 13400-2 protocol."
+homepage = "https://github.com/zhuyu4839/ecu-proto-rs/tree/develop/iso13400-2"
+repository.workspace = true
+keywords = [
+    "automotive",
+    "UDS",
+    "ISO13400",
+    "DoIP"
+]
+
+[dependencies]
+log = { workspace = true }
+thiserror = { workspace = true }
+hex = { workspace = true }
+getset = { workspace = true }
+
+[dev-dependencies]
+anyhow = { workspace = true }
+
+[features]
+default = ["std2012"]
+
+std2010 = []
+std2012 = []
+std2019 = []
